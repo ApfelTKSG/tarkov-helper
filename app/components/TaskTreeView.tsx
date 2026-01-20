@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -10,6 +10,8 @@ import ReactFlow, {
   useEdgesState,
   Position,
   MarkerType,
+  NodeProps,
+  Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
@@ -20,8 +22,116 @@ interface TaskTreeViewProps {
   traderName: string;
 }
 
+interface TaskNodeData {
+  task: Task;
+  isCompleted: boolean;
+  isLocked: boolean;
+  isCollectorRequirement: boolean;
+  crossTraderRequirements: Array<{ task: Task }>;
+  onToggleComplete: () => void;
+  onHover: (taskId: string | null) => void;
+}
+
+// カスタムタスクノードコンポーネント
+const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover } = data;
+
+  return (
+    <>
+      <Handle type="target" position={Position.Left} />
+      <div 
+        onClick={onToggleComplete}
+        onMouseEnter={() => {
+          setIsHovered(true);
+          onHover(task.id);
+        }}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          onHover(null);
+        }}
+        className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
+        style={{
+        background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
+        border: `2px solid ${
+          isHovered ? '#fbbf24' :
+          isLocked ? '#ef4444' :
+          isCompleted ? '#22c55e' : 
+          task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+        }`,
+        borderRadius: '8px',
+        padding: '12px',
+        width: 280,
+        opacity: isLocked ? 0.6 : 1,
+        boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
+        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.2s ease-in-out',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {isLocked ? (
+          <div className="text-red-500 flex-shrink-0">🔒</div>
+        ) : (
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+            isCompleted ? 'bg-green-500' : 'bg-gray-400'
+          }`}></div>
+        )}
+        {isCollectorRequirement && (
+          <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
+            κ
+          </div>
+        )}
+        <div className={`font-semibold text-sm ${
+          isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
+        }`}>
+          {task.name}
+        </div>
+      </div>
+      <div className="text-xs text-gray-600">
+        {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
+      </div>
+      {crossTraderRequirements.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-orange-200">
+          <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
+          {crossTraderRequirements.map((req, idx) => (
+            <div 
+              key={idx} 
+              className="text-xs mb-0.5 text-orange-600 font-semibold"
+            >
+              <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
+                {req.task.trader.name}
+              </span>
+              {req.task.name}
+            </div>
+          ))}
+        </div>
+      )}
+      <div 
+        onClick={(e) => {
+          e.stopPropagation();
+          const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
+          window.open(wikiUrl, '_blank');
+        }}
+        className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 hover:scale-150 cursor-pointer text-sm transition-transform"
+        title="Wikiを開く"
+      >
+        🔗
+      </div>
+    </div>
+    <Handle type="source" position={Position.Right} />
+    </>
+  );
+});
+
+TaskNode.displayName = 'TaskNode';
+
+const nodeTypes = {
+  taskNode: TaskNode,
+};
+
 export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
@@ -158,89 +268,21 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       
       nodes.push({
         id: task.id,
-        type: 'default',
-        position: { 
-          x: xPos,
-          y: yPos
-        },
-        data: { 
-          label: (
-            <div 
-              onClick={() => !isLocked && toggleTaskComplete(task.id)}
-              className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                {isLocked ? (
-                  <div className="text-red-500 flex-shrink-0">🔒</div>
-                ) : (
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                    isCompleted ? 'bg-green-500' : 'bg-gray-400'
-                  }`}></div>
-                )}
-                {isCollectorRequirement && (
-                  <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
-                    κ
-                  </div>
-                )}
-                <div className={`font-medium text-sm ${
-                  isLocked ? 'text-gray-400' :
-                  isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
-                }`}>
-                  {task.name}
-                </div>
-              </div>
-              <div className={`text-xs mt-1 ${
-                isLocked ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Lv.{task.minPlayerLevel} • +{task.experience.toLocaleString()} XP
-              </div>
-              {crossTraderRequirements.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-300">
-                  <div className="text-xs font-semibold text-orange-600 mb-1">
-                    他トレーダーの前提:
-                  </div>
-                  {crossTraderRequirements.map((req, idx) => (
-                    <div 
-                      key={idx} 
-                      className="text-xs mb-0.5 text-orange-600 font-semibold"
-                    >
-                      <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
-                        {req.task.trader.name}
-                      </span>
-                      {req.task.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Wiki リンク */}
-              <div 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
-                  window.open(wikiUrl, '_blank');
-                }}
-                className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 hover:scale-150 cursor-pointer text-sm transition-transform"
-                title="Wikiを開く"
-              >
-                🔗
-              </div>
-            </div>
-          )
-        },
+        type: 'taskNode',
+        position: { x: xPos, y: yPos },
+        data: {
+          task,
+          isCompleted,
+          isLocked,
+          isCollectorRequirement,
+          crossTraderRequirements,
+          onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
+          onHover: setHoveredTaskId,
+        } as TaskNodeData,
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         style: {
-          background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
-          border: `2px solid ${
-            isLocked ? '#ef4444' :
-            isCompleted ? '#22c55e' : 
-            task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
-          }`,
-          borderRadius: '8px',
-          padding: '12px',
           width: 280,
-          opacity: isLocked ? 0.6 : 1,
-          transition: 'all 0.2s ease-in-out',
         },
       });
     });
@@ -302,6 +344,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
