@@ -56,6 +56,9 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     const edges: Edge[] = [];
     const taskLevels = new Map<string, number>();
     
+    // 高速検索用のMap作成
+    const taskMap = new Map(allTasks.map(t => [t.id, t]));
+    
     // 各タスクの階層レベルを計算
     const calculateLevel = (task: Task, visited = new Set<string>()): number => {
       if (taskLevels.has(task.id)) {
@@ -75,7 +78,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       
       const maxParentLevel = Math.max(
         ...task.taskRequirements.map(req => {
-          const parentTask = allTasks.find(t => t.id === req.task.id);
+          const parentTask = taskMap.get(req.task.id);
           return parentTask ? calculateLevel(parentTask, new Set(visited)) : -1;
         })
       );
@@ -110,17 +113,15 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
       const isLocked = uncompletedRequirements.length > 0;
       
-      // 別トレーダーの前提タスクを抽出（allTasksから完全なタスク情報を取得）
-      const crossTraderRequirements = uncompletedRequirements.filter(req => {
-        const fullTask = allTasks.find(t => t.id === req.task.id);
-        return fullTask && fullTask.trader.name !== traderName;
-      }).map(req => {
-        const fullTask = allTasks.find(t => t.id === req.task.id)!;
-        return {
-          ...req,
-          task: fullTask
-        };
-      });
+      // 別トレーダーの前提タスクを抽出（Mapで高速検索）
+      const crossTraderRequirements = uncompletedRequirements
+        .map(req => {
+          const fullTask = taskMap.get(req.task.id);
+          return fullTask ? { ...req, task: fullTask } : null;
+        })
+        .filter((req): req is NonNullable<typeof req> => 
+          req !== null && req.task.trader.name !== traderName
+        );
       
       nodes.push({
         id: task.id,
