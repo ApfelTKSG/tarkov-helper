@@ -349,6 +349,24 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       });
     });
     
+    // 祖先タスクを再帰的に収集する関数
+    const collectAncestors = (taskId: string, visited = new Set<string>()): Set<string> => {
+      if (visited.has(taskId)) return visited;
+      visited.add(taskId);
+      
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return visited;
+      
+      // このトレーダー内の前提タスクのみを対象
+      const traderRequirements = task.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
+      
+      traderRequirements.forEach(req => {
+        collectAncestors(req.task.id, visited);
+      });
+      
+      return visited;
+    };
+    
     // エッジを作成
     tasks.forEach(task => {
       task.taskRequirements.forEach(req => {
@@ -382,9 +400,11 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
                 });
                 
                 if (hasTraderRequirements) {
-                  // このトレーダー内に前提タスクがある場合のみ強調
+                  // すべての祖先タスクとそのエッジを強調
                   shouldDimOthers = true;
-                  if (task.id === hoveredTaskId && req.task.id) {
+                  const ancestors = collectAncestors(hoveredTaskId);
+                  // このエッジのsourceとtargetが両方とも祖先に含まれているか
+                  if (ancestors.has(task.id) && ancestors.has(req.task.id)) {
                     isHighlighted = true;
                   }
                 }
