@@ -12,6 +12,23 @@ interface PageProps {
   }>;
 }
 
+export async function generateStaticParams() {
+  // タスクデータを読み込み
+  const filePath = path.join(process.cwd(), 'data', 'tarkov-tasks.json');
+  const fileContents = fs.readFileSync(filePath, 'utf8');
+  const taskData: TaskData = JSON.parse(fileContents);
+
+  // すべてのトレーダー名を取得
+  const traders = Array.from(
+    new Set(taskData.tasks.map(task => task.trader.name))
+  );
+
+  // 各トレーダーのパラメータを返す
+  return traders.map(traderName => ({
+    trader: encodeURIComponent(traderName),
+  }));
+}
+
 export default async function TraderPage({ params }: PageProps) {
   const { trader: encodedTrader } = await params;
   const traderName = decodeURIComponent(encodedTrader);
