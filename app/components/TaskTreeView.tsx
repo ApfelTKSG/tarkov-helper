@@ -58,11 +58,14 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     
     // 高速検索用のMap作成
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
+    const traderTaskIds = new Set(tasks.map(t => t.id));
     
-    // 各タスクの階層レベルを計算
-    const calculateLevel = (task: Task, visited = new Set<string>()): number => {
-      if (taskLevels.has(task.id)) {
-        return taskLevels.get(task.id)!;
+    // 各タスクの深さレベルを計算（そのトレーダー内の前提タスクからの距離）
+    const taskDepths = new Map<string, number>();
+    
+    const calculateDepth = (task: Task, visited = new Set<string>()): number => {
+      if (taskDepths.has(task.id)) {
+        return taskDepths.get(task.id)!;
       }
       
       if (visited.has(task.id)) {
@@ -71,45 +74,67 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       
       visited.add(task.id);
       
-      if (task.taskRequirements.length === 0) {
-        taskLevels.set(task.id, 0);
+      // このトレーダー内の前提タスクを取得
+      const traderRequirements = task.taskRequirements.filter(req => 
+        traderTaskIds.has(req.task.id)
+      );
+      
+      if (traderRequirements.length === 0) {
+        // このトレーダー内に前提タスクがない = 0番目
+        taskDepths.set(task.id, 0);
         return 0;
       }
       
-      const parentLevels = task.taskRequirements.map(req => {
+      // 前提タスクの中で最も深いものを探す
+      const parentDepths = traderRequirements.map(req => {
         const parentTask = taskMap.get(req.task.id);
         if (!parentTask) {
-          // 親タスクが見つからない場合は警告してスキップ
-          console.warn(`Parent task not found: ${req.task.name} (${req.task.id})`);
           return -1;
         }
-        return calculateLevel(parentTask, visited);
-      }).filter(level => level >= 0);
+        return calculateDepth(parentTask, new Set(visited));
+      }).filter(depth => depth >= 0);
       
-      const maxParentLevel = parentLevels.length > 0 ? Math.max(...parentLevels) : -1;
-      const level = maxParentLevel + 1;
-      taskLevels.set(task.id, level);
-      return level;
+      const maxParentDepth = parentDepths.length > 0 ? Math.max(...parentDepths) : -1;
+      const depth = maxParentDepth + 1;
+      taskDepths.set(task.id, depth);
+      return depth;
     };
     
-    // 全タスクのレベルを計算
-    tasks.forEach(task => calculateLevel(task));
+    // 全タスクの深さを計算
+    tasks.forEach(task => calculateDepth(task));
+    
+    // 深さをレベルとして使用
+    tasks.forEach(task => {
+      const depth = taskDepths.get(task.id) || 0;
+      taskLevels.set(task.id, depth);
+    });
+    
+    const levels = tasks.map(task => taskLevels.get(task.id) || 0);
+    const uniqueLevels = Array.from(new Set(levels)).sort((a, b) => a - b);
+    const levelMapping = new Map(uniqueLevels.map((level, index) => [level, index]));
+    
+    console.log(`[${traderName}] Tasks: ${tasks.length}`);
+    console.log(`[${traderName}] Level mapping:`, Object.fromEntries(levelMapping));
     
     // レベルごとにタスクをグループ化
     const levelGroups = new Map<number, Task[]>();
     tasks.forEach(task => {
-      const level = taskLevels.get(task.id) || 0;
-      if (!levelGroups.has(level)) {
-        levelGroups.set(level, []);
+      const originalLevel = taskLevels.get(task.id) || 0;
+      const adjustedLevel = levelMapping.get(originalLevel) || 0;
+      if (!levelGroups.has(adjustedLevel)) {
+        levelGroups.set(adjustedLevel, []);
       }
-      levelGroups.get(level)!.push(task);
+      levelGroups.get(adjustedLevel)!.push(task);
     });
     
     // ノードを作成
     tasks.forEach(task => {
-      const level = taskLevels.get(task.id) || 0;
+      const originalLevel = taskLevels.get(task.id) || 0;
+      const level = levelMapping.get(originalLevel) || 0;
       const tasksInLevel = levelGroups.get(level) || [];
       const indexInLevel = tasksInLevel.indexOf(task);
+      
+      console.log(`Task: ${task.name}, OriginalLevel: ${originalLevel}, AdjustedLevel: ${level}, X: ${level * 350}`);
       
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
@@ -132,8 +157,8 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         id: task.id,
         type: 'default',
         position: { 
-          x: level * 350, 
-          y: indexInLevel * 120 
+          x: level * 350,
+          y: indexInLevel * 150
         },
         data: { 
           label: (
@@ -258,7 +283,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         onEdgesChange={onEdgesChange}
         nodesDraggable={false}
         nodesConnectable={false}
-        fitView
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         attributionPosition="bottom-left"
       >
         <Controls className="bg-gray-800 border border-gray-600" />
