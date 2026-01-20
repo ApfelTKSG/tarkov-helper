@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TaskData } from '@/app/types/task';
 import TaskTreeView from '@/app/components/TaskTreeView';
 import ProgressStats from '@/app/components/ProgressStats';
+import TraderTaskSync from '@/app/components/TraderTaskSync';
 
 interface PageProps {
   params: Promise<{
@@ -36,7 +37,6 @@ export default async function TraderPage({ params }: PageProps) {
     );
   }
 
-  const rootTasks = traderTasks.filter(t => t.taskRequirements.length === 0);
   const totalExperience = traderTasks.reduce((sum, task) => sum + task.experience, 0);
 
   return (
@@ -57,16 +57,8 @@ export default async function TraderPage({ params }: PageProps) {
           
           <div className="flex flex-wrap gap-6 text-sm text-gray-400">
             <div>
-              <span className="text-gray-500">総タスク数: </span>
+              <span className="text-gray-500">タスク数: </span>
               <span className="text-white font-semibold">{traderTasks.length}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">ルートタスク: </span>
-              <span className="text-green-400 font-semibold">{rootTasks.length}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">依存タスク: </span>
-              <span className="text-blue-400 font-semibold">{traderTasks.length - rootTasks.length}</span>
             </div>
             <div>
               <span className="text-gray-500">合計経験値: </span>
@@ -77,8 +69,9 @@ export default async function TraderPage({ params }: PageProps) {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
         <ProgressStats totalTasks={traderTasks.length} traderName={traderName} />
-        <TaskTreeView tasks={traderTasks} allTasks={taskData.tasks} />
+        <TaskTreeView tasks={traderTasks} allTasks={taskData.tasks} traderName={traderName} />
       </main>
     </div>
   );

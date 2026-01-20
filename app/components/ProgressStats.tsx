@@ -9,14 +9,26 @@ interface ProgressStatsProps {
 
 export default function ProgressStats({ totalTasks, traderName }: ProgressStatsProps) {
   const [completedCount, setCompletedCount] = useState(0);
+  const [taskIds, setTaskIds] = useState<string[]>([]);
+
+  // このトレーダーのタスクIDを保存
+  useEffect(() => {
+    // ページのタスクIDを取得（親から渡す必要あり）
+    const saved = localStorage.getItem(`tarkov-trader-tasks-${traderName}`);
+    if (saved) {
+      setTaskIds(JSON.parse(saved));
+    }
+  }, [traderName]);
 
   useEffect(() => {
     const updateStats = () => {
       const saved = localStorage.getItem('tarkov-completed-tasks');
       if (saved) {
         try {
-          const completed = new Set(JSON.parse(saved));
-          setCompletedCount(completed.size);
+          const allCompleted = new Set(JSON.parse(saved));
+          // このトレーダーのタスクのみカウント
+          const traderCompleted = taskIds.filter(id => allCompleted.has(id));
+          setCompletedCount(traderCompleted.length);
         } catch (e) {
           console.error('Failed to parse completed tasks:', e);
         }

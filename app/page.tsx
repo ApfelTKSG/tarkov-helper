@@ -38,7 +38,6 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {traders.map(traderName => {
               const traderTasks = tasksByTrader[traderName];
-              const rootTasks = traderTasks.filter(t => t.taskRequirements.length === 0);
               
               return (
                 <Link
@@ -53,16 +52,8 @@ export default function Home() {
                   
                   <div className="space-y-2 text-sm text-gray-400">
                     <div className="flex justify-between">
-                      <span>総タスク数:</span>
+                      <span>タスク数:</span>
                       <span className="text-white font-semibold">{traderTasks.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>ルートタスク:</span>
-                      <span className="text-green-400 font-semibold">{rootTasks.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>依存タスク:</span>
-                      <span className="text-blue-400 font-semibold">{traderTasks.length - rootTasks.length}</span>
                     </div>
                   </div>
                   
