@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Task } from '../types/task';
 
 interface TaskTreeViewProps {
@@ -10,6 +10,32 @@ interface TaskTreeViewProps {
 
 export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+
+  // localStorageから完了状態を読み込み
+  useEffect(() => {
+    const saved = localStorage.getItem('tarkov-completed-tasks');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCompletedTasks(new Set(parsed));
+      } catch (e) {
+        console.error('Failed to parse completed tasks:', e);
+      }
+    }
+  }, []);
+
+  // 完了状態をlocalStorageに保存
+  const toggleTaskComplete = (taskId: string) => {
+    const newCompleted = new Set(completedTasks);
+    if (newCompleted.has(taskId)) {
+      newCompleted.delete(taskId);
+    } else {
+      newCompleted.add(taskId);
+    }
+    setCompletedTasks(newCompleted);
+    localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
+  };
 
   // このタスクを必要とする子タスクを取得
   const getChildTasks = (taskId: string) => {
@@ -44,6 +70,7 @@ export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
     const childTasks = getChildTasks(task.id);
     const hasChildren = childTasks.length > 0;
     const isHovered = hoveredTask === task.id;
+    const isCompleted = completedTasks.has(task.id);
 
     return (
       <div className="relative">
@@ -57,17 +84,23 @@ export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
           )}
           
           {/* タスクボックス */}
-          <div className="relative group">
+          <div className="relative group flex-1">
             <div
               className={`bg-gray-700 rounded px-3 py-2 border-2 transition-all cursor-pointer ${
-                task.taskRequirements.length === 0 
-                  ? 'border-green-500' 
-                  : 'border-blue-500'
+                isCompleted 
+                  ? 'border-green-600 bg-gray-750' 
+                  : task.taskRequirements.length === 0 
+                    ? 'border-green-500 hover:bg-gray-650' 
+                    : 'border-blue-500 hover:bg-gray-650'
               } ${isHovered ? 'ring-2 ring-yellow-400 scale-105' : ''}`}
               onMouseEnter={() => setHoveredTask(task.id)}
               onMouseLeave={() => setHoveredTask(null)}
+              onClick={() => toggleTaskComplete(task.id)}
             >
-              <div className="text-sm font-medium text-white whitespace-nowrap">
+              <div className={`text-sm font-medium whitespace-nowrap ${
+                isCompleted ? 'text-gray-400 line-through' : 'text-white'
+              }`}>
+                {isCompleted && <span className="text-green-400 mr-2">✓</span>}
                 {task.name}
               </div>
               <div className="text-xs text-gray-400 mt-1">

@@ -3,6 +3,7 @@ import path from 'path';
 import Link from 'next/link';
 import { TaskData } from '@/app/types/task';
 import TaskTreeView from '@/app/components/TaskTreeView';
+import ProgressStats from '@/app/components/ProgressStats';
 
 interface PageProps {
   params: Promise<{
@@ -76,6 +77,7 @@ export default async function TraderPage({ params }: PageProps) {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <ProgressStats totalTasks={traderTasks.length} traderName={traderName} />
         <TaskTreeView tasks={traderTasks} allTasks={taskData.tasks} />
       </main>
     </div>
