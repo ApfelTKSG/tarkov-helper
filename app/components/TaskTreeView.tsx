@@ -234,6 +234,9 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
         fitView
         attributionPosition="bottom-left"
       >
