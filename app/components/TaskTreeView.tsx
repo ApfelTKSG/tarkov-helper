@@ -223,9 +223,6 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     const uniqueLevels = Array.from(new Set(levels)).sort((a, b) => a - b);
     const levelMapping = new Map(uniqueLevels.map((level, index) => [level, index]));
     
-    console.log(`[${traderName}] Tasks: ${tasks.length}`);
-    console.log(`[${traderName}] Level mapping:`, Object.fromEntries(levelMapping));
-    
     // レベルごとにタスクをグループ化
     const levelGroups = new Map<number, Task[]>();
     tasks.forEach(task => {
@@ -246,8 +243,6 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       
       const xPos = level * 350;
       const yPos = indexInLevel * 150;
-      
-      console.log(`[${traderName}] Task: ${task.name}, OriginalLevel: ${originalLevel}, AdjustedLevel: ${level}, Index: ${indexInLevel}, X: ${xPos}, Y: ${yPos}`);
       
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
