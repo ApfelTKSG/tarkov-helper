@@ -1,6 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import ReactFlow, {
+  Node,
+  Edge,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  Position,
+  MarkerType,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
 
 interface TaskTreeViewProps {
@@ -9,7 +20,6 @@ interface TaskTreeViewProps {
 }
 
 export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
-  const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
 
   // localStorageから完了状態を読み込み
@@ -26,163 +36,165 @@ export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
   }, []);
 
   // 完了状態をlocalStorageに保存
-  const toggleTaskComplete = (taskId: string) => {
-    const newCompleted = new Set(completedTasks);
-    if (newCompleted.has(taskId)) {
-      newCompleted.delete(taskId);
-    } else {
-      newCompleted.add(taskId);
-    }
-    setCompletedTasks(newCompleted);
-    localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
-  };
+  const toggleTaskComplete = useCallback((taskId: string) => {
+    setCompletedTasks((prev) => {
+      const newCompleted = new Set(prev);
+      if (newCompleted.has(taskId)) {
+        newCompleted.delete(taskId);
+      } else {
+        newCompleted.add(taskId);
+      }
+      localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
+      return newCompleted;
+    });
+  }, []);
 
-  // このタスクを必要とする子タスクを取得
-  const getChildTasks = (taskId: string) => {
-    return tasks.filter(task => 
-      task.taskRequirements.some(req => req.task.id === taskId)
-    );
-  };
-
-  // ルートタスクを取得
-  // 1. 依存関係がないタスク
-  // 2. ルートタスクがない場合は、このトレーダー内で依存されていないタスク（他のトレーダーのタスクにのみ依存）
-  let rootTasks = tasks.filter(task => task.taskRequirements.length === 0);
-  
-  if (rootTasks.length === 0) {
-    // このトレーダー内のタスクIDセット
-    const traderTaskIds = new Set(tasks.map(t => t.id));
+  // ノードとエッジを生成
+  const { initialNodes, initialEdges } = useMemo(() => {
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+    const taskLevels = new Map<string, number>();
     
-    // このトレーダー内のタスクに依存していないタスク
-    rootTasks = tasks.filter(task => {
-      return !task.taskRequirements.some(req => traderTaskIds.has(req.task.id));
+    // 各タスクの階層レベルを計算
+    const calculateLevel = (task: Task, visited = new Set<string>()): number => {
+      if (taskLevels.has(task.id)) {
+        return taskLevels.get(task.id)!;
+      }
+      
+      if (visited.has(task.id)) {
+        return 0; // 循環参照防止
+      }
+      
+      visited.add(task.id);
+      
+      if (task.taskRequirements.length === 0) {
+        taskLevels.set(task.id, 0);
+        return 0;
+      }
+      
+      const maxParentLevel = Math.max(
+        ...task.taskRequirements.map(req => {
+          const parentTask = allTasks.find(t => t.id === req.task.id);
+          return parentTask ? calculateLevel(parentTask, new Set(visited)) : -1;
+        })
+      );
+      
+      const level = maxParentLevel + 1;
+      taskLevels.set(task.id, level);
+      return level;
+    };
+    
+    // 全タスクのレベルを計算
+    tasks.forEach(task => calculateLevel(task));
+    
+    // レベルごとにタスクをグループ化
+    const levelGroups = new Map<number, Task[]>();
+    tasks.forEach(task => {
+      const level = taskLevels.get(task.id) || 0;
+      if (!levelGroups.has(level)) {
+        levelGroups.set(level, []);
+      }
+      levelGroups.get(level)!.push(task);
     });
     
-    // それでも見つからない場合は、最小レベルのタスクを表示
-    if (rootTasks.length === 0 && tasks.length > 0) {
-      const minLevel = Math.min(...tasks.map(t => t.minPlayerLevel));
-      rootTasks = tasks.filter(t => t.minPlayerLevel === minLevel);
-    }
-  }
-
-  // タスクノードコンポーネント
-  const TaskNode = ({ task, level = 0 }: { task: Task; level?: number }) => {
-    const childTasks = getChildTasks(task.id);
-    const hasChildren = childTasks.length > 0;
-    const isHovered = hoveredTask === task.id;
-    const isCompleted = completedTasks.has(task.id);
-
-    return (
-      <div className="relative">
-        {/* タスクノード */}
-        <div className="flex items-start gap-3 mb-3">
-          {/* 階層インデント */}
-          {level > 0 && (
-            <div className="flex items-center" style={{ width: `${level * 32}px` }}>
-              <div className="w-full border-t-2 border-gray-600"></div>
-            </div>
-          )}
-          
-          {/* タスクボックス */}
-          <div className="relative group flex-1">
-            <div
-              className={`bg-gray-700 rounded px-3 py-2 border-2 transition-all cursor-pointer ${
-                isCompleted 
-                  ? 'border-green-600 bg-gray-750' 
-                  : task.taskRequirements.length === 0 
-                    ? 'border-green-500 hover:bg-gray-650' 
-                    : 'border-blue-500 hover:bg-gray-650'
-              } ${isHovered ? 'ring-2 ring-yellow-400' : ''}`}
-              onMouseEnter={() => setHoveredTask(task.id)}
-              onMouseLeave={() => setHoveredTask(null)}
+    // ノードを作成
+    tasks.forEach(task => {
+      const level = taskLevels.get(task.id) || 0;
+      const tasksInLevel = levelGroups.get(level) || [];
+      const indexInLevel = tasksInLevel.indexOf(task);
+      
+      const isCompleted = completedTasks.has(task.id);
+      
+      nodes.push({
+        id: task.id,
+        type: 'default',
+        position: { 
+          x: level * 350, 
+          y: indexInLevel * 120 
+        },
+        data: { 
+          label: (
+            <div 
               onClick={() => toggleTaskComplete(task.id)}
+              className="cursor-pointer"
             >
-              <div className={`text-sm font-medium whitespace-nowrap ${
-                isCompleted ? 'text-gray-400 line-through' : 'text-white'
-              }`}>
-                {isCompleted && <span className="text-green-400 mr-2">✓</span>}
-                {task.name}
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-2 h-2 rounded-full ${
+                  isCompleted ? 'bg-green-500' : 'bg-gray-400'
+                }`}></div>
+                <div className={`font-medium text-sm ${
+                  isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
+                }`}>
+                  {task.name}
+                </div>
               </div>
-              <div className="text-xs text-gray-400 mt-1">
-                Lv.{task.minPlayerLevel}
+              <div className="text-xs text-gray-600 mt-1">
+                Lv.{task.minPlayerLevel} • +{task.experience.toLocaleString()} XP
               </div>
             </div>
+          )
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+        style: {
+          background: isCompleted ? '#f3f4f6' : '#ffffff',
+          border: `2px solid ${
+            isCompleted ? '#22c55e' : 
+            task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+          }`,
+          borderRadius: '8px',
+          padding: '12px',
+          width: 280,
+        },
+      });
+    });
+    
+    // エッジを作成
+    tasks.forEach(task => {
+      task.taskRequirements.forEach(req => {
+        edges.push({
+          id: `${req.task.id}-${task.id}`,
+          source: req.task.id,
+          target: task.id,
+          type: 'smoothstep',
+          animated: false,
+          style: { 
+            stroke: completedTasks.has(task.id) ? '#22c55e' : '#9ca3af',
+            strokeWidth: 2
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: completedTasks.has(task.id) ? '#22c55e' : '#9ca3af',
+          },
+        });
+      });
+    });
+    
+    return { initialNodes: nodes, initialEdges: edges };
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete]);
 
-            {/* ホバー時の詳細情報 */}
-            {isHovered && (
-              <div className="absolute left-0 top-full mt-2 z-50 bg-gray-800 border border-gray-600 rounded-lg p-4 shadow-xl min-w-[300px] max-w-[400px]">
-                <h4 className="text-lg font-bold text-white mb-3">{task.name}</h4>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">必要レベル:</span>
-                    <span className="text-white">Lv.{task.minPlayerLevel}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">獲得経験値:</span>
-                    <span className="text-yellow-400">+{task.experience.toLocaleString()} XP</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">目標数:</span>
-                    <span className="text-white">{task.objectives.length}個</span>
-                  </div>
-                  {hasChildren && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">後続タスク:</span>
-                      <span className="text-blue-400">{childTasks.length}個</span>
-                    </div>
-                  )}
-                </div>
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-                {/* 前提タスク */}
-                {task.taskRequirements.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-700">
-                    <div className="text-xs text-gray-400 mb-1">前提タスク:</div>
-                    <div className="text-sm text-blue-300">
-                      {task.taskRequirements.map(req => req.task.name).join(', ')}
-                    </div>
-                  </div>
-                )}
-
-                {/* 目標リスト */}
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                  <div className="text-xs text-gray-400 mb-2">目標:</div>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {task.objectives.map((obj, idx) => (
-                      <div key={obj.id} className="text-xs text-gray-300">
-                        {idx + 1}. {obj.description}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 子タスクを再帰的に表示 */}
-        {hasChildren && (
-          <div className="ml-8 border-l-2 border-gray-600 pl-0">
-            {childTasks.map(childTask => (
-              <TaskNode key={childTask.id} task={childTask} level={level + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // completedTasksが変更されたらノードとエッジを更新
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   return (
-    <div className="overflow-x-auto">
-      {rootTasks.length > 0 ? (
-        <div className="space-y-4">
-          {rootTasks.map(task => (
-            <TaskNode key={task.id} task={task} />
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-500">このトレーダーにはルートタスクがありません</p>
-      )}
+    <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        fitView
+        attributionPosition="bottom-left"
+      >
+        <Controls className="bg-gray-800 border border-gray-600" />
+        <Background color="#4b5563" gap={16} />
+      </ReactFlow>
     </div>
   );
 }
