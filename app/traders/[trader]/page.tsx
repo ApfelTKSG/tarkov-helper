@@ -21,8 +21,19 @@ export default async function TraderPage({ params }: PageProps) {
   const fileContents = fs.readFileSync(filePath, 'utf8');
   const taskData: TaskData = JSON.parse(fileContents);
 
+  // タスクをタスク名+トレーダー名でユニーク化（重複を除去）
+  const uniqueTasks = Array.from(
+    taskData.tasks.reduce((map, task) => {
+      const key = `${task.trader.name}::${task.name}`;
+      if (!map.has(key)) {
+        map.set(key, task);
+      }
+      return map;
+    }, new Map()).values()
+  );
+
   // 指定されたトレーダーのタスクを抽出
-  const traderTasks = taskData.tasks.filter(task => task.trader.name === traderName);
+  const traderTasks = uniqueTasks.filter(task => task.trader.name === traderName);
 
   if (traderTasks.length === 0) {
     return (
@@ -67,7 +78,7 @@ export default async function TraderPage({ params }: PageProps) {
       <main className="container mx-auto px-4 py-8">
         <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
         <ProgressStats tasks={traderTasks} traderName={traderName} />
-        <TaskTreeView tasks={traderTasks} allTasks={taskData.tasks} traderName={traderName} />
+        <TaskTreeView tasks={traderTasks} allTasks={uniqueTasks} traderName={traderName} />
       </main>
     </div>
   );

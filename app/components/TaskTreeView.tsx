@@ -76,13 +76,17 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         return 0;
       }
       
-      const maxParentLevel = Math.max(
-        ...task.taskRequirements.map(req => {
-          const parentTask = taskMap.get(req.task.id);
-          return parentTask ? calculateLevel(parentTask, new Set(visited)) : -1;
-        })
-      );
+      const parentLevels = task.taskRequirements.map(req => {
+        const parentTask = taskMap.get(req.task.id);
+        if (!parentTask) {
+          // 親タスクが見つからない場合は警告してスキップ
+          console.warn(`Parent task not found: ${req.task.name} (${req.task.id})`);
+          return -1;
+        }
+        return calculateLevel(parentTask, visited);
+      }).filter(level => level >= 0);
       
+      const maxParentLevel = parentLevels.length > 0 ? Math.max(...parentLevels) : -1;
       const level = maxParentLevel + 1;
       taskLevels.set(task.id, level);
       return level;
