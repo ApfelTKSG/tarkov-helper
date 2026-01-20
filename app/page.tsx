@@ -1,14 +1,10 @@
-import fs from 'fs';
-import path from 'path';
 import Link from 'next/link';
-import { TaskData } from './types/task';
 import TraderCardProgress from './components/TraderCardProgress';
+import { getTaskData } from './lib/taskData';
 
 export default function Home() {
   // タスクデータを読み込み
-  const filePath = path.join(process.cwd(), 'data', 'tarkov-tasks.json');
-  const fileContents = fs.readFileSync(filePath, 'utf8');
-  const taskData: TaskData = JSON.parse(fileContents);
+  const taskData = getTaskData();
 
   // トレーダーごとにグループ化
   const tasksByTrader = taskData.tasks.reduce((acc, task) => {

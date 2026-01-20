@@ -1,10 +1,8 @@
-import fs from 'fs';
-import path from 'path';
 import Link from 'next/link';
-import { TaskData } from '@/app/types/task';
 import TaskTreeView from '@/app/components/TaskTreeView';
 import ProgressStats from '@/app/components/ProgressStats';
 import TraderTaskSync from '@/app/components/TraderTaskSync';
+import { getTaskData, getUniqueTraderNames } from '@/app/lib/taskData';
 
 interface PageProps {
   params: Promise<{
@@ -12,14 +10,22 @@ interface PageProps {
   }>;
 }
 
+export async function generateStaticParams() {
+  const taskData = getTaskData();
+  const traders = getUniqueTraderNames(taskData);
+
+  // 各トレーダーのパラメータを返す
+  return traders.map(traderName => ({
+    trader: encodeURIComponent(traderName),
+  }));
+}
+
 export default async function TraderPage({ params }: PageProps) {
   const { trader: encodedTrader } = await params;
   const traderName = decodeURIComponent(encodedTrader);
 
   // タスクデータを読み込み
-  const filePath = path.join(process.cwd(), 'data', 'tarkov-tasks.json');
-  const fileContents = fs.readFileSync(filePath, 'utf8');
-  const taskData: TaskData = JSON.parse(fileContents);
+  const taskData = getTaskData();
 
   // タスクをタスク名+トレーダー名でユニーク化（重複を除去）
   const uniqueTasks = Array.from(
