@@ -191,7 +191,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
                   const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
                   window.open(wikiUrl, '_blank');
                 }}
-                className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 cursor-pointer text-sm"
+                className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 hover:scale-150 cursor-pointer text-sm transition-transform"
                 title="Wikiを開く"
               >
                 🔗
