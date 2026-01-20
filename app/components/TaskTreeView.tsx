@@ -292,25 +292,70 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         const sourceTask = taskMap.get(req.task.id);
         const isCrossTrader = sourceTask && sourceTask.trader.name !== traderName;
         
+        // ホバー時の強調表示判定
+        let isHighlighted = false;
+        let shouldDimOthers = false;
+        if (hoveredTaskId) {
+          const hoveredTask = tasks.find(t => t.id === hoveredTaskId);
+          if (hoveredTask) {
+            const isHoveredCompleted = completedTasks.has(hoveredTaskId);
+            const isHoveredLocked = hoveredTask.taskRequirements.filter(r => !completedTasks.has(r.task.id)).length > 0;
+            
+            // 後続タスクがあるかチェック
+            const hasChildTasks = tasks.some(t => 
+              t.taskRequirements.some(r => r.task.id === hoveredTaskId)
+            );
+            
+            if (!isHoveredCompleted) {
+              if (isHoveredLocked) {
+                // ロックされているタスク: このトレーダー内に前提タスクがあるかチェック
+                const hasTraderRequirements = hoveredTask.taskRequirements.some(r => {
+                  const reqTask = taskMap.get(r.task.id);
+                  return reqTask && reqTask.trader.name === traderName && !completedTasks.has(r.task.id);
+                });
+                
+                if (hasTraderRequirements) {
+                  // このトレーダー内に前提タスクがある場合のみ強調
+                  shouldDimOthers = true;
+                  if (task.id === hoveredTaskId && req.task.id) {
+                    isHighlighted = true;
+                  }
+                }
+                // 他トレーダーのタスクのみでロックされている場合は shouldDimOthers = false
+              } else if (hasChildTasks) {
+                // アンロックされていて後続タスクがある: 後続タスクへの矢印を強調
+                shouldDimOthers = true;
+                if (req.task.id === hoveredTaskId && task.id) {
+                  isHighlighted = true;
+                }
+              }
+              // 後続タスクがない場合は shouldDimOthers = false のまま
+            }
+          }
+        }
+        
         edges.push({
           id: `${req.task.id}-${task.id}`,
           source: req.task.id,
           target: task.id,
           type: 'default',
-          animated: !isCompleted && !isSourceCompleted,
+          animated: isHighlighted || (!isCompleted && !isSourceCompleted),
           style: { 
-            stroke: isCrossTrader ? '#f97316' :
+            stroke: isHighlighted ? '#fbbf24' :
+                    isCrossTrader ? '#f97316' :
                     isCompleted ? '#22c55e' :
                     isSourceCompleted ? '#60a5fa' :
                     '#64748b',
-            strokeWidth: 3,
+            strokeWidth: isHighlighted ? 5 : 3,
+            opacity: shouldDimOthers && !isHighlighted ? 0.3 : 1,
             transition: 'all 0.2s ease-in-out',
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: isCrossTrader ? '#f97316' : 
+            width: isHighlighted ? 25 : 20,
+            height: isHighlighted ? 25 : 20,
+            color: isHighlighted ? '#fbbf24' :
+                   isCrossTrader ? '#f97316' : 
                    isCrossTrader ? '#f97316' : 
                    isCompleted ? '#22c55e' : 
                    isSourceCompleted ? '#60a5fa' : 
@@ -321,7 +366,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     });
     
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
