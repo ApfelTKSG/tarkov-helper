@@ -139,7 +139,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
           label: (
             <div 
               onClick={() => !isLocked && toggleTaskComplete(task.id)}
-              className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
             >
               <div className="flex items-center gap-2 mb-1">
                 {isLocked ? (
@@ -184,6 +184,18 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
                   ))}
                 </div>
               )}
+              {/* Wiki リンク */}
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
+                  window.open(wikiUrl, '_blank');
+                }}
+                className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 cursor-pointer text-sm"
+                title="Wikiを開く"
+              >
+                🔗
+              </div>
             </div>
           )
         },
