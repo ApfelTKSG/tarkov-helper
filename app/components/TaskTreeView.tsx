@@ -223,7 +223,11 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     const uniqueLevels = Array.from(new Set(levels)).sort((a, b) => a - b);
     const levelMapping = new Map(uniqueLevels.map((level, index) => [level, index]));
     
-    // レベルごとにタスクをグループ化
+    // タスクの位置を計算（前提タスクと同じ高さに配置）
+    const taskPositions = new Map<string, { x: number; y: number }>();
+    const levelYPositions = new Map<number, number[]>(); // 各レベルで使用中のY座標
+    
+    // レベルごとにタスクをソート（処理順序を決定）
     const levelGroups = new Map<number, Task[]>();
     tasks.forEach(task => {
       const originalLevel = taskLevels.get(task.id) || 0;
@@ -234,15 +238,78 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       levelGroups.get(adjustedLevel)!.push(task);
     });
     
-    // ノードを作成
-    tasks.forEach(task => {
-      const originalLevel = taskLevels.get(task.id) || 0;
+    // レベル順に位置を決定
+    uniqueLevels.forEach((originalLevel, levelIndex) => {
       const level = levelMapping.get(originalLevel) || 0;
       const tasksInLevel = levelGroups.get(level) || [];
-      const indexInLevel = tasksInLevel.indexOf(task);
       
-      const xPos = level * 350;
-      const yPos = indexInLevel * 150;
+      // 前提タスクのY座標の最小値でソート（前提タスクが上にあるタスクから優先）
+      tasksInLevel.sort((a, b) => {
+        const aRequirements = a.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
+        const bRequirements = b.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
+        
+        const aMinY = aRequirements.length > 0
+          ? Math.min(...aRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
+          : -1;
+        const bMinY = bRequirements.length > 0
+          ? Math.min(...bRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
+          : -1;
+        
+        return aMinY - bMinY;
+      });
+      
+      tasksInLevel.forEach(task => {
+        const xPos = level * 350;
+        
+        // このトレーダー内の前提タスクを取得
+        const traderRequirements = task.taskRequirements.filter(req => 
+          traderTaskIds.has(req.task.id)
+        );
+        
+        let yPos = 0;
+        if (traderRequirements.length > 0) {
+          // 前提タスクのY座標の平均を計算
+          const parentYPositions = traderRequirements
+            .map(req => taskPositions.get(req.task.id)?.y)
+            .filter((y): y is number => y !== undefined);
+          
+          if (parentYPositions.length > 0) {
+            yPos = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
+          }
+        } else {
+          // 前提タスクがない場合は、そのレベルの既存タスク数に基づいて配置
+          const usedYPositions = levelYPositions.get(level) || [];
+          yPos = usedYPositions.length * 150;
+        }
+        
+        // Y座標の重複を避ける
+        const usedYPositions = levelYPositions.get(level) || [];
+        const minSpacing = 150;
+        
+        // 既存の位置と近すぎる場合は調整
+        let adjustedY = yPos;
+        let attempts = 0;
+        while (attempts < 100) {
+          const tooClose = usedYPositions.some(usedY => 
+            Math.abs(adjustedY - usedY) < minSpacing
+          );
+          
+          if (!tooClose) break;
+          
+          // 下方向にずらす
+          adjustedY += minSpacing;
+          attempts++;
+        }
+        
+        taskPositions.set(task.id, { x: xPos, y: adjustedY });
+        usedYPositions.push(adjustedY);
+        levelYPositions.set(level, usedYPositions);
+      });
+    });
+    
+    // ノードを作成
+    tasks.forEach(task => {
+      const position = taskPositions.get(task.id) || { x: 0, y: 0 };
       
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
@@ -264,7 +331,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       nodes.push({
         id: task.id,
         type: 'taskNode',
-        position: { x: xPos, y: yPos },
+        position,
         data: {
           task,
           isCompleted,
