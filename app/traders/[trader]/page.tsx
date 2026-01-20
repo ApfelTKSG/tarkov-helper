@@ -66,7 +66,7 @@ export default async function TraderPage({ params }: PageProps) {
 
       <main className="container mx-auto px-4 py-8">
         <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
-        <ProgressStats totalTasks={traderTasks.length} traderName={traderName} />
+        <ProgressStats tasks={traderTasks} traderName={traderName} />
         <TaskTreeView tasks={traderTasks} allTasks={taskData.tasks} traderName={traderName} />
       </main>
     </div>

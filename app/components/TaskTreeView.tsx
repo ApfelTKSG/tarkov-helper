@@ -108,6 +108,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       const indexInLevel = tasksInLevel.indexOf(task);
       
       const isCompleted = completedTasks.has(task.id);
+      const isCollectorRequirement = task.isCollectorRequirement || false;
       
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
@@ -143,6 +144,11 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     isCompleted ? 'bg-green-500' : 'bg-gray-400'
                   }`}></div>
+                )}
+                {isCollectorRequirement && (
+                  <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
+                    κ
+                  </div>
                 )}
                 <div className={`font-medium text-sm ${
                   isLocked ? 'text-gray-400' :
@@ -216,7 +222,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     });
     
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

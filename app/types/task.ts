@@ -26,6 +26,7 @@ export interface Task {
   experience: number;
   objectives: TaskObjective[];
   taskRequirements: TaskRequirement[];
+  isCollectorRequirement?: boolean;
 }
 
 export interface TaskData {

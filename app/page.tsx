@@ -58,7 +58,7 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <TraderCardProgress taskIds={traderTasks.map(t => t.id)} />
+                  <TraderCardProgress tasks={traderTasks} />
                   
                   <div className="mt-4 text-yellow-400 text-sm font-medium flex items-center gap-2">
                     詳細を見る
