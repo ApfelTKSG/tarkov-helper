@@ -92,7 +92,7 @@ export default function TaskTreeView({ tasks, allTasks }: TaskTreeViewProps) {
                   : task.taskRequirements.length === 0 
                     ? 'border-green-500 hover:bg-gray-650' 
                     : 'border-blue-500 hover:bg-gray-650'
-              } ${isHovered ? 'ring-2 ring-yellow-400 scale-105' : ''}`}
+              } ${isHovered ? 'ring-2 ring-yellow-400' : ''}`}
               onMouseEnter={() => setHoveredTask(task.id)}
               onMouseLeave={() => setHoveredTask(null)}
               onClick={() => toggleTaskComplete(task.id)}
