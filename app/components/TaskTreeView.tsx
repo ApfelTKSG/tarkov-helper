@@ -134,7 +134,10 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
       const tasksInLevel = levelGroups.get(level) || [];
       const indexInLevel = tasksInLevel.indexOf(task);
       
-      console.log(`Task: ${task.name}, OriginalLevel: ${originalLevel}, AdjustedLevel: ${level}, X: ${level * 350}`);
+      const xPos = level * 350;
+      const yPos = indexInLevel * 150;
+      
+      console.log(`[${traderName}] Task: ${task.name}, OriginalLevel: ${originalLevel}, AdjustedLevel: ${level}, Index: ${indexInLevel}, X: ${xPos}, Y: ${yPos}`);
       
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
@@ -157,8 +160,8 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         id: task.id,
         type: 'default',
         position: { 
-          x: level * 350,
-          y: indexInLevel * 150
+          x: xPos,
+          y: yPos
         },
         data: { 
           label: (
@@ -237,6 +240,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
           padding: '12px',
           width: 280,
           opacity: isLocked ? 0.6 : 1,
+          transition: 'all 0.2s ease-in-out',
         },
       });
     });
@@ -244,19 +248,36 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     // エッジを作成
     tasks.forEach(task => {
       task.taskRequirements.forEach(req => {
+        const isCompleted = completedTasks.has(task.id);
+        const isSourceCompleted = completedTasks.has(req.task.id);
+        
+        // 別トレーダーのタスクかチェック
+        const sourceTask = taskMap.get(req.task.id);
+        const isCrossTrader = sourceTask && sourceTask.trader.name !== traderName;
+        
         edges.push({
           id: `${req.task.id}-${task.id}`,
           source: req.task.id,
           target: task.id,
-          type: 'smoothstep',
-          animated: false,
+          type: 'default',
+          animated: !isCompleted && !isSourceCompleted,
           style: { 
-            stroke: completedTasks.has(task.id) ? '#22c55e' : '#9ca3af',
-            strokeWidth: 2
+            stroke: isCrossTrader ? '#f97316' :
+                    isCompleted ? '#22c55e' :
+                    isSourceCompleted ? '#60a5fa' :
+                    '#64748b',
+            strokeWidth: 3,
+            transition: 'all 0.2s ease-in-out',
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: completedTasks.has(task.id) ? '#22c55e' : '#9ca3af',
+            width: 20,
+            height: 20,
+            color: isCrossTrader ? '#f97316' : 
+                   isCrossTrader ? '#f97316' : 
+                   isCompleted ? '#22c55e' : 
+                   isSourceCompleted ? '#60a5fa' : 
+                   '#64748b',
           },
         });
       });
