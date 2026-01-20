@@ -60,10 +60,6 @@ export default async function TraderPage({ params }: PageProps) {
               <span className="text-gray-500">タスク数: </span>
               <span className="text-white font-semibold">{traderTasks.length}</span>
             </div>
-            <div>
-              <span className="text-gray-500">合計経験値: </span>
-              <span className="text-yellow-400 font-semibold">+{totalExperience.toLocaleString()} XP</span>
-            </div>
           </div>
         </div>
       </header>

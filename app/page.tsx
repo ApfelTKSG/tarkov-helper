@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import Link from 'next/link';
 import { TaskData } from './types/task';
+import TraderCardProgress from './components/TraderCardProgress';
 
 export default function Home() {
   // タスクデータを読み込み
@@ -56,6 +57,8 @@ export default function Home() {
                       <span className="text-white font-semibold">{traderTasks.length}</span>
                     </div>
                   </div>
+                  
+                  <TraderCardProgress taskIds={traderTasks.map(t => t.id)} />
                   
                   <div className="mt-4 text-yellow-400 text-sm font-medium flex items-center gap-2">
                     詳細を見る
