@@ -452,17 +452,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
             opacity: shouldDimOthers && !isHighlighted ? 0.3 : 1,
             transition: 'all 0.2s ease-in-out',
           },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: isHighlighted ? 25 : 20,
-            height: isHighlighted ? 25 : 20,
-            color: isHighlighted ? '#fbbf24' :
-                   isCrossTrader ? '#f97316' : 
-                   isCrossTrader ? '#f97316' : 
-                   isCompleted ? '#22c55e' : 
-                   isSourceCompleted ? '#60a5fa' : 
-                   '#64748b',
-          },
         });
       });
     });
