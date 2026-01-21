@@ -479,27 +479,30 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   // URLパラメータからタスクIDを取得してフォーカス
   useEffect(() => {
     const taskId = searchParams.get('taskId');
-    console.log('TaskID from params:', taskId);
-    console.log('Nodes count:', nodes.length);
     
-    if (taskId && nodes.length > 0) {
-      const node = getNode(taskId);
-      console.log('Found node:', node);
-      
-      if (node) {
-        // ノードが存在する場合、少し遅延させてからフォーカス
-        setTimeout(() => {
-          console.log('Calling fitView for node:', taskId);
+    if (taskId) {
+      // 少し遅延させてからフォーカス（ノードのレンダリング完了を待つ）
+      const timeoutId = setTimeout(() => {
+        const node = getNode(taskId);
+        
+        if (node) {
           fitView({
             nodes: [{ id: taskId }],
             duration: 800,
             padding: 0.5,
             maxZoom: 1,
           });
-        }, 300);
-      }
+          
+          // フォーカス後、URLパラメータを削除
+          const url = new URL(window.location.href);
+          url.searchParams.delete('taskId');
+          router.replace(url.pathname + url.search);
+        }
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [searchParams, nodes, fitView, getNode]);
+  }, [searchParams, fitView, getNode, router]);
 
   return (
     <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
