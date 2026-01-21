@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
   Edge,
@@ -141,7 +141,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
@@ -470,7 +469,11 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
 
   // URLパラメータからタスクIDを取得してフォーカス
   useEffect(() => {
-    const taskId = searchParams.get('taskId');
+    // クライアントサイドでのみ実行
+    if (typeof window === 'undefined') return;
+    
+    const url = new URL(window.location.href);
+    const taskId = url.searchParams.get('taskId');
     
     if (taskId) {
       // 少し遅延させてからフォーカス（ノードのレンダリング完了を待つ）
@@ -486,7 +489,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           });
           
           // フォーカス後、URLパラメータを削除
-          const url = new URL(window.location.href);
           url.searchParams.delete('taskId');
           router.replace(url.pathname + url.search);
         }
@@ -494,7 +496,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [searchParams, fitView, getNode, router]);
+  }, [fitView, getNode, router]);
 
   return (
     <>
