@@ -169,6 +169,40 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
     });
   }, []);
 
+  // すべての依存タスクを再帰的に取得
+  const getAllRequiredTasks = useCallback((taskId: string, visited = new Set<string>()): string[] => {
+    if (visited.has(taskId)) {
+      return [];
+    }
+    visited.add(taskId);
+
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task) {
+      return [];
+    }
+
+    const requiredTaskIds: string[] = [taskId];
+    
+    task.taskRequirements.forEach(req => {
+      const subRequirements = getAllRequiredTasks(req.task.id, visited);
+      requiredTaskIds.push(...subRequirements);
+    });
+
+    return requiredTaskIds;
+  }, [allTasks]);
+
+  // タスクとすべての依存タスクを強制的に完了にする
+  const forceCompleteTask = useCallback((taskId: string) => {
+    const allRequiredTaskIds = getAllRequiredTasks(taskId);
+    
+    setCompletedTasks((prev) => {
+      const newCompleted = new Set(prev);
+      allRequiredTaskIds.forEach(id => newCompleted.add(id));
+      localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
+      return newCompleted;
+    });
+  }, [getAllRequiredTasks]);
+
   // ノードとエッジを生成
   const { initialNodes, initialEdges } = useMemo(() => {
     const nodes: Node[] = [];
@@ -531,6 +565,9 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           onClose={() => setSelectedTask(null)}
           onToggleComplete={() => {
             toggleTaskComplete(selectedTask.id);
+          }}
+          onForceComplete={() => {
+            forceCompleteTask(selectedTask.id);
           }}
           isCompleted={completedTasks.has(selectedTask.id)}
           isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
