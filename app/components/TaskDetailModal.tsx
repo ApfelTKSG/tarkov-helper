@@ -130,10 +130,11 @@ export default function TaskDetailModal({
           </button>
           <button
             onClick={() => {
-              const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(
-                / /g,
-                '_'
-              )}`;
+              const cleanedName = task.name
+                .replace(/\s*\[PVP ZONE\]$/i, '')
+                .trim()
+                .replace(/ /g, '_');
+              const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${cleanedName}`;
               window.open(wikiUrl, '_blank');
             }}
             className="py-3 px-6 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
