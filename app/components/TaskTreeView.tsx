@@ -81,9 +81,17 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
             κ
           </div>
         )}
-        <div className={`font-semibold text-sm ${
-          isCompleted ? 'text-gray-500' : 'text-gray-900'
-        }`}>
+        <div 
+          className={`font-semibold text-sm ${
+            isCompleted ? 'text-gray-500' : 'text-gray-900'
+          } hover:underline cursor-pointer`}
+          onClick={(e) => {
+            e.stopPropagation();
+            const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
+            window.open(wikiUrl, '_blank');
+          }}
+          title="Wikiを開く"
+        >
           {task.name}
         </div>
       </div>
@@ -106,17 +114,6 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           ))}
         </div>
       )}
-      <div 
-        onClick={(e) => {
-          e.stopPropagation();
-          const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
-          window.open(wikiUrl, '_blank');
-        }}
-        className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 hover:scale-150 cursor-pointer text-sm transition-transform"
-        title="Wikiを開く"
-      >
-        🔗
-      </div>
     </div>
     <Handle type="source" position={Position.Right} />
     </>
