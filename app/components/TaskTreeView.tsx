@@ -523,7 +523,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
         proOptions={{ hideAttribution: true }}
       >
-        <Controls className="bg-gray-800 border border-gray-600" />
         <Background color="#4b5563" gap={16} />
       </ReactFlow>
     </div>
