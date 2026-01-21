@@ -25,6 +25,16 @@ export default function Home() {
         <div className="container mx-auto px-4 py-6">
           <h1 className="text-4xl font-bold text-white">Tarkov Helper</h1>
           <p className="text-gray-400 mt-2">タスク管理ツール - {taskData.tasks.length}個のタスク</p>
+          
+          {/* ナビゲーションリンク */}
+          <div className="flex gap-4 mt-4">
+            <Link
+              href="/items"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+            >
+              📦 FiRアイテム一覧
+            </Link>
+          </div>
         </div>
       </header>
 
