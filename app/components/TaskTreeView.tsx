@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactFlow, {
   Node,
   Edge,
@@ -12,9 +13,12 @@ import ReactFlow, {
   MarkerType,
   NodeProps,
   Handle,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
+import TaskDetailModal from './TaskDetailModal';
 
 interface TaskTreeViewProps {
   tasks: Task[];
@@ -30,18 +34,20 @@ interface TaskNodeData {
   crossTraderRequirements: Array<{ task: Task }>;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
+  onNavigateToTrader: (traderName: string, taskId: string) => void;
+  onClick: () => void;
 }
 
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover } = data;
+  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
 
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <div 
-        onClick={onToggleComplete}
+        onClick={onClick}
         onMouseEnter={() => {
           setIsHovered(true);
           onHover(task.id);
@@ -62,7 +68,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         borderRadius: '8px',
         padding: '12px',
         width: 280,
-        opacity: isLocked ? 0.6 : 1,
+        opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
         boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
         transform: isHovered ? 'scale(1.05)' : 'scale(1)',
         transition: 'all 0.2s ease-in-out',
@@ -81,9 +87,11 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
             κ
           </div>
         )}
-        <div className={`font-semibold text-sm ${
-          isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
-        }`}>
+        <div 
+          className={`font-semibold text-sm ${
+            isCompleted ? 'text-gray-500' : 'text-gray-900'
+          }`}
+        >
           {task.name}
         </div>
       </div>
@@ -93,10 +101,15 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
       {crossTraderRequirements.length > 0 && (
         <div className="mt-2 pt-2 border-t border-orange-200">
           <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
-          {crossTraderRequirements.map((req, idx) => (
+          {crossTraderRequirements.slice(0, 2).map((req, idx) => (
             <div 
               key={idx} 
-              className="text-xs mb-0.5 text-orange-600 font-semibold"
+              className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToTrader(req.task.trader.name, req.task.id);
+              }}
+              title={`${req.task.trader.name}のページへ移動`}
             >
               <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
                 {req.task.trader.name}
@@ -104,21 +117,15 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               {req.task.name}
             </div>
           ))}
+          {crossTraderRequirements.length > 2 && (
+            <div className="text-xs text-orange-600 font-semibold mt-1">
+              + 他 {crossTraderRequirements.length - 2} タスク
+            </div>
+          )}
         </div>
       )}
-      <div 
-        onClick={(e) => {
-          e.stopPropagation();
-          const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
-          window.open(wikiUrl, '_blank');
-        }}
-        className="absolute bottom-1 right-1 text-blue-500 hover:text-blue-700 hover:scale-150 cursor-pointer text-sm transition-transform"
-        title="Wikiを開く"
-      >
-        🔗
-      </div>
     </div>
-    <Handle type="source" position={Position.Right} />
+    <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
   );
 });
@@ -129,9 +136,13 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
-export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeViewProps) {
+function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
@@ -340,6 +351,10 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
           crossTraderRequirements,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
+          onNavigateToTrader: (traderName: string, taskId: string) => {
+            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+          },
+          onClick: () => setSelectedTask(task),
         } as TaskNodeData,
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -437,17 +452,6 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
             opacity: shouldDimOthers && !isHighlighted ? 0.3 : 1,
             transition: 'all 0.2s ease-in-out',
           },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: isHighlighted ? 25 : 20,
-            height: isHighlighted ? 25 : 20,
-            color: isHighlighted ? '#fbbf24' :
-                   isCrossTrader ? '#f97316' : 
-                   isCrossTrader ? '#f97316' : 
-                   isCompleted ? '#22c55e' : 
-                   isSourceCompleted ? '#60a5fa' : 
-                   '#64748b',
-          },
         });
       });
     });
@@ -464,28 +468,82 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  return (
-    <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
-      <style jsx global>{`
-        .react-flow__edge {
-          pointer-events: none !important;
+  // URLパラメータからタスクIDを取得してフォーカス
+  useEffect(() => {
+    const taskId = searchParams.get('taskId');
+    
+    if (taskId) {
+      // 少し遅延させてからフォーカス（ノードのレンダリング完了を待つ）
+      const timeoutId = setTimeout(() => {
+        const node = getNode(taskId);
+        
+        if (node) {
+          fitView({
+            nodes: [{ id: taskId }],
+            duration: 800,
+            padding: 0.5,
+            maxZoom: 1,
+          });
+          
+          // フォーカス後、URLパラメータを削除
+          const url = new URL(window.location.href);
+          url.searchParams.delete('taskId');
+          router.replace(url.pathname + url.search);
         }
-      `}</style>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        edgesFocusable={false}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        attributionPosition="bottom-left"
-      >
-        <Controls className="bg-gray-800 border border-gray-600" />
-        <Background color="#4b5563" gap={16} />
-      </ReactFlow>
-    </div>
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchParams, fitView, getNode, router]);
+
+  return (
+    <>
+      <div className="w-full h-full bg-gray-900 rounded-lg border border-gray-700">
+        <style jsx global>{`
+          .react-flow__edge {
+            pointer-events: none !important;
+          }
+        `}</style>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          edgesFocusable={false}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background color="#4b5563" gap={16} />
+        </ReactFlow>
+      </div>
+      
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          allTasks={allTasks}
+          isOpen={true}
+          onClose={() => setSelectedTask(null)}
+          onToggleComplete={() => {
+            toggleTaskComplete(selectedTask.id);
+          }}
+          isCompleted={completedTasks.has(selectedTask.id)}
+          isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
+          onNavigateToTrader={(traderName: string, taskId: string) => {
+            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export default function TaskTreeView(props: TaskTreeViewProps) {
+  return (
+    <ReactFlowProvider>
+      <TaskTreeViewInner {...props} />
+    </ReactFlowProvider>
   );
 }

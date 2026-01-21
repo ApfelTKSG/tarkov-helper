@@ -70,21 +70,18 @@ export default async function TraderPage({ params }: PageProps) {
           <div className="flex items-center gap-4 mb-3">
             <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
             <h1 className="text-4xl font-bold text-white">{traderName}</h1>
-          </div>
-          
-          <div className="flex flex-wrap gap-6 text-sm text-gray-400">
-            <div>
-              <span className="text-gray-500">タスク数: </span>
-              <span className="text-white font-semibold">{traderTasks.length}</span>
+            <div className="flex-1 ml-8">
+              <ProgressStats tasks={traderTasks} traderName={traderName} />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4" style={{ paddingTop: '2rem', paddingBottom: '2rem', height: 'calc(100vh - var(--header-height, 140px))' }}>
         <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
-        <ProgressStats tasks={traderTasks} traderName={traderName} />
-        <TaskTreeView tasks={traderTasks} allTasks={uniqueTasks} traderName={traderName} />
+        <div style={{ height: 'calc(100% - 2rem)' }}>
+          <TaskTreeView tasks={traderTasks} allTasks={uniqueTasks} traderName={traderName} />
+        </div>
       </main>
     </div>
   );
