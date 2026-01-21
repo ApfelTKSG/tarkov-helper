@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactFlow, {
   Node,
   Edge,
@@ -12,6 +13,8 @@ import ReactFlow, {
   MarkerType,
   NodeProps,
   Handle,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
@@ -30,12 +33,13 @@ interface TaskNodeData {
   crossTraderRequirements: Array<{ task: Task }>;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
+  onNavigateToTrader: (traderName: string, taskId: string) => void;
 }
 
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover } = data;
+  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader } = data;
 
   return (
     <>
@@ -104,7 +108,12 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           {crossTraderRequirements.map((req, idx) => (
             <div 
               key={idx} 
-              className="text-xs mb-0.5 text-orange-600 font-semibold"
+              className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToTrader(req.task.trader.name, req.task.id);
+              }}
+              title={`${req.task.trader.name}のページへ移動`}
             >
               <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
                 {req.task.trader.name}
@@ -126,9 +135,12 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
-export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeViewProps) {
+function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
@@ -337,6 +349,9 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
           crossTraderRequirements,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
+          onNavigateToTrader: (traderName: string, taskId: string) => {
+            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+          },
         } as TaskNodeData,
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -461,6 +476,31 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
+  // URLパラメータからタスクIDを取得してフォーカス
+  useEffect(() => {
+    const taskId = searchParams.get('taskId');
+    console.log('TaskID from params:', taskId);
+    console.log('Nodes count:', nodes.length);
+    
+    if (taskId && nodes.length > 0) {
+      const node = getNode(taskId);
+      console.log('Found node:', node);
+      
+      if (node) {
+        // ノードが存在する場合、少し遅延させてからフォーカス
+        setTimeout(() => {
+          console.log('Calling fitView for node:', taskId);
+          fitView({
+            nodes: [{ id: taskId }],
+            duration: 800,
+            padding: 0.5,
+            maxZoom: 1,
+          });
+        }, 300);
+      }
+    }
+  }, [searchParams, nodes, fitView, getNode]);
+
   return (
     <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
       <style jsx global>{`
@@ -484,5 +524,13 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         <Background color="#4b5563" gap={16} />
       </ReactFlow>
     </div>
+  );
+}
+
+export default function TaskTreeView(props: TaskTreeViewProps) {
+  return (
+    <ReactFlowProvider>
+      <TaskTreeViewInner {...props} />
+    </ReactFlowProvider>
   );
 }
