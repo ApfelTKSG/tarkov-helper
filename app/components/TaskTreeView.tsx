@@ -18,6 +18,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
 import TaskDetailModal from './TaskDetailModal';
+import { traderNameToSlug } from '../lib/traderSlug';
 
 interface TaskTreeViewProps {
   tasks: Task[];
@@ -350,7 +351,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
-            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
+            const traderSlug = traderNameToSlug(traderName);
+            window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           },
           onClick: () => setSelectedTask(task),
         } as TaskNodeData,
@@ -534,7 +536,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
           onNavigateToTrader={(traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
-            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
+            const traderSlug = traderNameToSlug(traderName);
+            window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           }}
         />
       )}
