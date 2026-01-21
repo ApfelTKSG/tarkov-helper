@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
   Edge,
@@ -140,7 +139,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const router = useRouter();
   const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
@@ -351,7 +349,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
-            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+            const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
+            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
           },
           onClick: () => setSelectedTask(task),
         } as TaskNodeData,
@@ -490,13 +489,13 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           
           // フォーカス後、URLパラメータを削除
           url.searchParams.delete('taskId');
-          router.replace(url.pathname + url.search);
+          window.history.replaceState({}, '', url.pathname + url.search);
         }
       }, 300);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [fitView, getNode, router]);
+  }, [fitView, getNode]);
 
   return (
     <>
@@ -534,7 +533,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           isCompleted={completedTasks.has(selectedTask.id)}
           isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
           onNavigateToTrader={(traderName: string, taskId: string) => {
-            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+            const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
+            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
           }}
         />
       )}
