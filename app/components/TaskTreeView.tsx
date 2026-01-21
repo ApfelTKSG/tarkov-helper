@@ -18,6 +18,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
+import TaskDetailModal from './TaskDetailModal';
 
 interface TaskTreeViewProps {
   tasks: Task[];
@@ -34,18 +35,19 @@ interface TaskNodeData {
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
   onNavigateToTrader: (traderName: string, taskId: string) => void;
+  onClick: () => void;
 }
 
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader } = data;
+  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
 
   return (
     <>
       <Handle type="target" position={Position.Left} />
       <div 
-        onClick={onToggleComplete}
+        onClick={onClick}
         onMouseEnter={() => {
           setIsHovered(true);
           onHover(task.id);
@@ -88,13 +90,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         <div 
           className={`font-semibold text-sm ${
             isCompleted ? 'text-gray-500' : 'text-gray-900'
-          } hover:underline cursor-pointer`}
-          onClick={(e) => {
-            e.stopPropagation();
-            const wikiUrl = `https://escapefromtarkov.fandom.com/wiki/${task.name.replace(/ /g, '_')}`;
-            window.open(wikiUrl, '_blank');
-          }}
-          title="Wikiを開く"
+          }`}
         >
           {task.name}
         </div>
@@ -143,6 +139,7 @@ const nodeTypes = {
 function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { fitView, getNode } = useReactFlow();
@@ -357,6 +354,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           onNavigateToTrader: (traderName: string, taskId: string) => {
             router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
           },
+          onClick: () => setSelectedTask(task),
         } as TaskNodeData,
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -510,27 +508,46 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   }, [searchParams, fitView, getNode, router]);
 
   return (
-    <div className="w-full h-full bg-gray-900 rounded-lg border border-gray-700">
-      <style jsx global>{`
-        .react-flow__edge {
-          pointer-events: none !important;
-        }
-      `}</style>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        edgesFocusable={false}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background color="#4b5563" gap={16} />
-      </ReactFlow>
-    </div>
+    <>
+      <div className="w-full h-full bg-gray-900 rounded-lg border border-gray-700">
+        <style jsx global>{`
+          .react-flow__edge {
+            pointer-events: none !important;
+          }
+        `}</style>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          edgesFocusable={false}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background color="#4b5563" gap={16} />
+        </ReactFlow>
+      </div>
+      
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          allTasks={allTasks}
+          isOpen={true}
+          onClose={() => setSelectedTask(null)}
+          onToggleComplete={() => {
+            toggleTaskComplete(selectedTask.id);
+          }}
+          isCompleted={completedTasks.has(selectedTask.id)}
+          isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
+          onNavigateToTrader={(traderName: string, taskId: string) => {
+            router.push(`/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`);
+          }}
+        />
+      )}
+    </>
   );
 }
 
