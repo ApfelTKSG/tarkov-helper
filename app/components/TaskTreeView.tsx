@@ -62,7 +62,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         borderRadius: '8px',
         padding: '12px',
         width: 280,
-        opacity: isLocked ? 0.6 : 1,
+        opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
         boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
         transform: isHovered ? 'scale(1.05)' : 'scale(1)',
         transition: 'all 0.2s ease-in-out',
@@ -82,7 +82,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           </div>
         )}
         <div className={`font-semibold text-sm ${
-          isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
+          isCompleted ? 'text-gray-500' : 'text-gray-900'
         }`}>
           {task.name}
         </div>
