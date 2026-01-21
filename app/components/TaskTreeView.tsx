@@ -520,7 +520,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         nodesDraggable={false}
         nodesConnectable={false}
         edgesFocusable={false}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
         attributionPosition="bottom-left"
       >
         <Controls className="bg-gray-800 border border-gray-600" />
