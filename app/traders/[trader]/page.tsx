@@ -77,9 +77,11 @@ export default async function TraderPage({ params }: PageProps) {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4" style={{ paddingTop: '2rem', paddingBottom: '2rem', height: 'calc(100vh - var(--header-height, 140px))' }}>
         <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
-        <TaskTreeView tasks={traderTasks} allTasks={uniqueTasks} traderName={traderName} />
+        <div style={{ height: 'calc(100% - 2rem)' }}>
+          <TaskTreeView tasks={traderTasks} allTasks={uniqueTasks} traderName={traderName} />
+        </div>
       </main>
     </div>
   );

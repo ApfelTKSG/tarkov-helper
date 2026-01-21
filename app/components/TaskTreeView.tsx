@@ -505,7 +505,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   }, [searchParams, fitView, getNode, router]);
 
   return (
-    <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
+    <div className="w-full h-full bg-gray-900 rounded-lg border border-gray-700">
       <style jsx global>{`
         .react-flow__edge {
           pointer-events: none !important;
@@ -521,7 +521,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         nodesConnectable={false}
         edgesFocusable={false}
         defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
-        attributionPosition="bottom-left"
+        proOptions={{ hideAttribution: true }}
       >
         <Controls className="bg-gray-800 border border-gray-600" />
         <Background color="#4b5563" gap={16} />
