@@ -105,7 +105,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
       {crossTraderRequirements.length > 0 && (
         <div className="mt-2 pt-2 border-t border-orange-200">
           <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
-          {crossTraderRequirements.map((req, idx) => (
+          {crossTraderRequirements.slice(0, 2).map((req, idx) => (
             <div 
               key={idx} 
               className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
@@ -121,6 +121,11 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               {req.task.name}
             </div>
           ))}
+          {crossTraderRequirements.length > 2 && (
+            <div className="text-xs text-orange-600 font-semibold mt-1">
+              + 他 {crossTraderRequirements.length - 2} タスク
+            </div>
+          )}
         </div>
       )}
     </div>
