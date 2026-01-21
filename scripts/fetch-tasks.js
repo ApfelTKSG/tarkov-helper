@@ -1,3 +1,20 @@
+/**
+ * Tarkov Helper - Escape from Tarkov task management tool
+ * Copyright (C) 2024-2026 ApfelTKSG
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * Data provided by tarkov-api: https://github.com/the-hideout/tarkov-api
+ */
+
 // Check available task fields
 const fs = require('fs');
 const url = "https://api.tarkov.dev/graphql";

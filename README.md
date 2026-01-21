@@ -11,7 +11,17 @@
 
 などは海外Wikiへ丸投げなので、改善していきたいですね。
 
+## Data Source
+
+このアプリケーションは [The Hideout](https://github.com/the-hideout) の [tarkov-api](https://github.com/the-hideout/tarkov-api) を使用してEscape from Tarkovのゲームデータを取得しています。
+
 今後は
 - インレイド品の管理
 - ハイドアウトのFiR品管理
 を追加します！
+
+## License
+
+このプロジェクトは GNU General Public License v3.0 の下でライセンスされています。詳細は [LICENSE](LICENSE) ファイルをご覧ください。
+
+This project uses [tarkov-api](https://github.com/the-hideout/tarkov-api) by The Hideout, which is also licensed under GPL-3.0.
