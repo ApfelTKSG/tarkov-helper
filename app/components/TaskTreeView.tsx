@@ -45,7 +45,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
 
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <div 
         onClick={onClick}
         onMouseEnter={() => {
@@ -125,7 +125,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         </div>
       )}
     </div>
-    <Handle type="source" position={Position.Right} />
+    <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
   );
 });
