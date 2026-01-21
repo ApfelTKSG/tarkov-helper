@@ -60,6 +60,11 @@ export default function ItemsPage() {
             💡 <strong>ヒント:</strong> ゲーム内でFound in Raidアイテムを見つけたら、
             このリストを確認してタスクで必要かどうかをチェックしましょう。
           </p>
+          <p className="mb-2">
+            ⚠️ <strong>注意:</strong> 「New Beginning」タスクは複数のプレステージバージョンが存在します。
+            <span className="text-yellow-400"> プレステージ1では FiR アイテムは不要です。</span>
+            プレステージ2以降で FiR アイテムが必要になります。
+          </p>
           <p>
             データは{' '}
             <a

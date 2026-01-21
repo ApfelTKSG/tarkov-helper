@@ -111,17 +111,23 @@ export function getFirItemsData(): FirItemsData {
           // アイテムマップにタスク情報を追加
           const itemEntry = firItemsMap.get(item.id);
           if (itemEntry) {
-            itemEntry.requiredByTasks.push({
-              taskId: task.id,
-              taskName: task.name,
-              trader: task.trader.name,
-              minPlayerLevel: task.minPlayerLevel,
-              count: objective.count || 1,
-              optional: objective.optional || false
-            });
+            // 同じタスク名が既に存在するかチェック（プレステージ対応）
+            const existingTask = itemEntry.requiredByTasks.find(t => t.taskName === task.name);
+            if (existingTask) {
+              // 既に同じタスク名が存在する場合は、IDだけ異なる場合があるのでスキップ
+              // （プレステージによる同名タスクの重複を防ぐ）
+            } else {
+              itemEntry.requiredByTasks.push({
+                taskId: task.id,
+                taskName: task.name,
+                trader: task.trader.name,
+                minPlayerLevel: task.minPlayerLevel,
+                count: objective.count || 1,
+                optional: objective.optional || false
+              });
+            }
           }
         }
-      });
       });
     });
     

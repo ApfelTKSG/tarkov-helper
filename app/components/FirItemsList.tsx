@@ -178,6 +178,11 @@ export default function FirItemsList({ items }: FirItemsListProps) {
                           <span className="text-gray-300">{task.taskName}</span>
                           <span className="text-gray-500"> ({task.trader})</span>
                           <span className="text-blue-400 ml-1">x{task.count}</span>
+                          {task.taskName === 'New Beginning' && (
+                            <span className="text-yellow-400 ml-1" title="プレステージ1では不要">
+                              ⚠️
+                            </span>
+                          )}
                         </div>
                       ))}
                       {item.requiredByTasks.length > 3 && (
