@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  tarkov-helper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # 本番ビルドのテスト用
+  build-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run build
+    profiles:
+      - test
