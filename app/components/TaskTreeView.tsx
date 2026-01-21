@@ -466,6 +466,11 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
 
   return (
     <div className="w-full h-[800px] bg-gray-900 rounded-lg border border-gray-700">
+      <style jsx global>{`
+        .react-flow__edge {
+          pointer-events: none !important;
+        }
+      `}</style>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -474,6 +479,7 @@ export default function TaskTreeView({ tasks, allTasks, traderName }: TaskTreeVi
         nodeTypes={nodeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
+        edgesFocusable={false}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         attributionPosition="bottom-left"
       >
