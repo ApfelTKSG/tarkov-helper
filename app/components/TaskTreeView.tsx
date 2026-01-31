@@ -31,6 +31,7 @@ interface TaskNodeData {
   isCompleted: boolean;
   isLocked: boolean;
   isCollectorRequirement: boolean;
+  isLightkeeperRequirement: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
@@ -41,7 +42,7 @@ interface TaskNodeData {
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
+  const { task, isCompleted, isLocked, isCollectorRequirement, isLightkeeperRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
 
   return (
     <>
@@ -83,6 +84,11 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           {isCollectorRequirement && (
             <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
               κ
+            </div>
+          )}
+          {isLightkeeperRequirement && (
+            <div className="text-cyan-500 font-bold text-xs flex-shrink-0 border border-cyan-500 rounded px-1" title="Getting Acquaintedタスクの前提">
+              LK
             </div>
           )}
           <div
@@ -138,6 +144,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [kappaMode, setKappaMode] = useState(false);
+  const [lightkeeperMode, setLightkeeperMode] = useState(false);
   const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
@@ -238,10 +245,46 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
       }
     });
 
+    // Lightkeeper必須タスク (Getting Acquaintedの前提タスク)
+    const lightkeeperRequiredTaskIds = new Set<string>();
+
+    // isLightkeeperRequirement=true のタスクを起点に収集
+    const collectLightkeeperRequirements = (taskId: string, visited = new Set<string>()) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+      lightkeeperRequiredTaskIds.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        collectLightkeeperRequirements(req.task.id, visited);
+      });
+    };
+
+    allTasks.forEach(t => {
+      if (t.isLightkeeperRequirement) {
+        collectLightkeeperRequirements(t.id);
+      }
+    });
+
     // 表示対象のタスクをフィルタリング
-    const visibleTasks = kappaMode
-      ? tasks.filter(t => kappaRequiredTaskIds.has(t.id))
-      : tasks;
+    // KappaモードとLightkeeperモードは独立して動作 (両方ONなら両方のタスクを表示)
+    let visibleTasks = tasks;
+
+    if (kappaMode || lightkeeperMode) {
+      visibleTasks = tasks.filter(t => {
+        const isKappa = kappaMode && kappaRequiredTaskIds.has(t.id);
+        const isLightkeeper = lightkeeperMode && lightkeeperRequiredTaskIds.has(t.id);
+
+        // どちらか一方でもモードがONで、かつその条件を満たすなら表示
+        if (kappaMode && !lightkeeperMode) return isKappa;
+        if (!kappaMode && lightkeeperMode) return isLightkeeper;
+        if (kappaMode && lightkeeperMode) return isKappa || isLightkeeper;
+
+        return false;
+      });
+    }
 
     const traderTaskIds = new Set(visibleTasks.map(t => t.id));
 
@@ -388,6 +431,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
 
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
+      const isLightkeeperRequirement = task.isLightkeeperRequirement || false;
 
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
@@ -412,6 +456,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           isCompleted,
           isLocked,
           isCollectorRequirement,
+          isLightkeeperRequirement,
           crossTraderRequirements,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
@@ -529,7 +574,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -580,20 +625,39 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           }
         `}</style>
 
-        {/* Kappaモードトグルボタン */}
-        <div className="absolute top-4 right-4 z-10 bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-sm font-bold text-orange-400 mr-1">κ Mode</span>
-            <div className="relative">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={kappaMode}
-                onChange={(e) => setKappaMode(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-            </div>
-          </label>
+        {/* Toggle Buttons Container */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          {/* Kappaモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-orange-400 mr-1 w-16 text-right">κ Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={kappaMode}
+                  onChange={(e) => setKappaMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </div>
+            </label>
+          </div>
+
+          {/* Lightkeeperモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-cyan-400 mr-1 w-16 text-right">LK Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={lightkeeperMode}
+                  onChange={(e) => setLightkeeperMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+              </div>
+            </label>
+          </div>
         </div>
 
         <ReactFlow

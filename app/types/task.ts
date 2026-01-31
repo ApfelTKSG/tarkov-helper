@@ -27,6 +27,7 @@ export interface Task {
   objectives: TaskObjective[];
   taskRequirements: TaskRequirement[];
   isCollectorRequirement?: boolean;
+  isLightkeeperRequirement?: boolean;
 }
 
 export interface TaskData {
