@@ -1,3 +1,4 @@
+import HomeHeaderControls from './components/HomeHeaderControls';
 import Link from 'next/link';
 import TraderCardProgress from './components/TraderCardProgress';
 import { getTaskData } from './lib/taskData';
@@ -23,14 +24,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <header className="bg-gray-800 border-b border-gray-700">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-4xl font-bold text-white">Tarkov Helper</h1>
-          <p className="text-gray-400 mt-2">タスク管理ツール - {taskData.tasks.length}個のタスク</p>
-
-          {/* ナビゲーションリンク */}
-          <div className="flex gap-4 mt-4">
-            {/* FiRアイテム一覧へのリンクを削除 */}
+        <div className="container mx-auto px-4 py-6 flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-white">Tarkov Helper</h1>
+            <p className="text-gray-400 mt-2">タスク管理ツール - {taskData.tasks.length}個のタスク</p>
           </div>
+          <HomeHeaderControls />
         </div>
       </header>
 

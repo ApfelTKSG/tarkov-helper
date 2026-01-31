@@ -88,34 +88,44 @@ fetch(url, {
   .then(data => {
     const tasks = data.data.tasks;
 
-    // Collectorタスクを見つける
+    // タスクマップを作成
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+
+    // 汎用的な再帰的要件収集関数
+    const collectRequirements = (taskId, titleRequirements) => {
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        if (!titleRequirements.has(req.task.id)) {
+          titleRequirements.add(req.task.id);
+          collectRequirements(req.task.id, titleRequirements);
+        }
+      });
+    };
+
+    // Collectorタスク (Kappa)
     const collectorTask = tasks.find(t => t.name === 'Collector');
     const collectorRequirements = new Set();
 
     if (collectorTask) {
-      // タスクマップを作成
-      const taskMap = new Map(tasks.map(t => [t.id, t]));
-
-      // 再帰的にCollectorの前提タスクを収集
-      const collectRequirements = (taskId) => {
-        const task = taskMap.get(taskId);
-        if (!task) return;
-
-        task.taskRequirements.forEach(req => {
-          if (!collectorRequirements.has(req.task.id)) {
-            collectorRequirements.add(req.task.id);
-            collectRequirements(req.task.id);
-          }
-        });
-      };
-
-      collectRequirements(collectorTask.id);
+      collectRequirements(collectorTask.id, collectorRequirements);
       console.log(`\n✅ Collectorタスクの前提タスク数: ${collectorRequirements.size}`);
     }
 
-    // 各タスクにisCollectorRequirementフラグを追加
+    // Getting Acquaintedタスク (Lightkeeper)
+    const lightkeeperTask = tasks.find(t => t.name === 'Getting Acquainted');
+    const lightkeeperRequirements = new Set();
+
+    if (lightkeeperTask) {
+      collectRequirements(lightkeeperTask.id, lightkeeperRequirements);
+      console.log(`✅ Getting Acquaintedタスクの前提タスク数: ${lightkeeperRequirements.size}`);
+    }
+
+    // 各タスクにフラグを追加
     tasks.forEach(task => {
-      task.isCollectorRequirement = collectorRequirements.has(task.id);
+      task.isCollectorRequirement = collectorRequirements.has(task.id) || (collectorTask && task.id === collectorTask.id);
+      task.isLightkeeperRequirement = lightkeeperRequirements.has(task.id) || (lightkeeperTask && task.id === lightkeeperTask.id);
     });
 
     // 依存関係があるタスクを抽出

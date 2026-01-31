@@ -36,6 +36,7 @@ interface TaskNodeData {
   isCompleted: boolean;
   isLocked: boolean;
   isCollectorRequirement: boolean;
+  isLightkeeperRequirement: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
@@ -54,6 +55,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     isCompleted,
     isLocked,
     isCollectorRequirement,
+    isLightkeeperRequirement,
     crossTraderRequirements,
     firItems,
     itemDetailsMap,
@@ -102,8 +104,13 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               }`}></div>
           )}
           {isCollectorRequirement && (
-            <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
+            <div className="text-orange-500 font-bold text-xs flex-shrink-0 border border-orange-500 rounded px-1" title="Collectorタスクの前提">
               κ
+            </div>
+          )}
+          {isLightkeeperRequirement && (
+            <div className="text-cyan-500 font-bold text-xs flex-shrink-0 border border-cyan-500 rounded px-1" title="Getting Acquaintedタスクの前提">
+              LK
             </div>
           )}
           <div
@@ -114,84 +121,88 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           </div>
         </div>
 
-        {showFirItems && (
-          <div className="flex-1 mt-2">
-            {firItems && firItems.length > 0 ? (
-              <div className="space-y-1.5">
-                {firItems.slice(0, 2).map((item, idx) => {
-                  const details = itemDetailsMap?.get(item.itemId);
-                  return (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
-                      {details?.iconLink && (
-                        <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
-                          <Image
-                            src={details.iconLink}
-                            alt={item.itemName}
-                            fill
-                            className="object-contain p-0.5"
-                            unoptimized
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
-                        <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
-                          {item.itemShortName || item.itemName}
-                        </div>
-                        <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
-                          x{item.count}
+        {
+          showFirItems && (
+            <div className="flex-1 mt-2">
+              {firItems && firItems.length > 0 ? (
+                <div className="space-y-1.5">
+                  {firItems.slice(0, 2).map((item, idx) => {
+                    const details = itemDetailsMap?.get(item.itemId);
+                    return (
+                      <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
+                        {details?.iconLink && (
+                          <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
+                            <Image
+                              src={details.iconLink}
+                              alt={item.itemName}
+                              fill
+                              className="object-contain p-0.5"
+                              unoptimized
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
+                          <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
+                            {item.itemShortName || item.itemName}
+                          </div>
+                          <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
+                            x{item.count}
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                  {firItems.length > 2 && (
+                    <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
+                      + 他 {firItems.length - 2} アイテム...
                     </div>
-                  );
-                })}
-                {firItems.length > 2 && (
-                  <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
-                    + 他 {firItems.length - 2} アイテム...
+                  )}
+                  <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                    クリックして詳細・チェック
                   </div>
-                )}
-                <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                  クリックして詳細・チェック
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded text-gray-400 border border-gray-100">
-                <span className="text-sm opacity-50">✓</span>
-                <span className="text-xs italic">FiR不要</span>
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <div className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded text-gray-400 border border-gray-100">
+                  <span className="text-sm opacity-50">✓</span>
+                  <span className="text-xs italic">FiR不要</span>
+                </div>
+              )}
+            </div>
+          )
+        }
 
         <div className="text-xs text-gray-600">
           {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
         </div>
-        {crossTraderRequirements.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-orange-200">
-            <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
-            {crossTraderRequirements.slice(0, 2).map((req, idx) => (
-              <div
-                key={idx}
-                className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigateToTrader(req.task.trader.name, req.task.id);
-                }}
-                title={`${req.task.trader.name}のページへ移動`}
-              >
-                <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
-                  {req.task.trader.name}
-                </span>
-                {req.task.name}
-              </div>
-            ))}
-            {crossTraderRequirements.length > 2 && (
-              <div className="text-xs text-orange-600 font-semibold mt-1">
-                + 他 {crossTraderRequirements.length - 2} タスク
-              </div>
-            )}
-          </div>
-        )}
-      </div >
+        {
+          crossTraderRequirements.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-orange-200">
+              <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
+              {crossTraderRequirements.slice(0, 2).map((req, idx) => (
+                <div
+                  key={idx}
+                  className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigateToTrader(req.task.trader.name, req.task.id);
+                  }}
+                  title={`${req.task.trader.name}のページへ移動`}
+                >
+                  <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
+                    {req.task.trader.name}
+                  </span>
+                  {req.task.name}
+                </div>
+              ))}
+              {crossTraderRequirements.length > 2 && (
+                <div className="text-xs text-orange-600 font-semibold mt-1">
+                  + 他 {crossTraderRequirements.length - 2} タスク
+                </div>
+              )}
+            </div>
+          )
+        }
+      </div>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
   );
@@ -203,12 +214,15 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
-function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialShowFirItems = false }: TaskTreeViewProps) {
+import { useFilterMode } from '../context/FilterModeContext';
+
+function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialShowFirItems }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [showFirItems, setShowFirItems] = useState(initialShowFirItems);
+  const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
+  const showFirItems = initialShowFirItems || false;
 
   // FiRデータのマップ作成
   const firItemsMap = useMemo(() => {
@@ -223,10 +237,11 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
-    const saved = localStorage.getItem('tarkov-completed-tasks');
-    if (saved) {
+    // Load completed tasks
+    const savedTasks = localStorage.getItem('tarkov-completed-tasks');
+    if (savedTasks) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedTasks);
         setCompletedTasks(new Set(parsed));
       } catch (e) {
         console.error('Failed to parse completed tasks:', e);
@@ -290,7 +305,77 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
     // 高速検索用のMap作成
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
-    const traderTaskIds = new Set(tasks.map(t => t.id));
+
+    // Kappa必須タスク（Collectorの前提タスク）を再帰的に特定
+    const kappaRequiredTaskIds = new Set<string>();
+
+    // Collectorタスクを探す（通常はFenceのタスク）
+    const collectorTask = allTasks.find(t => t.name === 'Collector' || t.isCollectorRequirement === true);
+    // データ構造上 isCollectorRequirement は「Collectorの前提である」という意味で使われていることが多いが、
+    // ここでは念のため、明示的にフラグが立っているもの + その前提タスク を収集する。
+
+    // isCollectorRequirement=true のタスクを起点に、その前提タスクを全て収集
+    const collectRequirements = (taskId: string, visited = new Set<string>()) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+      kappaRequiredTaskIds.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        collectRequirements(req.task.id, visited);
+      });
+    };
+
+    allTasks.forEach(t => {
+      if (t.isCollectorRequirement) {
+        collectRequirements(t.id);
+      }
+    });
+
+    // Lightkeeper必須タスク (Getting Acquaintedの前提タスク)
+    const lightkeeperRequiredTaskIds = new Set<string>();
+
+    // isLightkeeperRequirement=true のタスクを起点に収集
+    const collectLightkeeperRequirements = (taskId: string, visited = new Set<string>()) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+      lightkeeperRequiredTaskIds.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        collectLightkeeperRequirements(req.task.id, visited);
+      });
+    };
+
+    allTasks.forEach(t => {
+      if (t.isLightkeeperRequirement) {
+        collectLightkeeperRequirements(t.id);
+      }
+    });
+
+    // 表示対象のタスクをフィルタリング
+    // KappaモードとLightkeeperモードは独立して動作 (両方ONなら両方のタスクを表示)
+    let visibleTasks = tasks;
+
+    if (kappaMode || lightkeeperMode) {
+      visibleTasks = tasks.filter(t => {
+        const isKappa = kappaMode && kappaRequiredTaskIds.has(t.id);
+        const isLightkeeper = lightkeeperMode && lightkeeperRequiredTaskIds.has(t.id);
+
+        // どちらか一方でもモードがONで、かつその条件を満たすなら表示
+        if (kappaMode && !lightkeeperMode) return isKappa;
+        if (!kappaMode && lightkeeperMode) return isLightkeeper;
+        if (kappaMode && lightkeeperMode) return isKappa || isLightkeeper;
+
+        return false;
+      });
+    }
+
+    const traderTaskIds = new Set(visibleTasks.map(t => t.id));
 
     // 各タスクの深さレベルを計算（そのトレーダー内の前提タスクからの距離）
     const taskDepths = new Map<string, number>();
@@ -333,15 +418,15 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     };
 
     // 全タスクの深さを計算
-    tasks.forEach(task => calculateDepth(task));
+    visibleTasks.forEach(task => calculateDepth(task));
 
     // 深さをレベルとして使用
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const depth = taskDepths.get(task.id) || 0;
       taskLevels.set(task.id, depth);
     });
 
-    const levels = tasks.map(task => taskLevels.get(task.id) || 0);
+    const levels = visibleTasks.map(task => taskLevels.get(task.id) || 0);
     const uniqueLevels = Array.from(new Set(levels)).sort((a, b) => a - b);
     const levelMapping = new Map(uniqueLevels.map((level, index) => [level, index]));
 
@@ -351,7 +436,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
     // レベルごとにタスクをソート（処理順序を決定）
     const levelGroups = new Map<number, Task[]>();
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const originalLevel = taskLevels.get(task.id) || 0;
       const adjustedLevel = levelMapping.get(originalLevel) || 0;
       if (!levelGroups.has(adjustedLevel)) {
@@ -430,11 +515,12 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     });
 
     // ノードを作成
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const position = taskPositions.get(task.id) || { x: 0, y: 0 };
 
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
+      const isLightkeeperRequirement = task.isLightkeeperRequirement || false;
 
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
@@ -459,6 +545,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           isCompleted,
           isLocked,
           isCollectorRequirement,
+          isLightkeeperRequirement,
           crossTraderRequirements,
           firItems: firItemsMap.get(task.id),
           itemDetailsMap,
@@ -485,7 +572,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
       if (visited.has(taskId)) return visited;
       visited.add(taskId);
 
-      const task = tasks.find(t => t.id === taskId);
+      const task = visibleTasks.find(t => t.id === taskId);
       if (!task) return visited;
 
       // このトレーダー内の前提タスクのみを対象
@@ -499,8 +586,14 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     };
 
     // エッジを作成
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       task.taskRequirements.forEach(req => {
+        // 表示対象でないタスクからのエッジは無視（ただしクロスリファレンスは別）
+        // ソースタスクが表示対象に含まれているか、または別トレーダーのタスクか
+        const isSourceVisible = traderTaskIds.has(req.task.id) || taskMap.get(req.task.id)?.trader.name !== traderName;
+
+        if (!isSourceVisible) return;
+
         const isCompleted = completedTasks.has(task.id);
         const isSourceCompleted = completedTasks.has(req.task.id);
 
@@ -512,13 +605,13 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
         let isHighlighted = false;
         let shouldDimOthers = false;
         if (hoveredTaskId) {
-          const hoveredTask = tasks.find(t => t.id === hoveredTaskId);
+          const hoveredTask = visibleTasks.find(t => t.id === hoveredTaskId);
           if (hoveredTask) {
             const isHoveredCompleted = completedTasks.has(hoveredTaskId);
             const isHoveredLocked = hoveredTask.taskRequirements.filter(r => !completedTasks.has(r.task.id)).length > 0;
 
             // 後続タスクがあるかチェック
-            const hasChildTasks = tasks.some(t =>
+            const hasChildTasks = visibleTasks.some(t =>
               t.taskRequirements.some(r => r.task.id === hoveredTaskId)
             );
 
@@ -573,7 +666,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, showFirItems, firItemsMap, itemDetailsMap]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -624,6 +717,42 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
             pointer-events: none !important;
           }
         `}</style>
+
+        {/* Toggle Buttons Container */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          {/* Kappaモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-orange-400 mr-1 w-16 text-right">κ Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={kappaMode}
+                  onChange={(e) => setKappaMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </div>
+            </label>
+          </div>
+
+          {/* Lightkeeperモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-cyan-400 mr-1 w-16 text-right">LK Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={lightkeeperMode}
+                  onChange={(e) => setLightkeeperMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
