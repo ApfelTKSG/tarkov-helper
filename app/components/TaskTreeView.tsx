@@ -105,61 +105,62 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               κ
             </div>
           )}
-          {showFirItems ? (
-            <div className="flex-1 flex flex-col justify-center min-h-[40px]">
-              {firItems && firItems.length > 0 ? (
-                <div className="space-y-1.5">
-                  {firItems.slice(0, 2).map((item, idx) => {
-                    const details = itemDetailsMap?.get(item.itemId);
-                    return (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
-                        {details?.iconLink && (
-                          <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
-                            <Image
-                              src={details.iconLink}
-                              alt={item.itemName}
-                              fill
-                              className="object-contain p-0.5"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
-                          <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
-                            {item.itemShortName || item.itemName}
-                          </div>
-                          <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
-                            x{item.count}
-                          </div>
+          <div
+            className={`font-semibold text-sm ${isCompleted ? 'text-gray-500' : 'text-gray-900'
+              }`}
+          >
+            {task.name}
+          </div>
+        </div>
+
+        {showFirItems && (
+          <div className="flex-1 mt-2">
+            {firItems && firItems.length > 0 ? (
+              <div className="space-y-1.5">
+                {firItems.slice(0, 2).map((item, idx) => {
+                  const details = itemDetailsMap?.get(item.itemId);
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
+                      {details?.iconLink && (
+                        <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
+                          <Image
+                            src={details.iconLink}
+                            alt={item.itemName}
+                            fill
+                            className="object-contain p-0.5"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
+                        <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
+                          {item.itemShortName || item.itemName}
+                        </div>
+                        <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
+                          x{item.count}
                         </div>
                       </div>
-                    );
-                  })}
-                  {firItems.length > 2 && (
-                    <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
-                      + 他 {firItems.length - 2} アイテム...
                     </div>
-                  )}
-                  <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                    クリックして詳細・チェック
+                  );
+                })}
+                {firItems.length > 2 && (
+                  <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
+                    + 他 {firItems.length - 2} アイテム...
                   </div>
+                )}
+                <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  クリックして詳細・チェック
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-2 text-gray-400">
-                  <span className="text-lg opacity-50">✓</span>
-                  <span className="text-xs italic">FiR不要</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              className={`font-semibold text-sm ${isCompleted ? 'text-gray-500' : 'text-gray-900'
-                }`}
-            >
-              {task.name}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded text-gray-400 border border-gray-100">
+                <span className="text-sm opacity-50">✓</span>
+                <span className="text-xs italic">FiR不要</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="text-xs text-gray-600">
           {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
         </div>
@@ -189,7 +190,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
             )}
           </div>
         )}
-      </div>
+      </div >
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
   );
