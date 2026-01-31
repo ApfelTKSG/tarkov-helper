@@ -31,6 +31,7 @@ interface TaskNodeData {
   isCompleted: boolean;
   isLocked: boolean;
   isCollectorRequirement: boolean;
+  isLightkeeperRequirement: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
@@ -41,12 +42,12 @@ interface TaskNodeData {
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
+  const { task, isCompleted, isLocked, isCollectorRequirement, isLightkeeperRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
 
   return (
     <>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <div 
+      <div
         onClick={onClick}
         onMouseEnter={() => {
           setIsHovered(true);
@@ -58,74 +59,76 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         }}
         className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
         style={{
-        background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
-        border: `2px solid ${
-          isHovered ? '#fbbf24' :
-          isLocked ? '#ef4444' :
-          isCompleted ? '#22c55e' : 
-          task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
-        }`,
-        borderRadius: '8px',
-        padding: '12px',
-        width: 280,
-        opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
-        boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
-        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-        transition: 'all 0.2s ease-in-out',
-      }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        {isLocked ? (
-          <div className="text-red-500 flex-shrink-0">🔒</div>
-        ) : (
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            isCompleted ? 'bg-green-500' : 'bg-gray-400'
-          }`}></div>
-        )}
-        {isCollectorRequirement && (
-          <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
-            κ
-          </div>
-        )}
-        <div 
-          className={`font-semibold text-sm ${
-            isCompleted ? 'text-gray-500' : 'text-gray-900'
-          }`}
-        >
-          {task.name}
-        </div>
-      </div>
-      <div className="text-xs text-gray-600">
-        {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
-      </div>
-      {crossTraderRequirements.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-orange-200">
-          <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
-          {crossTraderRequirements.slice(0, 2).map((req, idx) => (
-            <div 
-              key={idx} 
-              className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigateToTrader(req.task.trader.name, req.task.id);
-              }}
-              title={`${req.task.trader.name}のページへ移動`}
-            >
-              <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
-                {req.task.trader.name}
-              </span>
-              {req.task.name}
-            </div>
-          ))}
-          {crossTraderRequirements.length > 2 && (
-            <div className="text-xs text-orange-600 font-semibold mt-1">
-              + 他 {crossTraderRequirements.length - 2} タスク
+          background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
+          border: `2px solid ${isHovered ? '#fbbf24' :
+            isLocked ? '#ef4444' :
+              isCompleted ? '#22c55e' :
+                task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+            }`,
+          borderRadius: '8px',
+          padding: '12px',
+          width: 280,
+          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
+          boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
+          transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+          transition: 'all 0.2s ease-in-out',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          {isLocked ? (
+            <div className="text-red-500 flex-shrink-0">🔒</div>
+          ) : (
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-green-500' : 'bg-gray-400'
+              }`}></div>
+          )}
+          {isCollectorRequirement && (
+            <div className="text-orange-500 font-bold text-xs flex-shrink-0 border border-orange-500 rounded px-1" title="Collectorタスクの前提">
+              κ
             </div>
           )}
+          {isLightkeeperRequirement && (
+            <div className="text-cyan-500 font-bold text-xs flex-shrink-0 border border-cyan-500 rounded px-1" title="Getting Acquaintedタスクの前提">
+              LK
+            </div>
+          )}
+          <div
+            className={`font-semibold text-sm ${isCompleted ? 'text-gray-500' : 'text-gray-900'
+              }`}
+          >
+            {task.name}
+          </div>
         </div>
-      )}
-    </div>
-    <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+        <div className="text-xs text-gray-600">
+          {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
+        </div>
+        {crossTraderRequirements.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-orange-200">
+            <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
+            {crossTraderRequirements.slice(0, 2).map((req, idx) => (
+              <div
+                key={idx}
+                className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigateToTrader(req.task.trader.name, req.task.id);
+                }}
+                title={`${req.task.trader.name}のページへ移動`}
+              >
+                <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
+                  {req.task.trader.name}
+                </span>
+                {req.task.name}
+              </div>
+            ))}
+            {crossTraderRequirements.length > 2 && (
+              <div className="text-xs text-orange-600 font-semibold mt-1">
+                + 他 {crossTraderRequirements.length - 2} タスク
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
   );
 });
@@ -136,18 +139,22 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
+import { useFilterMode } from '../context/FilterModeContext';
+
 function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
-    const saved = localStorage.getItem('tarkov-completed-tasks');
-    if (saved) {
+    // Load completed tasks
+    const savedTasks = localStorage.getItem('tarkov-completed-tasks');
+    if (savedTasks) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedTasks);
         setCompletedTasks(new Set(parsed));
       } catch (e) {
         console.error('Failed to parse completed tasks:', e);
@@ -182,7 +189,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
     }
 
     const requiredTaskIds: string[] = [taskId];
-    
+
     task.taskRequirements.forEach(req => {
       const subRequirements = getAllRequiredTasks(req.task.id, visited);
       requiredTaskIds.push(...subRequirements);
@@ -194,7 +201,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   // タスクとすべての依存タスクを強制的に完了にする
   const forceCompleteTask = useCallback((taskId: string) => {
     const allRequiredTaskIds = getAllRequiredTasks(taskId);
-    
+
     setCompletedTasks((prev) => {
       const newCompleted = new Set(prev);
       allRequiredTaskIds.forEach(id => newCompleted.add(id));
@@ -208,36 +215,106 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     const taskLevels = new Map<string, number>();
-    
+
     // 高速検索用のMap作成
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
-    const traderTaskIds = new Set(tasks.map(t => t.id));
-    
+
+    // Kappa必須タスク（Collectorの前提タスク）を再帰的に特定
+    const kappaRequiredTaskIds = new Set<string>();
+
+    // Collectorタスクを探す（通常はFenceのタスク）
+    const collectorTask = allTasks.find(t => t.name === 'Collector' || t.isCollectorRequirement === true);
+    // データ構造上 isCollectorRequirement は「Collectorの前提である」という意味で使われていることが多いが、
+    // ここでは念のため、明示的にフラグが立っているもの + その前提タスク を収集する。
+
+    // isCollectorRequirement=true のタスクを起点に、その前提タスクを全て収集
+    const collectRequirements = (taskId: string, visited = new Set<string>()) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+      kappaRequiredTaskIds.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        collectRequirements(req.task.id, visited);
+      });
+    };
+
+    allTasks.forEach(t => {
+      if (t.isCollectorRequirement) {
+        collectRequirements(t.id);
+      }
+    });
+
+    // Lightkeeper必須タスク (Getting Acquaintedの前提タスク)
+    const lightkeeperRequiredTaskIds = new Set<string>();
+
+    // isLightkeeperRequirement=true のタスクを起点に収集
+    const collectLightkeeperRequirements = (taskId: string, visited = new Set<string>()) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+      lightkeeperRequiredTaskIds.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return;
+
+      task.taskRequirements.forEach(req => {
+        collectLightkeeperRequirements(req.task.id, visited);
+      });
+    };
+
+    allTasks.forEach(t => {
+      if (t.isLightkeeperRequirement) {
+        collectLightkeeperRequirements(t.id);
+      }
+    });
+
+    // 表示対象のタスクをフィルタリング
+    // KappaモードとLightkeeperモードは独立して動作 (両方ONなら両方のタスクを表示)
+    let visibleTasks = tasks;
+
+    if (kappaMode || lightkeeperMode) {
+      visibleTasks = tasks.filter(t => {
+        const isKappa = kappaMode && kappaRequiredTaskIds.has(t.id);
+        const isLightkeeper = lightkeeperMode && lightkeeperRequiredTaskIds.has(t.id);
+
+        // どちらか一方でもモードがONで、かつその条件を満たすなら表示
+        if (kappaMode && !lightkeeperMode) return isKappa;
+        if (!kappaMode && lightkeeperMode) return isLightkeeper;
+        if (kappaMode && lightkeeperMode) return isKappa || isLightkeeper;
+
+        return false;
+      });
+    }
+
+    const traderTaskIds = new Set(visibleTasks.map(t => t.id));
+
     // 各タスクの深さレベルを計算（そのトレーダー内の前提タスクからの距離）
     const taskDepths = new Map<string, number>();
-    
+
     const calculateDepth = (task: Task, visited = new Set<string>()): number => {
       if (taskDepths.has(task.id)) {
         return taskDepths.get(task.id)!;
       }
-      
+
       if (visited.has(task.id)) {
         return 0; // 循環参照防止
       }
-      
+
       visited.add(task.id);
-      
+
       // このトレーダー内の前提タスクを取得
-      const traderRequirements = task.taskRequirements.filter(req => 
+      const traderRequirements = task.taskRequirements.filter(req =>
         traderTaskIds.has(req.task.id)
       );
-      
+
       if (traderRequirements.length === 0) {
         // このトレーダー内に前提タスクがない = 0番目
         taskDepths.set(task.id, 0);
         return 0;
       }
-      
+
       // 前提タスクの中で最も深いものを探す
       const parentDepths = traderRequirements.map(req => {
         const parentTask = taskMap.get(req.task.id);
@@ -246,33 +323,33 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         }
         return calculateDepth(parentTask, new Set(visited));
       }).filter(depth => depth >= 0);
-      
+
       const maxParentDepth = parentDepths.length > 0 ? Math.max(...parentDepths) : -1;
       const depth = maxParentDepth + 1;
       taskDepths.set(task.id, depth);
       return depth;
     };
-    
+
     // 全タスクの深さを計算
-    tasks.forEach(task => calculateDepth(task));
-    
+    visibleTasks.forEach(task => calculateDepth(task));
+
     // 深さをレベルとして使用
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const depth = taskDepths.get(task.id) || 0;
       taskLevels.set(task.id, depth);
     });
-    
-    const levels = tasks.map(task => taskLevels.get(task.id) || 0);
+
+    const levels = visibleTasks.map(task => taskLevels.get(task.id) || 0);
     const uniqueLevels = Array.from(new Set(levels)).sort((a, b) => a - b);
     const levelMapping = new Map(uniqueLevels.map((level, index) => [level, index]));
-    
+
     // タスクの位置を計算（前提タスクと同じ高さに配置）
     const taskPositions = new Map<string, { x: number; y: number }>();
     const levelYPositions = new Map<number, number[]>(); // 各レベルで使用中のY座標
-    
+
     // レベルごとにタスクをソート（処理順序を決定）
     const levelGroups = new Map<number, Task[]>();
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const originalLevel = taskLevels.get(task.id) || 0;
       const adjustedLevel = levelMapping.get(originalLevel) || 0;
       if (!levelGroups.has(adjustedLevel)) {
@@ -280,42 +357,42 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
       }
       levelGroups.get(adjustedLevel)!.push(task);
     });
-    
+
     // レベル順に位置を決定
     uniqueLevels.forEach((originalLevel, levelIndex) => {
       const level = levelMapping.get(originalLevel) || 0;
       const tasksInLevel = levelGroups.get(level) || [];
-      
+
       // 前提タスクのY座標の最小値でソート（前提タスクが上にあるタスクから優先）
       tasksInLevel.sort((a, b) => {
         const aRequirements = a.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
         const bRequirements = b.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
-        
+
         const aMinY = aRequirements.length > 0
           ? Math.min(...aRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
           : -1;
         const bMinY = bRequirements.length > 0
           ? Math.min(...bRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
           : -1;
-        
+
         return aMinY - bMinY;
       });
-      
+
       tasksInLevel.forEach(task => {
         const xPos = level * 350;
-        
+
         // このトレーダー内の前提タスクを取得
-        const traderRequirements = task.taskRequirements.filter(req => 
+        const traderRequirements = task.taskRequirements.filter(req =>
           traderTaskIds.has(req.task.id)
         );
-        
+
         let yPos = 0;
         if (traderRequirements.length > 0) {
           // 前提タスクのY座標の平均を計算
           const parentYPositions = traderRequirements
             .map(req => taskPositions.get(req.task.id)?.y)
             .filter((y): y is number => y !== undefined);
-          
+
           if (parentYPositions.length > 0) {
             yPos = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
           }
@@ -324,53 +401,54 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           const usedYPositions = levelYPositions.get(level) || [];
           yPos = usedYPositions.length * 150;
         }
-        
+
         // Y座標の重複を避ける
         const usedYPositions = levelYPositions.get(level) || [];
         const minSpacing = 150;
-        
+
         // 既存の位置と近すぎる場合は調整
         let adjustedY = yPos;
         let attempts = 0;
         while (attempts < 100) {
-          const tooClose = usedYPositions.some(usedY => 
+          const tooClose = usedYPositions.some(usedY =>
             Math.abs(adjustedY - usedY) < minSpacing
           );
-          
+
           if (!tooClose) break;
-          
+
           // 下方向にずらす
           adjustedY += minSpacing;
           attempts++;
         }
-        
+
         taskPositions.set(task.id, { x: xPos, y: adjustedY });
         usedYPositions.push(adjustedY);
         levelYPositions.set(level, usedYPositions);
       });
     });
-    
+
     // ノードを作成
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       const position = taskPositions.get(task.id) || { x: 0, y: 0 };
-      
+
       const isCompleted = completedTasks.has(task.id);
       const isCollectorRequirement = task.isCollectorRequirement || false;
-      
+      const isLightkeeperRequirement = task.isLightkeeperRequirement || false;
+
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
       const isLocked = uncompletedRequirements.length > 0;
-      
+
       // 別トレーダーの前提タスクを抽出（Mapで高速検索）
       const crossTraderRequirements = uncompletedRequirements
         .map(req => {
           const fullTask = taskMap.get(req.task.id);
           return fullTask ? { ...req, task: fullTask } : null;
         })
-        .filter((req): req is NonNullable<typeof req> => 
+        .filter((req): req is NonNullable<typeof req> =>
           req !== null && req.task.trader.name !== traderName
         );
-      
+
       nodes.push({
         id: task.id,
         type: 'taskNode',
@@ -380,6 +458,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           isCompleted,
           isLocked,
           isCollectorRequirement,
+          isLightkeeperRequirement,
           crossTraderRequirements,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
@@ -397,49 +476,55 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         },
       });
     });
-    
+
     // 祖先タスクを再帰的に収集する関数
     const collectAncestors = (taskId: string, visited = new Set<string>()): Set<string> => {
       if (visited.has(taskId)) return visited;
       visited.add(taskId);
-      
-      const task = tasks.find(t => t.id === taskId);
+
+      const task = visibleTasks.find(t => t.id === taskId);
       if (!task) return visited;
-      
+
       // このトレーダー内の前提タスクのみを対象
       const traderRequirements = task.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
-      
+
       traderRequirements.forEach(req => {
         collectAncestors(req.task.id, visited);
       });
-      
+
       return visited;
     };
-    
+
     // エッジを作成
-    tasks.forEach(task => {
+    visibleTasks.forEach(task => {
       task.taskRequirements.forEach(req => {
+        // 表示対象でないタスクからのエッジは無視（ただしクロスリファレンスは別）
+        // ソースタスクが表示対象に含まれているか、または別トレーダーのタスクか
+        const isSourceVisible = traderTaskIds.has(req.task.id) || taskMap.get(req.task.id)?.trader.name !== traderName;
+
+        if (!isSourceVisible) return;
+
         const isCompleted = completedTasks.has(task.id);
         const isSourceCompleted = completedTasks.has(req.task.id);
-        
+
         // 別トレーダーのタスクかチェック
         const sourceTask = taskMap.get(req.task.id);
         const isCrossTrader = sourceTask && sourceTask.trader.name !== traderName;
-        
+
         // ホバー時の強調表示判定
         let isHighlighted = false;
         let shouldDimOthers = false;
         if (hoveredTaskId) {
-          const hoveredTask = tasks.find(t => t.id === hoveredTaskId);
+          const hoveredTask = visibleTasks.find(t => t.id === hoveredTaskId);
           if (hoveredTask) {
             const isHoveredCompleted = completedTasks.has(hoveredTaskId);
             const isHoveredLocked = hoveredTask.taskRequirements.filter(r => !completedTasks.has(r.task.id)).length > 0;
-            
+
             // 後続タスクがあるかチェック
-            const hasChildTasks = tasks.some(t => 
+            const hasChildTasks = visibleTasks.some(t =>
               t.taskRequirements.some(r => r.task.id === hoveredTaskId)
             );
-            
+
             if (!isHoveredCompleted) {
               if (isHoveredLocked) {
                 // ロックされているタスク: このトレーダー内に前提タスクがあるかチェック
@@ -447,7 +532,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
                   const reqTask = taskMap.get(r.task.id);
                   return reqTask && reqTask.trader.name === traderName && !completedTasks.has(r.task.id);
                 });
-                
+
                 if (hasTraderRequirements) {
                   // すべての祖先タスクとそのエッジを強調
                   shouldDimOthers = true;
@@ -469,18 +554,18 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
             }
           }
         }
-        
+
         edges.push({
           id: `${req.task.id}-${task.id}`,
           source: req.task.id,
           target: task.id,
           type: 'default',
           animated: isHighlighted || (!isCompleted && !isSourceCompleted),
-          style: { 
+          style: {
             stroke: isHighlighted ? '#fbbf24' :
-                    isCrossTrader ? '#f97316' :
-                    isCompleted ? '#22c55e' :
-                    isSourceCompleted ? '#60a5fa' :
+              isCrossTrader ? '#f97316' :
+                isCompleted ? '#22c55e' :
+                  isSourceCompleted ? '#60a5fa' :
                     '#64748b',
             strokeWidth: isHighlighted ? 5 : 3,
             opacity: shouldDimOthers && !isHighlighted ? 0.3 : 1,
@@ -489,9 +574,9 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
         });
       });
     });
-    
+
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -506,15 +591,15 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   useEffect(() => {
     // クライアントサイドでのみ実行
     if (typeof window === 'undefined') return;
-    
+
     const url = new URL(window.location.href);
     const taskId = url.searchParams.get('taskId');
-    
+
     if (taskId) {
       // 少し遅延させてからフォーカス（ノードのレンダリング完了を待つ）
       const timeoutId = setTimeout(() => {
         const node = getNode(taskId);
-        
+
         if (node) {
           fitView({
             nodes: [{ id: taskId }],
@@ -522,13 +607,13 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
             padding: 0.5,
             maxZoom: 1,
           });
-          
+
           // フォーカス後、URLパラメータを削除
           url.searchParams.delete('taskId');
           window.history.replaceState({}, '', url.pathname + url.search);
         }
       }, 300);
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [fitView, getNode]);
@@ -541,6 +626,42 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
             pointer-events: none !important;
           }
         `}</style>
+
+        {/* Toggle Buttons Container */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          {/* Kappaモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-orange-400 mr-1 w-16 text-right">κ Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={kappaMode}
+                  onChange={(e) => setKappaMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </div>
+            </label>
+          </div>
+
+          {/* Lightkeeperモードトグルボタン */}
+          <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm font-bold text-cyan-400 mr-1 w-16 text-right">LK Mode</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={lightkeeperMode}
+                  onChange={(e) => setLightkeeperMode(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -556,7 +677,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           <Background color="#4b5563" gap={16} />
         </ReactFlow>
       </div>
-      
+
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
