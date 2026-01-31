@@ -82,7 +82,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               }`}></div>
           )}
           {isCollectorRequirement && (
-            <div className="text-orange-500 font-bold text-base flex-shrink-0" title="Collectorタスクの前提">
+            <div className="text-orange-500 font-bold text-xs flex-shrink-0 border border-orange-500 rounded px-1" title="Collectorタスクの前提">
               κ
             </div>
           )}
