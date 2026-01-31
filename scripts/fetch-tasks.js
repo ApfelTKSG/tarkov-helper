@@ -94,7 +94,7 @@ fetch(url, {
     // 各タスクにフラグを追加
     tasks.forEach(task => {
       task.isCollectorRequirement = collectorRequirements.has(task.id) || (collectorTask && task.id === collectorTask.id);
-      task.isLightkeeperRequirements = lightkeeperRequirements.has(task.id) || (lightkeeperTask && task.id === lightkeeperTask.id);
+      task.isLightkeeperRequirement = lightkeeperRequirements.has(task.id) || (lightkeeperTask && task.id === lightkeeperTask.id);
     });
 
     // 依存関係があるタスクを抽出
