@@ -139,20 +139,22 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
+import { useFilterMode } from '../context/FilterModeContext';
+
 function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [kappaMode, setKappaMode] = useState(false);
-  const [lightkeeperMode, setLightkeeperMode] = useState(false);
+  const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
-    const saved = localStorage.getItem('tarkov-completed-tasks');
-    if (saved) {
+    // Load completed tasks
+    const savedTasks = localStorage.getItem('tarkov-completed-tasks');
+    if (savedTasks) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedTasks);
         setCompletedTasks(new Set(parsed));
       } catch (e) {
         console.error('Failed to parse completed tasks:', e);
