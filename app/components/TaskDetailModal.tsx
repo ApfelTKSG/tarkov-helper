@@ -1,6 +1,9 @@
 'use client';
 
 import { Task } from '../types/task';
+import { TaskFirItem, FirItemDetail } from '../types/firItem';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface TaskDetailModalProps {
   task: Task;
@@ -12,6 +15,8 @@ interface TaskDetailModalProps {
   isCompleted: boolean;
   isLocked: boolean;
   onNavigateToTrader: (traderName: string, taskId: string) => void;
+  firItems?: TaskFirItem[];
+  itemDetailsMap?: Map<string, FirItemDetail>;
 }
 
 export default function TaskDetailModal({
@@ -24,12 +29,48 @@ export default function TaskDetailModal({
   isCompleted,
   isLocked,
   onNavigateToTrader,
+  firItems,
+  itemDetailsMap,
 }: TaskDetailModalProps) {
+  const [collectedItems, setCollectedItems] = useState<Set<string>>(new Set());
+
+  // localStorageから納品済みアイテム状態を読み込み
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const saved = localStorage.getItem('tarkov-fir-collected');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // 現在のタスクに関連するアイテムのみを抽出するか、すべての状態を保持するか
+        // シンプルにするため、 itemId をキーとして保存（タスクごとに分ける場合は taskid-itemid をキーにする）
+        // ここでは "taskId-itemId" をキーとして管理
+        setCollectedItems(new Set(parsed));
+      } catch (e) {
+        console.error('Failed to parse collected fir items:', e);
+      }
+    }
+  }, [isOpen]);
+
+  const toggleItemCollected = (itemId: string) => {
+    const key = `${task.id}-${itemId}`;
+    setCollectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
+
   if (!isOpen) return null;
 
   // タスクIDからタスク情報を取得
   const taskMap = new Map(allTasks.map(t => [t.id, t]));
-  
+
   // 他トレーダーの前提タスク
   const crossTraderRequirements = task.taskRequirements
     .map(req => taskMap.get(req.task.id))
@@ -84,6 +125,67 @@ export default function TaskDetailModal({
           </div>
         )}
 
+        {/* FiRアイテムチェックリスト */}
+        {firItems && firItems.length > 0 && (
+          <div className="mb-6 bg-gray-750 p-4 rounded-lg border border-gray-700">
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <span className="text-blue-400 text-xl">📦</span>
+              必要なFound in Raidアイテム
+            </h3>
+            <div className="space-y-2">
+              {firItems.map((item, idx) => {
+                const details = itemDetailsMap?.get(item.itemId);
+                const isItemCollected = collectedItems.has(`${task.id}-${item.itemId}`);
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-2 rounded-lg border transition-colors cursor-pointer select-none ${isItemCollected
+                      ? 'bg-green-900/30 border-green-700/50 hover:bg-green-900/40'
+                      : 'bg-gray-700 border-gray-600 hover:bg-gray-650'
+                      }`}
+                    onClick={() => toggleItemCollected(item.itemId)}
+                  >
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isItemCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
+                      }`}>
+                      {isItemCollected && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+
+                    {details?.iconLink && (
+                      <div className="relative w-10 h-10 bg-gray-900 rounded border border-gray-600 flex-shrink-0">
+                        <Image
+                          src={details.iconLink}
+                          alt={item.itemName}
+                          fill
+                          className="object-contain p-1"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className={`font-semibold ${isItemCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
+                          {item.itemName}
+                        </span>
+                        <span className="text-sm font-bg bg-gray-800 px-2 py-0.5 rounded text-blue-300">
+                          x{item.count}
+                        </span>
+                      </div>
+                      {item.optional && (
+                        <span className="text-xs text-yellow-500 block">オプショナル</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-2 text-right">
+              クリックして納品済みをマーク
+            </p>
+          </div>
+        )}
+
         {/* 他トレーダーの前提 */}
         {crossTraderRequirements.length > 0 && (
           <div className="mb-4">
@@ -117,19 +219,18 @@ export default function TaskDetailModal({
                 onClose();
               }}
               disabled={isLocked}
-              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
-                isLocked
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : isCompleted
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${isLocked
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : isCompleted
                   ? 'bg-green-600 hover:bg-green-700 text-white'
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+                }`}
             >
-              {isLocked 
+              {isLocked
                 ? '🔒 前提タスクが未完了'
-                : isCompleted 
-                ? '✓ 完了済み（クリックで未完了に）' 
-                : 'タスクを完了にする'}
+                : isCompleted
+                  ? '✓ 完了済み（クリックで未完了に）'
+                  : 'タスクを完了にする'}
             </button>
             <button
               onClick={() => {
@@ -145,7 +246,7 @@ export default function TaskDetailModal({
               Wiki
             </button>
           </div>
-          
+
           {/* 強制完了ボタン */}
           {isLocked && onForceComplete && (
             <button
