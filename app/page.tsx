@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import TraderCardProgress from './components/TraderCardProgress';
 import { getTaskData } from './lib/taskData';
+import { traderNameToSlug } from './lib/traderSlug';
 
 export default function Home() {
   // タスクデータを読み込み
@@ -44,7 +45,7 @@ export default function Home() {
               return (
                 <Link
                   key={traderName}
-                  href={`/traders/${encodeURIComponent(traderName)}`}
+                  href={`/traders/${traderNameToSlug(traderName)}`}
                   className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-all hover:scale-105 hover:shadow-xl border-2 border-transparent hover:border-yellow-400"
                 >
                   <div className="flex items-center gap-3 mb-4">

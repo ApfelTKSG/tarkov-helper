@@ -9,7 +9,5 @@ export function getTaskData(): TaskData {
 }
 
 export function getUniqueTraderNames(taskData: TaskData): string[] {
-  return Array.from(
-    new Set(taskData.tasks.map(task => task.trader.name))
-  );
+  return Array.from(new Set(taskData.tasks.map((task) => task.trader.name)));
 }

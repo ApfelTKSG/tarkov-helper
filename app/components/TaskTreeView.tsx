@@ -20,6 +20,7 @@ import { Task } from '../types/task';
 import TaskDetailModal from './TaskDetailModal';
 import { FirItemsData, TaskFirItem, FirItemDetail } from '../types/firItem';
 import Image from 'next/image';
+import { traderNameToSlug } from '../lib/traderSlug';
 
 interface TaskTreeViewProps {
   tasks: Task[];
@@ -466,7 +467,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
-            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
+            const traderSlug = traderNameToSlug(traderName);
+            window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           },
           onClick: () => setSelectedTask(task),
         } as TaskNodeData,
@@ -656,7 +658,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           itemDetailsMap={itemDetailsMap}
           onNavigateToTrader={(traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
-            window.location.href = `${basePath}/traders/${encodeURIComponent(traderName)}?taskId=${taskId}`;
+            const traderSlug = traderNameToSlug(traderName);
+            window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           }}
         />
       )}

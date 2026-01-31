@@ -4,6 +4,7 @@ import ProgressStats from '@/app/components/ProgressStats';
 import TraderTaskSync from '@/app/components/TraderTaskSync';
 import { getTaskData, getUniqueTraderNames } from '@/app/lib/taskData';
 import { getFirItemsData } from '@/app/lib/firItemData';
+import { traderNameToSlug, slugToTraderName } from '@/app/lib/traderSlug';
 
 interface PageProps {
   params: Promise<{
@@ -15,15 +16,15 @@ export async function generateStaticParams() {
   const taskData = getTaskData();
   const traders = getUniqueTraderNames(taskData);
 
-  // 各トレーダーのパラメータを返す
+  // 各トレーダーのパラメータを返す（スペースをハイフンに変換）
   return traders.map(traderName => ({
-    trader: encodeURIComponent(traderName),
+    trader: traderNameToSlug(traderName),
   }));
 }
 
 export default async function TraderPage({ params }: PageProps) {
-  const { trader: encodedTrader } = await params;
-  const traderName = decodeURIComponent(encodedTrader);
+  const { trader: traderSlug } = await params;
+  const traderName = slugToTraderName(traderSlug);
 
   // タスクデータを読み込み
   const taskData = getTaskData();

@@ -1,10 +1,25 @@
 # Tarkov Helper - Docker使用ガイド
 
-## 本番ビルドのテスト
+## 開発ワークフロー
 
-GitHub Pagesにデプロイする前に、ローカルで本番ビルドをテストできます。
+### 自動ビルドテスト（推奨）
 
-### 本番ビルドを実行
+Git pre-pushフックを設定すると、プッシュ前に自動でビルドテストが実行されます：
+
+```bash
+./scripts/setup-hooks.sh
+```
+
+これで `git push` 実行時に自動的にDockerビルドテストが走ります。ビルドが失敗するとプッシュが中止されます。
+
+フックを一時的に無効化する場合：
+```bash
+git push --no-verify
+```
+
+### 手動ビルドテスト
+
+プッシュ前に手動でテストする場合：
 
 ```bash
 docker-compose --profile test run --rm build-test

@@ -1,4 +1,21 @@
-// Tarkov APIからタスクとFiRアイテム情報を取得
+/**
+ * Tarkov Helper - Escape from Tarkov task management tool
+ * Copyright (C) 2024-2026 ApfelTKSG
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * Data provided by tarkov-api: https://github.com/the-hideout/tarkov-api
+ */
+
+// Check available task fields
 const fs = require('fs');
 const url = "https://api.tarkov.dev/graphql";
 
@@ -70,20 +87,20 @@ fetch(url, {
   .then(res => res.json())
   .then(data => {
     const tasks = data.data.tasks;
-    
+
     // Collectorタスクを見つける
     const collectorTask = tasks.find(t => t.name === 'Collector');
     const collectorRequirements = new Set();
-    
+
     if (collectorTask) {
       // タスクマップを作成
       const taskMap = new Map(tasks.map(t => [t.id, t]));
-      
+
       // 再帰的にCollectorの前提タスクを収集
       const collectRequirements = (taskId) => {
         const task = taskMap.get(taskId);
         if (!task) return;
-        
+
         task.taskRequirements.forEach(req => {
           if (!collectorRequirements.has(req.task.id)) {
             collectorRequirements.add(req.task.id);
@@ -91,55 +108,55 @@ fetch(url, {
           }
         });
       };
-      
+
       collectRequirements(collectorTask.id);
       console.log(`\n✅ Collectorタスクの前提タスク数: ${collectorRequirements.size}`);
     }
-    
+
     // 各タスクにisCollectorRequirementフラグを追加
     tasks.forEach(task => {
       task.isCollectorRequirement = collectorRequirements.has(task.id);
     });
-    
+
     // 依存関係があるタスクを抽出
     const tasksWithRequirements = tasks.filter(t => t.taskRequirements.length > 0);
-    
+
     console.log(`✅ Total tasks: ${tasks.length}`);
     console.log(`✅ 依存関係があるタスク: ${tasksWithRequirements.length}`);
-    
+
     // 完全なデータを保存
     fs.writeFileSync('data/tarkov-tasks.json', JSON.stringify(data.data, null, 2));
     console.log('✅ 依存関係を含む完全データを保存: data/tarkov-tasks.json');
-    
+
     // ====================
     // FiRアイテムの処理
     // ====================
     console.log('\n📦 FiRアイテムデータを処理中...\n');
-    
+
     // FiRアイテムが必要なタスクをフィルタリング
     const tasksRequiringFiR = tasks.filter(task => {
-      return task.objectives.some(obj => 
+      return task.objectives.some(obj =>
         obj.type === 'giveItem' && obj.foundInRaid === true
       );
     });
-    
+
     console.log(`✅ FiRアイテムが必要なタスク数: ${tasksRequiringFiR.length}`);
-    
+
     // FiRアイテムのリストを作成（重複削除）
     const firItemsMap = new Map();
     const firItemsByTask = [];
-    
+
     tasksRequiringFiR.forEach(task => {
-      const firObjectives = task.objectives.filter(obj => 
+      const firObjectives = task.objectives.filter(obj =>
         obj.type === 'giveItem' && obj.foundInRaid === true
       );
-      
+
       const taskFirItems = [];
-      
+
       firObjectives.forEach(objective => {
         // itemまたはitemsフィールドからアイテムを抽出
         const items = objective.item ? [objective.item] : (objective.items || []);
-        
+
         items.forEach(item => {
           if (item) {
             // 全体のアイテムマップに追加
@@ -157,7 +174,7 @@ fetch(url, {
                 requiredByTasks: []
               });
             }
-            
+
             // タスク別のリストに追加
             taskFirItems.push({
               itemId: item.id,
@@ -167,7 +184,7 @@ fetch(url, {
               optional: objective.optional || false,
               objectiveDescription: objective.description
             });
-            
+
             // アイテムマップにタスク情報を追加
             const itemEntry = firItemsMap.get(item.id);
             itemEntry.requiredByTasks.push({
@@ -181,7 +198,7 @@ fetch(url, {
           }
         });
       });
-      
+
       if (taskFirItems.length > 0) {
         firItemsByTask.push({
           taskId: task.id,
@@ -199,7 +216,7 @@ fetch(url, {
         });
       }
     });
-    
+
     // FiRデータを保存
     const firOutputData = {
       summary: {
@@ -209,24 +226,24 @@ fetch(url, {
         generatedAt: new Date().toISOString()
       },
       itemsByTask: firItemsByTask.sort((a, b) => a.minPlayerLevel - b.minPlayerLevel),
-      itemsIndex: Array.from(firItemsMap.values()).sort((a, b) => 
+      itemsIndex: Array.from(firItemsMap.values()).sort((a, b) =>
         a.name.localeCompare(b.name)
       )
     };
-    
+
     fs.writeFileSync(
-      'data/tarkov-fir-items.json', 
+      'data/tarkov-fir-items.json',
       JSON.stringify(firOutputData, null, 2)
     );
     console.log('✅ FiRアイテムデータを保存: data/tarkov-fir-items.json');
     console.log(`   ・タスク別FiRアイテムリスト: ${firItemsByTask.length}件`);
     console.log(`   ・ユニークFiRアイテム: ${firItemsMap.size}種類`);
-    
+
     // 最も多くのタスクで必要とされるアイテムTOP5
     const sortedByTaskCount = Array.from(firItemsMap.values())
       .sort((a, b) => b.requiredByTasks.length - a.requiredByTasks.length)
       .slice(0, 5);
-    
+
     console.log('\n📋 最も多くのタスクで必要なFiRアイテム TOP5:\n');
     sortedByTaskCount.forEach((item, index) => {
       console.log(`${index + 1}. ${item.name} (${item.shortName})`);
@@ -235,7 +252,7 @@ fetch(url, {
       console.log(`   合計必要数: ${totalCount}`);
       console.log(`   平均価格: ₽${item.avg24hPrice.toLocaleString()}\n`);
     });
-    
+
     // 依存関係がある最初の3つのタスクを表示
     console.log('📋 依存関係があるタスクの例:\n');
     tasksWithRequirements.slice(0, 3).forEach((task, index) => {

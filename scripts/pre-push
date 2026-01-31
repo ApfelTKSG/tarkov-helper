@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Git pre-push hook: プッシュ前に本番ビルドをテスト
+
+echo "🔍 プッシュ前にDockerで本番ビルドをテスト中..."
+
+# Dockerビルドテストを実行
+docker-compose --profile test run --rm build-test
+
+# ビルドが失敗した場合はプッシュを中止
+if [ $? -ne 0 ]; then
+  echo "❌ ビルドテストが失敗しました。修正してから再度プッシュしてください。"
+  exit 1
+fi
+
+echo "✅ ビルドテスト成功！プッシュを続行します..."
+exit 0
