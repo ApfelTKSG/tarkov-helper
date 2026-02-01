@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -711,7 +710,6 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   return (
     <>
       <div className="relative w-full h-full bg-gray-900 rounded-lg border border-gray-700">
-        <Controls className="!bg-gray-800 !border-gray-700 [&>button]:!fill-gray-300 [&>button:hover]:!bg-gray-700" />
         <style jsx global>{`
           .react-flow__edge {
             pointer-events: none !important;
