@@ -18,8 +18,10 @@ import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
 import TaskDetailModal from './TaskDetailModal';
 import { FirItemsData, TaskFirItem, FirItemDetail } from '../types/firItem';
-import Image from 'next/image';
 import { traderNameToSlug } from '../lib/traderSlug';
+import { useUserLevel } from '../context/UserLevelContext';
+import { useFilterMode } from '../context/FilterModeContext';
+import Image from 'next/image';
 
 interface TaskTreeViewProps {
   tasks: Task[];
@@ -34,6 +36,8 @@ interface TaskNodeData {
   task: Task;
   isCompleted: boolean;
   isLocked: boolean;
+  levelLocked: boolean; // レベル不足によるロック
+  userLevel: number;
   isCollectorRequirement: boolean;
   isLightkeeperRequirement: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
@@ -53,6 +57,8 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     task,
     isCompleted,
     isLocked,
+    levelLocked,
+    userLevel,
     isCollectorRequirement,
     isLightkeeperRequirement,
     crossTraderRequirements,
@@ -80,24 +86,27 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         }}
         className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative group`}
         style={{
-          background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
+          background: (isLocked || levelLocked) ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
           border: `2px solid ${isHovered ? '#fbbf24' :
             isLocked ? '#ef4444' :
-              isCompleted ? '#22c55e' :
-                task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+              levelLocked ? '#ef4444' : // Level Lock same red as Prereq Lock
+                isCompleted ? '#22c55e' :
+                  task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
             }`,
           borderRadius: '8px',
           padding: '12px',
           width: 280,
-          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
+          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1, // Level Locked (only) stays Opacity 1
           boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
           transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'all 0.2s ease-in-out',
         }}
       >
         <div className="flex items-center gap-2 mb-1">
-          {isLocked ? (
-            <div className="text-red-500 flex-shrink-0">🔒</div>
+          {isLocked || levelLocked ? (
+            <div className="flex items-center gap-1">
+              <div className="text-red-500 font-bold flex-shrink-0">🔒</div>
+            </div>
           ) : (
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-green-500' : 'bg-gray-400'
               }`}></div>
@@ -170,8 +179,8 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           )
         }
 
-        <div className="text-xs text-gray-600">
-          {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
+        <div className={`text-xs font-mono mt-2 text-right ${levelLocked ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+          {levelLocked && !isLocked && <span className="mr-1">⚠️</span>}Req Lv.{task.minPlayerLevel > 0 ? task.minPlayerLevel : 1}
         </div>
         {
           crossTraderRequirements.length > 0 && (
@@ -213,12 +222,14 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
-import { useFilterMode } from '../context/FilterModeContext';
+
 
 function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialShowFirItems }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  // User Level Context
+  const { userLevel } = useUserLevel();
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
   const showFirItems = initialShowFirItems || false;
@@ -558,7 +569,9 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
-      const isLocked = uncompletedRequirements.length > 0;
+      const hasReqLock = uncompletedRequirements.length > 0;
+      const levelLocked = task.minPlayerLevel > userLevel;
+      const isLocked = hasReqLock; // 従来のロック（前提タスク）
 
       // 別トレーダーの前提タスクを抽出（Mapで高速検索）
       const crossTraderRequirements = uncompletedRequirements
@@ -578,6 +591,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           task,
           isCompleted,
           isLocked,
+          levelLocked,
+          userLevel,
           isCollectorRequirement,
           isLightkeeperRequirement,
           crossTraderRequirements,

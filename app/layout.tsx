@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { FilterModeProvider } from "./context/FilterModeContext";
+import { UserLevelProvider } from "./context/UserLevelContext";
 
 export default function RootLayout({
   children,
@@ -29,9 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <FilterModeProvider>
-          {children}
-        </FilterModeProvider>
+        <UserLevelProvider>
+          <FilterModeProvider>
+            {children}
+          </FilterModeProvider>
+        </UserLevelProvider>
       </body>
     </html>
   );
