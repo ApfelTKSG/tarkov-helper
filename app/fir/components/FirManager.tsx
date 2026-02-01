@@ -7,6 +7,7 @@ import { FirItemsData, FirItemDetail } from '@/app/types/firItem';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import Link from 'next/link';
 import { useFilterMode } from '@/app/context/FilterModeContext';
+import { useUserLevel } from '@/app/context/UserLevelContext';
 
 interface FirManagerProps {
     firData: FirItemsData;
@@ -17,14 +18,21 @@ interface ItemStatus {
     item: FirItemDetail;
     totalNeeded: number;
     remainingNeeded: number;
+    minReqLevel: number; // 最低要求レベル（未完了タスクの中で）
+    hasActiveTask: boolean; // 受注可能（レベル到達＆未完了）なタスクがあるか
     relatedTasks: Array<{
         taskId: string;
         taskName: string;
         trader: string;
         count: number;
         isCompleted: boolean;
+        isCollectorRequirement?: boolean;
+        isLightkeeperRequirement?: boolean;
+        minPlayerLevel: number;
     }>;
 }
+
+type SortOption = 'default' | 'count-desc' | 'count-asc' | 'level-asc';
 
 export default function FirManager({ firData, filterMode = 'all' }: FirManagerProps) {
     const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
@@ -32,7 +40,12 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     const [showCompleted, setShowCompleted] = useState(false);
     // Global Filter State
     const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
+    const { userLevel } = useUserLevel();
+
+    // Local Filter/Sort State
     const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+    const [sortOption, setSortOption] = useState<SortOption>('default');
+    const [onlyActive, setOnlyActive] = useState(false); // 現在受注可能なタスクのみ
 
     // Load completed tasks from localStorage
     useEffect(() => {
@@ -58,6 +71,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                 isCompleted: completedTasks.has(req.taskId),
                 isCollectorRequirement: req.isCollectorRequirement,
                 isLightkeeperRequirement: req.isLightkeeperRequirement,
+                minPlayerLevel: req.minPlayerLevel,
             })).filter(task => {
                 // 基本フィルター（除外ロジック）
                 if (filterMode === 'exclude-collector' && task.taskName === 'Collector') return false;
@@ -83,26 +97,30 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                 0
             );
 
+            // 未完了タスクの中で最も低い要求レベルを取得
+            const uncompletedTasks = relatedTasks.filter(t => !t.isCompleted);
+            const minReqLevel = uncompletedTasks.length > 0
+                ? Math.min(...uncompletedTasks.map(t => t.minPlayerLevel))
+                : 99;
+
+            // 受注可能（レベル到達＆未完了）なタスクがあるか
+            const hasActiveTask = uncompletedTasks.some(t => t.minPlayerLevel <= userLevel);
+
             return {
                 item,
                 totalNeeded,
                 remainingNeeded,
+                minReqLevel,
+                hasActiveTask,
                 relatedTasks,
             };
         })
-            .filter(status => status.totalNeeded > 0) // フィルタリングの結果、必要数が0になったアイテムは除外
-            .sort((a, b) => {
-                // Sort by remaining needed (desc), then by total needed (desc)
-                if (a.remainingNeeded !== b.remainingNeeded) {
-                    return b.remainingNeeded - a.remainingNeeded;
-                }
-                return b.totalNeeded - a.totalNeeded;
-            });
-    }, [firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode]);
+            .filter(status => status.totalNeeded > 0); // ここでのソートは削除し、filteredItemsで行う
+    }, [firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode, userLevel]);
 
-    // Filter items
+    // Filter and Sort items
     const filteredItems = useMemo(() => {
-        return processedItems.filter((status) => {
+        let result = processedItems.filter((status) => {
             // Search filter
             const matchesSearch =
                 searchQuery === '' ||
@@ -112,9 +130,35 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
             // Completion filter
             const matchesCompletion = showCompleted || status.remainingNeeded > 0;
 
-            return matchesSearch && matchesCompletion;
+            // Active (Unlocked) filter
+            const matchesActive = !onlyActive || status.hasActiveTask;
+
+            return matchesSearch && matchesCompletion && matchesActive;
         });
-    }, [processedItems, searchQuery, showCompleted]);
+
+        // Sort items
+        return result.sort((a, b) => {
+            switch (sortOption) {
+                case 'count-desc':
+                    return b.remainingNeeded - a.remainingNeeded || b.totalNeeded - a.totalNeeded;
+                case 'count-asc':
+                    return a.remainingNeeded - b.remainingNeeded || a.totalNeeded - b.totalNeeded;
+                case 'level-asc':
+                    // レベルが低い順。完了済み(99)は後ろに
+                    return a.minReqLevel - b.minReqLevel || b.remainingNeeded - a.remainingNeeded;
+                case 'default':
+                default:
+                    // Default: Min Level (Asc) -> Remaining Needed (Desc)
+                    if (a.minReqLevel !== b.minReqLevel) {
+                        return a.minReqLevel - b.minReqLevel;
+                    }
+                    if (a.remainingNeeded !== b.remainingNeeded) {
+                        return b.remainingNeeded - a.remainingNeeded;
+                    }
+                    return b.totalNeeded - a.totalNeeded;
+            }
+        });
+    }, [processedItems, searchQuery, showCompleted, sortOption, onlyActive]);
 
     const toggleExpand = (itemId: string) => {
         setExpandedItemId(expandedItemId === itemId ? null : itemId);
@@ -124,16 +168,16 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
         <div className="space-y-6">
             {/* Controls */}
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col md:flex-row gap-4 justify-between items-center sticky top-20 z-20 shadow-lg">
-                <div className="relative w-full md:w-96">
+                <div className="relative w-full md:w-80">
                     <input
                         type="text"
-                        placeholder="アイテム名または略称で検索..."
+                        placeholder="検索..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-gray-700 text-white border border-gray-600 rounded px-4 py-2 pl-10 focus:outline-none focus:border-yellow-500"
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded px-4 py-2 pl-10 focus:outline-none focus:border-yellow-500 text-sm"
                     />
                     <svg
-                        className="w-5 h-5 text-gray-400 absolute left-3 top-2.5"
+                        className="w-4 h-4 text-gray-400 absolute left-3 top-2.5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -142,7 +186,33 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     </svg>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Sort Dropdown */}
+                    <select
+                        value={sortOption}
+                        onChange={(e) => setSortOption(e.target.value as SortOption)}
+                        className="bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-yellow-500"
+                    >
+                        <option value="default">おすすめ順</option>
+                        <option value="count-desc">個数が多い順</option>
+                        <option value="count-asc">個数が少ない順</option>
+                        <option value="level-asc">要求Lvが低い順</option>
+                    </select>
+
+                    {/* Active Filter Toggle */}
+                    <button
+                        onClick={() => setOnlyActive(!onlyActive)}
+                        className={`px-3 py-2 rounded border text-sm transition-colors flex items-center gap-2 ${onlyActive
+                            ? 'bg-green-600/20 border-green-500 text-green-400'
+                            : 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-600'
+                            }`}
+                        title="現在受注可能なタスク（レベル到達済み）のアイテムのみ表示"
+                    >
+                        <span className={onlyActive ? 'opacity-100' : 'opacity-50'}>🔓</span>
+                        <span>受注可のみ</span>
+                    </button>
+
+                    <div className="h-6 w-px bg-gray-600 mx-2 hidden md:block"></div>
                     <div className="text-sm text-gray-400 w-32 flex-shrink-0">
                         表示: <span className="font-bold text-white">{filteredItems.length}</span> / {processedItems.length}
                     </div>
