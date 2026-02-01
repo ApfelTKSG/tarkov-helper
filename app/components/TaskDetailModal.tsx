@@ -213,25 +213,40 @@ export default function TaskDetailModal({
         {/* アクションボタン */}
         <div className="flex flex-col gap-3 mt-6">
           <div className="flex gap-3">
-            <button
-              onClick={() => {
-                onToggleComplete();
-                onClose();
-              }}
-              disabled={isLocked}
-              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${isLocked
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : isCompleted
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-            >
-              {isLocked
-                ? '🔒 前提タスクが未完了'
-                : isCompleted
+            {isLocked ? (
+              // Locked: Show Force Complete Button
+              <button
+                onClick={() => {
+                  if (onForceComplete && window.confirm(
+                    `このタスクとすべての前提タスクを完了済みにしますか？\n\n「${task.name}」を含む、すべての依存タスクが完了済みとしてマークされます。`
+                  )) {
+                    onForceComplete && onForceComplete();
+                    onClose();
+                  }
+                }}
+                className="flex-1 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="text-xl">🔓</span>
+                <span>依存タスクを含めて強制完了にする</span>
+              </button>
+            ) : (
+              // Unlocked: Show Standard Complete Button
+              <button
+                onClick={() => {
+                  onToggleComplete();
+                  onClose();
+                }}
+                className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${isCompleted
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+              >
+                {isCompleted
                   ? '✓ 完了済み（クリックで未完了に）'
                   : 'タスクを完了にする'}
-            </button>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 const cleanedName = task.name
@@ -242,27 +257,11 @@ export default function TaskDetailModal({
                 window.open(wikiUrl, '_blank');
               }}
               className="py-3 px-6 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+              title="Wikiを開く"
             >
               Wiki
             </button>
           </div>
-
-          {/* 強制完了ボタン */}
-          {isLocked && onForceComplete && (
-            <button
-              onClick={() => {
-                if (window.confirm(
-                  `このタスクとすべての前提タスクを完了済みにしますか？\n\n「${task.name}」を含む、すべての依存タスクが完了済みとしてマークされます。\n\nこの操作は、アプリを初めて使用する際に便利ですが、実際のゲーム進行状況とは異なる場合があります。`
-                )) {
-                  onForceComplete();
-                  onClose();
-                }
-              }}
-              className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition-colors"
-            >
-              🔓 依存タスクを含めて強制完了にする
-            </button>
-          )}
         </div>
       </div>
     </div>
