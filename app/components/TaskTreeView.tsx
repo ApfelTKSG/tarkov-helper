@@ -11,8 +11,10 @@ import ReactFlow, {
   MarkerType,
   NodeProps,
   Handle,
+
   useReactFlow,
   ReactFlowProvider,
+  Panel,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
@@ -130,51 +132,44 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         </div>
 
         {
-          showFirItems && (
+          showFirItems && firItems && firItems.length > 0 && (
             <div className="flex-1 mt-2">
-              {firItems && firItems.length > 0 ? (
-                <div className="space-y-1.5">
-                  {firItems.slice(0, 6).map((item, idx) => {
-                    const details = itemDetailsMap?.get(item.itemId);
-                    return (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
-                        {details?.iconLink && (
-                          <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
-                            <Image
-                              src={details.iconLink}
-                              alt={item.itemName}
-                              fill
-                              className="object-contain p-0.5"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
-                          <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
-                            {item.itemShortName || item.itemName}
-                          </div>
-                          <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
-                            x{item.count}
-                          </div>
+              <div className="space-y-1.5">
+                {firItems.slice(0, 6).map((item, idx) => {
+                  const details = itemDetailsMap?.get(item.itemId);
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
+                      {details?.iconLink && (
+                        <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
+                          <Image
+                            src={details.iconLink}
+                            alt={item.itemName}
+                            fill
+                            className="object-contain p-0.5"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
+                        <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
+                          {item.itemShortName || item.itemName}
+                        </div>
+                        <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
+                          x{item.count}
                         </div>
                       </div>
-                    );
-                  })}
-                  {firItems.length > 6 && (
-                    <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
-                      + 他 {firItems.length - 6} アイテム...
                     </div>
-                  )}
-                  <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                    クリックして詳細・チェック
+                  );
+                })}
+                {firItems.length > 6 && (
+                  <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
+                    + 他 {firItems.length - 6} アイテム...
                   </div>
+                )}
+                <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  クリックして詳細・チェック
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded text-gray-400 border border-gray-100">
-                  <span className="text-sm opacity-50">✓</span>
-                  <span className="text-xs italic">FiR不要</span>
-                </div>
-              )}
+              </div>
             </div>
           )
         }
@@ -232,7 +227,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const { userLevel } = useUserLevel();
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
-  const showFirItems = initialShowFirItems || false;
+
+
 
   // FiRデータのマップ作成
   const firItemsMap = useMemo(() => {
@@ -488,7 +484,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
         // --- 高さ推定ロジック ---
         let estimatedHeight = 150; // デフォルト最小高さ
 
-        if (showFirItems) {
+        if (true) {
           // 基本ヘッダー・パディング等: 80px
           // FiRアイテム
           const items = firItemsMap.get(task.id) || [];
@@ -598,7 +594,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           crossTraderRequirements,
           firItems: firItemsMap.get(task.id),
           itemDetailsMap,
-          showFirItems,
+          showFirItems: true,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {

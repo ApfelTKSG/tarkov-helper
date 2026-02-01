@@ -73,12 +73,7 @@ export default async function TraderPage({ params }: PageProps) {
           <div className="flex items-center gap-4 mb-3">
             <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
             <h1 className="text-4xl font-bold text-white">{traderName}</h1>
-            <Link
-              href={`/traders/${traderSlug}/fir`}
-              className="ml-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors flex items-center gap-2"
-            >
-              📦 FiRタスクのみ表示
-            </Link>
+
             <div className="flex-1 ml-8">
               <ProgressStats tasks={traderTasks} traderName={traderName} />
             </div>
