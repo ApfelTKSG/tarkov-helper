@@ -125,7 +125,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
             <div className="flex-1 mt-2">
               {firItems && firItems.length > 0 ? (
                 <div className="space-y-1.5">
-                  {firItems.slice(0, 2).map((item, idx) => {
+                  {firItems.slice(0, 6).map((item, idx) => {
                     const details = itemDetailsMap?.get(item.itemId);
                     return (
                       <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
@@ -151,9 +151,9 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
                       </div>
                     );
                   })}
-                  {firItems.length > 2 && (
+                  {firItems.length > 6 && (
                     <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
-                      + 他 {firItems.length - 2} アイテム...
+                      + 他 {firItems.length - 6} アイテム...
                     </div>
                   )}
                   <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
@@ -449,67 +449,102 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
       const level = levelMapping.get(originalLevel) || 0;
       const tasksInLevel = levelGroups.get(level) || [];
 
-      // 前提タスクのY座標の最小値でソート（前提タスクが上にあるタスクから優先）
+      // 前提タスクのY座標の最小値でソート（処理順序）
       tasksInLevel.sort((a, b) => {
         const aRequirements = a.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
         const bRequirements = b.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
 
-        const aMinY = aRequirements.length > 0
-          ? Math.min(...aRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
-          : -1;
-        const bMinY = bRequirements.length > 0
-          ? Math.min(...bRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
-          : -1;
+        const aCenterY = aRequirements.length > 0
+          ? aRequirements.reduce((sum, req) => sum + (taskPositions.get(req.task.id)?.y || 0), 0) / aRequirements.length
+          : Infinity;
 
-        return aMinY - bMinY;
+        const bCenterY = bRequirements.length > 0
+          ? bRequirements.reduce((sum, req) => sum + (taskPositions.get(req.task.id)?.y || 0), 0) / bRequirements.length
+          : Infinity;
+
+        if (aCenterY === Infinity && bCenterY === Infinity) {
+          return a.id.localeCompare(b.id);
+        }
+        return aCenterY - bCenterY;
       });
+
+      // 積み上げ配置用変数
+      let lastBottom = -Infinity;
 
       tasksInLevel.forEach(task => {
         const xPos = level * 350;
 
-        // このトレーダー内の前提タスクを取得
+        // --- 高さ推定ロジック ---
+        let estimatedHeight = 150; // デフォルト最小高さ
+
+        if (showFirItems) {
+          // 基本ヘッダー・パディング等: 80px
+          // FiRアイテム
+          const items = firItemsMap.get(task.id) || [];
+          const visibleItemCount = Math.min(items.length, 6);
+          const hasMoreItems = items.length > 6;
+          // 1アイテムあたり36px
+          const itemsHeight = (visibleItemCount * 36) + (hasMoreItems ? 24 : 0);
+
+          // "クリックして詳細/FiR不要" エリア
+          const footerHeight = 24;
+
+          // 他トレーダー要件 (crossTraderRequirements)
+          const uncompletedReqs = task.taskRequirements.filter(r => !completedTasks.has(r.task.id));
+          const crossReqs = uncompletedReqs.filter(r => {
+            const t = taskMap.get(r.task.id);
+            return t && t.trader.name !== traderName;
+          });
+          const crossReqHeight = crossReqs.length > 0
+            ? (Math.min(crossReqs.length, 2) * 24 + 40) // タイトル + リスト
+            : 0;
+
+          // 合計 (ベース + アイテム + フッター + クロス要件 + マージン)
+          estimatedHeight = 80 + itemsHeight + footerHeight + crossReqHeight + 20;
+
+          // ノードの実際のスタイル(padding等)を考慮し、最低値を確保
+          if (items.length === 0) estimatedHeight = Math.max(estimatedHeight, 100);
+        } else {
+          // FiR非表示モード時はシンプル
+          const uncompletedReqs = task.taskRequirements.filter(r => !completedTasks.has(r.task.id));
+          const crossReqs = uncompletedReqs.filter(r => taskMap.get(r.task.id)?.trader.name !== traderName);
+          if (crossReqs.length > 0) {
+            estimatedHeight = 150 + (Math.min(crossReqs.length, 2) * 24);
+          }
+        }
+
+        // --- 理想のY座標（親の平均位置） ---
         const traderRequirements = task.taskRequirements.filter(req =>
           traderTaskIds.has(req.task.id)
         );
 
-        let yPos = 0;
+        let desiredY = 0;
         if (traderRequirements.length > 0) {
-          // 前提タスクのY座標の平均を計算
           const parentYPositions = traderRequirements
             .map(req => taskPositions.get(req.task.id)?.y)
             .filter((y): y is number => y !== undefined);
 
           if (parentYPositions.length > 0) {
-            yPos = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
+            desiredY = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
           }
         } else {
-          // 前提タスクがない場合は、そのレベルの既存タスク数に基づいて配置
-          const usedYPositions = levelYPositions.get(level) || [];
-          yPos = usedYPositions.length * 150;
+          // 親がない場合
+          desiredY = lastBottom === -Infinity ? 0 : lastBottom + 40;
         }
 
-        // Y座標の重複を避ける
-        const usedYPositions = levelYPositions.get(level) || [];
-        const minSpacing = 150;
+        // --- 配置決定 (積み上げ) ---
+        const MIN_GAP = 40; // ノード間の最低隙間
+        let actualY = desiredY;
 
-        // 既存の位置と近すぎる場合は調整
-        let adjustedY = yPos;
-        let attempts = 0;
-        while (attempts < 100) {
-          const tooClose = usedYPositions.some(usedY =>
-            Math.abs(adjustedY - usedY) < minSpacing
-          );
-
-          if (!tooClose) break;
-
-          // 下方向にずらす
-          adjustedY += minSpacing;
-          attempts++;
+        // もし理想位置が、直前のタスクに被るなら押し下げる
+        if (lastBottom > -Infinity) {
+          if (actualY < lastBottom + MIN_GAP) {
+            actualY = lastBottom + MIN_GAP;
+          }
         }
 
-        taskPositions.set(task.id, { x: xPos, y: adjustedY });
-        usedYPositions.push(adjustedY);
-        levelYPositions.set(level, usedYPositions);
+        taskPositions.set(task.id, { x: xPos, y: actualY });
+        lastBottom = actualY + estimatedHeight;
       });
     });
 
