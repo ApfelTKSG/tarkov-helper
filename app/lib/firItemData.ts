@@ -12,6 +12,8 @@ interface TaskData {
     minPlayerLevel: number;
     experience: number;
     wikiLink?: string;
+    isCollectorRequirement?: boolean;
+    isLightkeeperRequirement?: boolean;
     taskRequirements: Array<{
       task: { id: string; name: string };
       status: string[];
@@ -53,33 +55,33 @@ export function getFirItemsData(): FirItemsData {
   if (cachedFirData) {
     return cachedFirData;
   }
-  
+
   const filePath = path.join(process.cwd(), 'data', 'tarkov-tasks.json');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const taskData: TaskData = JSON.parse(fileContent);
-  
+
   // FiRアイテムが必要なタスクをフィルタリング
   const tasksRequiringFiR = taskData.tasks.filter(task => {
-    return task.objectives.some(obj => 
+    return task.objectives.some(obj =>
       obj.type === 'giveItem' && obj.foundInRaid === true
     );
   });
-  
+
   // FiRアイテムのリストを作成（重複削除）
   const firItemsMap = new Map<string, FirItemDetail>();
   const firItemsByTask: TaskWithFirItems[] = [];
-  
+
   tasksRequiringFiR.forEach(task => {
-    const firObjectives = task.objectives.filter(obj => 
+    const firObjectives = task.objectives.filter(obj =>
       obj.type === 'giveItem' && obj.foundInRaid === true
     );
-    
+
     const taskFirItems: TaskFirItem[] = [];
-    
+
     firObjectives.forEach(objective => {
       // itemまたはitemsフィールドからアイテムを抽出
       const items = objective.item ? [objective.item] : (objective.items || []);
-      
+
       items.forEach(item => {
         if (item) {
           // 全体のアイテムマップに追加
@@ -97,7 +99,7 @@ export function getFirItemsData(): FirItemsData {
               requiredByTasks: []
             });
           }
-          
+
           // タスク別のリストに追加
           taskFirItems.push({
             itemId: item.id,
@@ -107,7 +109,7 @@ export function getFirItemsData(): FirItemsData {
             optional: objective.optional || false,
             objectiveDescription: objective.description
           });
-          
+
           // アイテムマップにタスク情報を追加
           const itemEntry = firItemsMap.get(item.id);
           if (itemEntry) {
@@ -123,14 +125,16 @@ export function getFirItemsData(): FirItemsData {
                 trader: task.trader.name,
                 minPlayerLevel: task.minPlayerLevel,
                 count: objective.count || 1,
-                optional: objective.optional || false
+                optional: objective.optional || false,
+                isCollectorRequirement: task.isCollectorRequirement,
+                isLightkeeperRequirement: task.isLightkeeperRequirement
               });
             }
           }
         }
       });
     });
-    
+
     if (taskFirItems.length > 0) {
       firItemsByTask.push({
         taskId: task.id,
@@ -148,7 +152,7 @@ export function getFirItemsData(): FirItemsData {
       });
     }
   });
-  
+
   cachedFirData = {
     summary: {
       totalTasks: taskData.tasks.length,
@@ -157,11 +161,11 @@ export function getFirItemsData(): FirItemsData {
       generatedAt: new Date().toISOString()
     },
     itemsByTask: firItemsByTask.sort((a, b) => a.minPlayerLevel - b.minPlayerLevel),
-    itemsIndex: Array.from(firItemsMap.values()).sort((a, b) => 
+    itemsIndex: Array.from(firItemsMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     )
   };
-  
+
   return cachedFirData;
 }
 
@@ -201,13 +205,13 @@ export function getSortedItemsByPrice() {
 export function getItemsByTrader(traderName: string) {
   const data = getFirItemsData();
   const itemIds = new Set<string>();
-  
+
   data.itemsByTask
     .filter(task => task.trader === traderName)
     .forEach(task => {
       task.firItems.forEach(item => itemIds.add(item.itemId));
     });
-  
+
   return data.itemsIndex.filter(item => itemIds.has(item.id));
 }
 
@@ -215,12 +219,12 @@ export function getItemsByTrader(traderName: string) {
 export function getItemsByLevelRange(minLevel: number, maxLevel: number) {
   const data = getFirItemsData();
   const itemIds = new Set<string>();
-  
+
   data.itemsByTask
     .filter(task => task.minPlayerLevel >= minLevel && task.minPlayerLevel <= maxLevel)
     .forEach(task => {
       task.firItems.forEach(item => itemIds.add(item.itemId));
     });
-  
+
   return data.itemsIndex.filter(item => itemIds.has(item.id));
 }

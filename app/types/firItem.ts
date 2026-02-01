@@ -7,6 +7,8 @@ export interface FirItemRequiredByTask {
   minPlayerLevel: number;
   count: number;
   optional: boolean;
+  isCollectorRequirement?: boolean;
+  isLightkeeperRequirement?: boolean;
 }
 
 export interface FirItemDetail {

@@ -35,7 +35,16 @@ export default function Home() {
 
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-6">トレーダー一覧</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">トレーダー一覧</h2>
+            <Link
+              href="/fir"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg hover:shadow-blue-500/30"
+            >
+              <span className="text-xl">📦</span>
+              FiRアイテム管理へ
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {traders.map(traderName => {
