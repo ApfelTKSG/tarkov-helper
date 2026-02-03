@@ -880,6 +880,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           }}
           collectedFirItems={collectedFirItems}
           onToggleFirItem={(itemId) => toggleFirItemCollected(selectedTask.id, itemId)}
+          completedTasks={completedTasks}
         />
       )}
     </>

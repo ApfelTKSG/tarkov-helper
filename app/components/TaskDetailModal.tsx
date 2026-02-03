@@ -19,6 +19,7 @@ interface TaskDetailModalProps {
   itemDetailsMap?: Map<string, FirItemDetail>;
   collectedFirItems: Set<string>;
   onToggleFirItem: (itemId: string) => void;
+  completedTasks: Set<string>;
 }
 
 export default function TaskDetailModal({
@@ -35,6 +36,7 @@ export default function TaskDetailModal({
   itemDetailsMap,
   collectedFirItems,
   onToggleFirItem,
+  completedTasks,
 }: TaskDetailModalProps) {
   // 内部状態（useState/useEffect）を削除し、Propsから受け取ったデータを使用する
 
@@ -168,21 +170,28 @@ export default function TaskDetailModal({
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-orange-400 mb-2">他トレーダーの前提</h3>
             <div className="space-y-2">
-              {crossTraderRequirements.map((reqTask, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-400 cursor-pointer p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-                  onClick={() => {
-                    onNavigateToTrader(reqTask.trader.name, reqTask.id);
-                    onClose();
-                  }}
-                >
-                  <span className="bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
-                    {reqTask.trader.name}
-                  </span>
-                  <span className="font-semibold">{reqTask.name}</span>
-                </div>
-              ))}
+              {crossTraderRequirements.map((reqTask, idx) => {
+                const isReqCompleted = completedTasks.has(reqTask.id);
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-colors ${isReqCompleted
+                        ? 'bg-gray-800/50 text-gray-400 opacity-70'
+                        : 'bg-gray-700 text-orange-400 hover:bg-gray-600 hover:text-orange-300'
+                      }`}
+                    onClick={() => {
+                      onNavigateToTrader(reqTask.trader.name, reqTask.id);
+                      onClose();
+                    }}
+                  >
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${isReqCompleted ? 'bg-gray-600 text-gray-300' : 'bg-orange-600 text-white'}`}>
+                      {reqTask.trader.name}
+                    </span>
+                    <span className={`font-semibold ${isReqCompleted ? 'line-through' : ''}`}>{reqTask.name}</span>
+                    {isReqCompleted && <span className="ml-auto text-green-500 font-bold">✓</span>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
