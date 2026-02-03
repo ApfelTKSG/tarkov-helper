@@ -1,12 +1,14 @@
 'use client';
 
 import { useFilterMode } from '../context/FilterModeContext';
+import { useUserLevel } from '../context/UserLevelContext';
 
 export default function HomeHeaderControls() {
     const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
+    const { userLevel, setUserLevel } = useUserLevel();
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2">
             {/* Kappa Mode Switch */}
             <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -38,6 +40,41 @@ export default function HomeHeaderControls() {
                     </div>
                 </label>
             </div>
+
+            {/* User Level Input */}
+            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600">
+                <label className="flex items-center gap-2 select-none w-full">
+                    <span className="text-sm font-bold text-gray-300 w-12 text-right">Lv.</span>
+                    <input
+                        type="number"
+                        min="1"
+                        max="79"
+                        value={userLevel}
+                        onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val)) setUserLevel(val);
+                        }}
+                        className="w-16 bg-gray-800 text-white font-bold text-center border border-gray-600 rounded focus:outline-none focus:border-yellow-500"
+                    />
+                </label>
+            </div>
+
+            {/* Wipe Button */}
+            <button
+                onClick={() => {
+                    if (window.confirm('本当にワイプ（初期化）しますか？\n完了したタスクと設定レベルが全てリセットされます。この操作は取り消せません。')) {
+                        localStorage.removeItem('tarkov-completed-tasks');
+                        localStorage.removeItem('tarkov-user-level');
+                        localStorage.removeItem('tarkov-fir-collected');
+                        // リロードして反映
+                        window.location.reload();
+                    }
+                }}
+                className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-800 p-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                title="全データをリセット"
+            >
+                ⚠️ WIPE
+            </button>
         </div>
     );
 }

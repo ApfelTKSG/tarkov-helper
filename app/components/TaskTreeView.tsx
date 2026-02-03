@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -12,27 +11,42 @@ import ReactFlow, {
   MarkerType,
   NodeProps,
   Handle,
+
   useReactFlow,
   ReactFlowProvider,
+  Panel,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '../types/task';
 import TaskDetailModal from './TaskDetailModal';
+import { FirItemsData, TaskFirItem, FirItemDetail } from '../types/firItem';
 import { traderNameToSlug } from '../lib/traderSlug';
+import { useUserLevel } from '../context/UserLevelContext';
+import { useFilterMode } from '../context/FilterModeContext';
+import Image from 'next/image';
 
 interface TaskTreeViewProps {
   tasks: Task[];
   allTasks: Task[];
   traderName: string;
+  firItemsData?: FirItemsData;
+  initialShowFirItems?: boolean;
 }
+
 
 interface TaskNodeData {
   task: Task;
   isCompleted: boolean;
   isLocked: boolean;
+  levelLocked: boolean; // レベル不足によるロック
+  userLevel: number;
   isCollectorRequirement: boolean;
   isLightkeeperRequirement: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
+  firItems?: TaskFirItem[];
+  itemDetailsMap?: Map<string, FirItemDetail>;
+  collectedFirItems: Set<string>;
+  showFirItems: boolean;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
   onNavigateToTrader: (traderName: string, taskId: string) => void;
@@ -42,7 +56,24 @@ interface TaskNodeData {
 // カスタムタスクノードコンポーネント
 const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { task, isCompleted, isLocked, isCollectorRequirement, isLightkeeperRequirement, crossTraderRequirements, onToggleComplete, onHover, onNavigateToTrader, onClick } = data;
+  const {
+    task,
+    isCompleted,
+    isLocked,
+    levelLocked,
+    userLevel,
+    isCollectorRequirement,
+    isLightkeeperRequirement,
+    crossTraderRequirements,
+    firItems,
+    itemDetailsMap,
+    collectedFirItems,
+    showFirItems,
+    onToggleComplete,
+    onHover,
+    onNavigateToTrader,
+    onClick
+  } = data;
 
   return (
     <>
@@ -57,26 +88,29 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           setIsHovered(false);
           onHover(null);
         }}
-        className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
+        className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative group`}
         style={{
-          background: isLocked ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
+          background: (isLocked || levelLocked) ? '#fef2f2' : isCompleted ? '#f3f4f6' : '#ffffff',
           border: `2px solid ${isHovered ? '#fbbf24' :
             isLocked ? '#ef4444' :
-              isCompleted ? '#22c55e' :
-                task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+              levelLocked ? '#ef4444' : // Level Lock same red as Prereq Lock
+                isCompleted ? '#22c55e' :
+                  task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
             }`,
           borderRadius: '8px',
           padding: '12px',
           width: 280,
-          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1,
+          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1, // Level Locked (only) stays Opacity 1
           boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
           transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'all 0.2s ease-in-out',
         }}
       >
         <div className="flex items-center gap-2 mb-1">
-          {isLocked ? (
-            <div className="text-red-500 flex-shrink-0">🔒</div>
+          {isLocked || levelLocked ? (
+            <div className="flex items-center gap-1">
+              <div className="text-red-500 font-bold flex-shrink-0">🔒</div>
+            </div>
           ) : (
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-green-500' : 'bg-gray-400'
               }`}></div>
@@ -98,35 +132,88 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
             {task.name}
           </div>
         </div>
-        <div className="text-xs text-gray-600">
-          {task.experience > 0 && `${task.experience.toLocaleString()} XP`}
+
+        {
+          showFirItems && firItems && firItems.length > 0 && (
+            <div className="flex-1 mt-2">
+              <div className="space-y-1.5">
+                {firItems.slice(0, 6).map((item, idx) => {
+                  const details = itemDetailsMap?.get(item.itemId);
+                  const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
+                  const showAsCollected = isItemCollected || isCompleted;
+                  return (
+                    <div key={idx} className={`flex items-center gap-2 p-1 rounded border shadow-sm ${showAsCollected ? 'bg-green-100 border-green-300' : 'bg-gray-100/80 border-gray-200'}`}>
+                      {details?.iconLink && (
+                        <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
+                          {showAsCollected && (
+                            <div className="absolute inset-0 bg-green-500/50 z-10 flex items-center justify-center rounded">
+                              <span className="text-white font-bold text-xs">✓</span>
+                            </div>
+                          )}
+                          <Image
+                            src={details.iconLink}
+                            alt={item.itemName}
+                            fill
+                            className="object-contain p-0.5"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
+                        <div className={`text-[11px] font-bold truncate leading-tight mr-1 ${showAsCollected ? 'text-green-800 decoration-green-800' : 'text-gray-800'}`} title={item.itemName}>
+                          {item.itemShortName || item.itemName}
+                        </div>
+                        <div className={`text-[10px] font-semibold px-1 rounded ${showAsCollected ? 'text-green-700 bg-green-200' : 'text-blue-700 bg-blue-100'}`}>
+                          x{item.count}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {firItems.length > 6 && (
+                  <div className="text-[10px] text-gray-500 text-center font-medium bg-gray-100 rounded py-0.5">
+                    + 他 {firItems.length - 6} アイテム...
+                  </div>
+                )}
+                <div className="text-[10px] text-blue-600 text-center mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  クリックして詳細・チェック
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        <div className={`text-xs font-mono mt-2 text-right ${levelLocked ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+          {levelLocked && !isLocked && <span className="mr-1">⚠️</span>}Req Lv.{task.minPlayerLevel > 0 ? task.minPlayerLevel : 1}
         </div>
-        {crossTraderRequirements.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-orange-200">
-            <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
-            {crossTraderRequirements.slice(0, 2).map((req, idx) => (
-              <div
-                key={idx}
-                className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigateToTrader(req.task.trader.name, req.task.id);
-                }}
-                title={`${req.task.trader.name}のページへ移動`}
-              >
-                <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
-                  {req.task.trader.name}
-                </span>
-                {req.task.name}
-              </div>
-            ))}
-            {crossTraderRequirements.length > 2 && (
-              <div className="text-xs text-orange-600 font-semibold mt-1">
-                + 他 {crossTraderRequirements.length - 2} タスク
-              </div>
-            )}
-          </div>
-        )}
+        {
+          crossTraderRequirements.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-orange-200">
+              <div className="text-xs font-semibold text-orange-700 mb-1">他トレーダーの前提:</div>
+              {crossTraderRequirements.slice(0, 2).map((req, idx) => (
+                <div
+                  key={idx}
+                  className="text-xs mb-0.5 text-orange-600 font-semibold hover:underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigateToTrader(req.task.trader.name, req.task.id);
+                  }}
+                  title={`${req.task.trader.name}のページへ移動`}
+                >
+                  <span className="bg-orange-500 text-white px-1 py-0.5 rounded text-[10px] mr-1">
+                    {req.task.trader.name}
+                  </span>
+                  {req.task.name}
+                </div>
+              ))}
+              {crossTraderRequirements.length > 2 && (
+                <div className="text-xs text-orange-600 font-semibold mt-1">
+                  + 他 {crossTraderRequirements.length - 2} タスク
+                </div>
+              )}
+            </div>
+          )
+        }
       </div>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </>
@@ -139,14 +226,57 @@ const nodeTypes = {
   taskNode: TaskNode,
 };
 
-import { useFilterMode } from '../context/FilterModeContext';
 
-function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
+
+function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialShowFirItems }: TaskTreeViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  // User Level Context
+  const { userLevel, setUserLevel } = useUserLevel();
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
+
+  const [collectedFirItems, setCollectedFirItems] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const saved = localStorage.getItem('tarkov-fir-collected');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCollectedFirItems(new Set(parsed));
+      } catch (e) {
+        console.error('Failed to parse collected fir items:', e);
+      }
+    }
+  }, []);
+
+  const toggleFirItemCollected = useCallback((taskId: string, itemId: string) => {
+    const key = `${taskId}-${itemId}`;
+    setCollectedFirItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  }, []);
+
+
+
+  // FiRデータのマップ作成
+  const firItemsMap = useMemo(() => {
+    if (!firItemsData) return new Map();
+    return new Map(firItemsData.itemsByTask.map(t => [t.taskId, t.firItems]));
+  }, [firItemsData]);
+
+  const itemDetailsMap = useMemo(() => {
+    if (!firItemsData) return new Map();
+    return new Map(firItemsData.itemsIndex.map(i => [i.id, i]));
+  }, [firItemsData]);
 
   // localStorageから完了状態を読み込み
   useEffect(() => {
@@ -202,13 +332,19 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
   const forceCompleteTask = useCallback((taskId: string) => {
     const allRequiredTaskIds = getAllRequiredTasks(taskId);
 
+    // Lvも上げる処理
+    const targetTask = allTasks.find(t => t.id === taskId);
+    if (targetTask && targetTask.minPlayerLevel > userLevel) {
+      setUserLevel(targetTask.minPlayerLevel);
+    }
+
     setCompletedTasks((prev) => {
       const newCompleted = new Set(prev);
       allRequiredTaskIds.forEach(id => newCompleted.add(id));
       localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
       return newCompleted;
     });
-  }, [getAllRequiredTasks]);
+  }, [getAllRequiredTasks, allTasks, userLevel, setUserLevel]);
 
   // ノードとエッジを生成
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -363,67 +499,102 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
       const level = levelMapping.get(originalLevel) || 0;
       const tasksInLevel = levelGroups.get(level) || [];
 
-      // 前提タスクのY座標の最小値でソート（前提タスクが上にあるタスクから優先）
+      // 前提タスクのY座標の最小値でソート（処理順序）
       tasksInLevel.sort((a, b) => {
         const aRequirements = a.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
         const bRequirements = b.taskRequirements.filter(req => traderTaskIds.has(req.task.id));
 
-        const aMinY = aRequirements.length > 0
-          ? Math.min(...aRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
-          : -1;
-        const bMinY = bRequirements.length > 0
-          ? Math.min(...bRequirements.map(req => taskPositions.get(req.task.id)?.y ?? Infinity))
-          : -1;
+        const aCenterY = aRequirements.length > 0
+          ? aRequirements.reduce((sum, req) => sum + (taskPositions.get(req.task.id)?.y || 0), 0) / aRequirements.length
+          : Infinity;
 
-        return aMinY - bMinY;
+        const bCenterY = bRequirements.length > 0
+          ? bRequirements.reduce((sum, req) => sum + (taskPositions.get(req.task.id)?.y || 0), 0) / bRequirements.length
+          : Infinity;
+
+        if (aCenterY === Infinity && bCenterY === Infinity) {
+          return a.id.localeCompare(b.id);
+        }
+        return aCenterY - bCenterY;
       });
+
+      // 積み上げ配置用変数
+      let lastBottom = -Infinity;
 
       tasksInLevel.forEach(task => {
         const xPos = level * 350;
 
-        // このトレーダー内の前提タスクを取得
+        // --- 高さ推定ロジック ---
+        let estimatedHeight = 150; // デフォルト最小高さ
+
+        if (true) {
+          // 基本ヘッダー・パディング等: 80px
+          // FiRアイテム
+          const items = firItemsMap.get(task.id) || [];
+          const visibleItemCount = Math.min(items.length, 6);
+          const hasMoreItems = items.length > 6;
+          // 1アイテムあたり36px
+          const itemsHeight = (visibleItemCount * 36) + (hasMoreItems ? 24 : 0);
+
+          // "クリックして詳細/FiR不要" エリア
+          const footerHeight = 24;
+
+          // 他トレーダー要件 (crossTraderRequirements)
+          const uncompletedReqs = task.taskRequirements.filter(r => !completedTasks.has(r.task.id));
+          const crossReqs = uncompletedReqs.filter(r => {
+            const t = taskMap.get(r.task.id);
+            return t && t.trader.name !== traderName;
+          });
+          const crossReqHeight = crossReqs.length > 0
+            ? (Math.min(crossReqs.length, 2) * 24 + 40) // タイトル + リスト
+            : 0;
+
+          // 合計 (ベース + アイテム + フッター + クロス要件 + マージン)
+          estimatedHeight = 80 + itemsHeight + footerHeight + crossReqHeight + 20;
+
+          // ノードの実際のスタイル(padding等)を考慮し、最低値を確保
+          if (items.length === 0) estimatedHeight = Math.max(estimatedHeight, 100);
+        } else {
+          // FiR非表示モード時はシンプル
+          const uncompletedReqs = task.taskRequirements.filter(r => !completedTasks.has(r.task.id));
+          const crossReqs = uncompletedReqs.filter(r => taskMap.get(r.task.id)?.trader.name !== traderName);
+          if (crossReqs.length > 0) {
+            estimatedHeight = 150 + (Math.min(crossReqs.length, 2) * 24);
+          }
+        }
+
+        // --- 理想のY座標（親の平均位置） ---
         const traderRequirements = task.taskRequirements.filter(req =>
           traderTaskIds.has(req.task.id)
         );
 
-        let yPos = 0;
+        let desiredY = 0;
         if (traderRequirements.length > 0) {
-          // 前提タスクのY座標の平均を計算
           const parentYPositions = traderRequirements
             .map(req => taskPositions.get(req.task.id)?.y)
             .filter((y): y is number => y !== undefined);
 
           if (parentYPositions.length > 0) {
-            yPos = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
+            desiredY = parentYPositions.reduce((sum, y) => sum + y, 0) / parentYPositions.length;
           }
         } else {
-          // 前提タスクがない場合は、そのレベルの既存タスク数に基づいて配置
-          const usedYPositions = levelYPositions.get(level) || [];
-          yPos = usedYPositions.length * 150;
+          // 親がない場合
+          desiredY = lastBottom === -Infinity ? 0 : lastBottom + 40;
         }
 
-        // Y座標の重複を避ける
-        const usedYPositions = levelYPositions.get(level) || [];
-        const minSpacing = 150;
+        // --- 配置決定 (積み上げ) ---
+        const MIN_GAP = 40; // ノード間の最低隙間
+        let actualY = desiredY;
 
-        // 既存の位置と近すぎる場合は調整
-        let adjustedY = yPos;
-        let attempts = 0;
-        while (attempts < 100) {
-          const tooClose = usedYPositions.some(usedY =>
-            Math.abs(adjustedY - usedY) < minSpacing
-          );
-
-          if (!tooClose) break;
-
-          // 下方向にずらす
-          adjustedY += minSpacing;
-          attempts++;
+        // もし理想位置が、直前のタスクに被るなら押し下げる
+        if (lastBottom > -Infinity) {
+          if (actualY < lastBottom + MIN_GAP) {
+            actualY = lastBottom + MIN_GAP;
+          }
         }
 
-        taskPositions.set(task.id, { x: xPos, y: adjustedY });
-        usedYPositions.push(adjustedY);
-        levelYPositions.set(level, usedYPositions);
+        taskPositions.set(task.id, { x: xPos, y: actualY });
+        lastBottom = actualY + estimatedHeight;
       });
     });
 
@@ -437,7 +608,9 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
 
       // 未完了の前提タスクを取得
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
-      const isLocked = uncompletedRequirements.length > 0;
+      const hasReqLock = uncompletedRequirements.length > 0;
+      const levelLocked = task.minPlayerLevel > userLevel;
+      const isLocked = hasReqLock; // 従来のロック（前提タスク）
 
       // 別トレーダーの前提タスクを抽出（Mapで高速検索）
       const crossTraderRequirements = uncompletedRequirements
@@ -457,9 +630,15 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           task,
           isCompleted,
           isLocked,
+          levelLocked,
+          userLevel,
           isCollectorRequirement,
           isLightkeeperRequirement,
           crossTraderRequirements,
+          firItems: firItemsMap.get(task.id),
+          itemDetailsMap,
+          collectedFirItems,
+          showFirItems: true, // TODO: Toggle button for this?
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
@@ -576,7 +755,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode, firItemsData, firItemsMap, itemDetailsMap, collectedFirItems]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -620,7 +799,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
 
   return (
     <>
-      <div className="w-full h-full bg-gray-900 rounded-lg border border-gray-700">
+      <div className="relative w-full h-full bg-gray-900 rounded-lg border border-gray-700">
         <style jsx global>{`
           .react-flow__edge {
             pointer-events: none !important;
@@ -692,11 +871,16 @@ function TaskTreeViewInner({ tasks, allTasks, traderName }: TaskTreeViewProps) {
           }}
           isCompleted={completedTasks.has(selectedTask.id)}
           isLocked={selectedTask.taskRequirements.some(req => !completedTasks.has(req.task.id))}
+          firItems={firItemsMap.get(selectedTask.id)}
+          itemDetailsMap={itemDetailsMap}
           onNavigateToTrader={(traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
             const traderSlug = traderNameToSlug(traderName);
             window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           }}
+          collectedFirItems={collectedFirItems}
+          onToggleFirItem={(itemId) => toggleFirItemCollected(selectedTask.id, itemId)}
+          completedTasks={completedTasks}
         />
       )}
     </>
