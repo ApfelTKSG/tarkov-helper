@@ -17,6 +17,8 @@ interface TaskDetailModalProps {
   onNavigateToTrader: (traderName: string, taskId: string) => void;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
+  collectedFirItems: Set<string>;
+  onToggleFirItem: (itemId: string) => void;
 }
 
 export default function TaskDetailModal({
@@ -31,40 +33,10 @@ export default function TaskDetailModal({
   onNavigateToTrader,
   firItems,
   itemDetailsMap,
+  collectedFirItems,
+  onToggleFirItem,
 }: TaskDetailModalProps) {
-  const [collectedItems, setCollectedItems] = useState<Set<string>>(new Set());
-
-  // localStorageから納品済みアイテム状態を読み込み
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const saved = localStorage.getItem('tarkov-fir-collected');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // 現在のタスクに関連するアイテムのみを抽出するか、すべての状態を保持するか
-        // シンプルにするため、 itemId をキーとして保存（タスクごとに分ける場合は taskid-itemid をキーにする）
-        // ここでは "taskId-itemId" をキーとして管理
-        setCollectedItems(new Set(parsed));
-      } catch (e) {
-        console.error('Failed to parse collected fir items:', e);
-      }
-    }
-  }, [isOpen]);
-
-  const toggleItemCollected = (itemId: string) => {
-    const key = `${task.id}-${itemId}`;
-    setCollectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
-      return newSet;
-    });
-  };
+  // 内部状態（useState/useEffect）を削除し、Propsから受け取ったデータを使用する
 
   if (!isOpen) return null;
 
@@ -135,20 +107,25 @@ export default function TaskDetailModal({
             <div className="space-y-2">
               {firItems.map((item, idx) => {
                 const details = itemDetailsMap?.get(item.itemId);
-                const isItemCollected = collectedItems.has(`${task.id}-${item.itemId}`);
+                const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
+                const showAsCollected = isItemCollected || isCompleted;
 
                 return (
                   <div
                     key={idx}
-                    className={`flex items-center gap-3 p-2 rounded-lg border transition-colors cursor-pointer select-none ${isItemCollected
-                      ? 'bg-green-900/30 border-green-700/50 hover:bg-green-900/40'
+                    className={`flex items-center gap-3 p-2 rounded-lg border transition-colors select-none ${showAsCollected
+                      ? 'bg-green-900/30 border-green-700/50'
                       : 'bg-gray-700 border-gray-600 hover:bg-gray-650'
-                      }`}
-                    onClick={() => toggleItemCollected(item.itemId)}
+                      } ${!isCompleted ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
+                    onClick={() => {
+                      if (!isCompleted) {
+                        onToggleFirItem(item.itemId);
+                      }
+                    }}
                   >
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isItemCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${showAsCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
                       }`}>
-                      {isItemCollected && <span className="text-white text-xs font-bold">✓</span>}
+                      {showAsCollected && <span className="text-white text-xs font-bold">✓</span>}
                     </div>
 
                     {details?.iconLink && (
@@ -165,7 +142,7 @@ export default function TaskDetailModal({
 
                     <div className="flex-1">
                       <div className="flex justify-between items-center">
-                        <span className={`font-semibold ${isItemCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
+                        <span className={`font-semibold ${showAsCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
                           {item.itemName}
                         </span>
                         <span className="text-sm font-bg bg-gray-800 px-2 py-0.5 rounded text-blue-300">
@@ -181,7 +158,7 @@ export default function TaskDetailModal({
               })}
             </div>
             <p className="text-xs text-gray-400 mt-2 text-right">
-              クリックして納品済みをマーク
+              {isCompleted ? 'タスク完了済みのため、アイテムも納品済みとして扱われます' : 'クリックして納品済みをマーク'}
             </p>
           </div>
         )}
@@ -237,8 +214,8 @@ export default function TaskDetailModal({
                   onClose();
                 }}
                 className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${isCompleted
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
                   }`}
               >
                 {isCompleted

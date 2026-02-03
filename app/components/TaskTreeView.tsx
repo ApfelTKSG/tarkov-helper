@@ -45,6 +45,7 @@ interface TaskNodeData {
   crossTraderRequirements: Array<{ task: Task }>;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
+  collectedFirItems: Set<string>;
   showFirItems: boolean;
   onToggleComplete: () => void;
   onHover: (taskId: string | null) => void;
@@ -66,6 +67,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     crossTraderRequirements,
     firItems,
     itemDetailsMap,
+    collectedFirItems,
     showFirItems,
     onToggleComplete,
     onHover,
@@ -137,10 +139,17 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               <div className="space-y-1.5">
                 {firItems.slice(0, 6).map((item, idx) => {
                   const details = itemDetailsMap?.get(item.itemId);
+                  const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
+                  const showAsCollected = isItemCollected || isCompleted;
                   return (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-100/80 p-1 rounded border border-gray-200 shadow-sm">
+                    <div key={idx} className={`flex items-center gap-2 p-1 rounded border shadow-sm ${showAsCollected ? 'bg-green-100 border-green-300' : 'bg-gray-100/80 border-gray-200'}`}>
                       {details?.iconLink && (
                         <div className="relative w-6 h-6 flex-shrink-0 bg-white rounded border border-gray-300">
+                          {showAsCollected && (
+                            <div className="absolute inset-0 bg-green-500/50 z-10 flex items-center justify-center rounded">
+                              <span className="text-white font-bold text-xs">✓</span>
+                            </div>
+                          )}
                           <Image
                             src={details.iconLink}
                             alt={item.itemName}
@@ -151,10 +160,10 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
                         </div>
                       )}
                       <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
-                        <div className="text-[11px] font-bold text-gray-800 truncate leading-tight mr-1" title={item.itemName}>
+                        <div className={`text-[11px] font-bold truncate leading-tight mr-1 ${showAsCollected ? 'text-green-800 decoration-green-800' : 'text-gray-800'}`} title={item.itemName}>
                           {item.itemShortName || item.itemName}
                         </div>
-                        <div className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1 rounded">
+                        <div className={`text-[10px] font-semibold px-1 rounded ${showAsCollected ? 'text-green-700 bg-green-200' : 'text-blue-700 bg-blue-100'}`}>
                           x{item.count}
                         </div>
                       </div>
@@ -227,6 +236,34 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const { userLevel } = useUserLevel();
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
+
+  const [collectedFirItems, setCollectedFirItems] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const saved = localStorage.getItem('tarkov-fir-collected');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCollectedFirItems(new Set(parsed));
+      } catch (e) {
+        console.error('Failed to parse collected fir items:', e);
+      }
+    }
+  }, []);
+
+  const toggleFirItemCollected = useCallback((taskId: string, itemId: string) => {
+    const key = `${taskId}-${itemId}`;
+    setCollectedFirItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  }, []);
 
 
 
@@ -594,7 +631,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           crossTraderRequirements,
           firItems: firItemsMap.get(task.id),
           itemDetailsMap,
-          showFirItems: true,
+          collectedFirItems,
+          showFirItems: true, // TODO: Toggle button for this?
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
@@ -711,7 +749,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode]);
+  }, [tasks, allTasks, completedTasks, toggleTaskComplete, traderName, hoveredTaskId, kappaMode, lightkeeperMode, firItemsData, firItemsMap, itemDetailsMap, collectedFirItems]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -834,6 +872,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
             const traderSlug = traderNameToSlug(traderName);
             window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           }}
+          collectedFirItems={collectedFirItems}
+          onToggleFirItem={(itemId) => toggleFirItemCollected(selectedTask.id, itemId)}
         />
       )}
     </>

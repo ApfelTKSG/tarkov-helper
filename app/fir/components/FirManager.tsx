@@ -1,7 +1,7 @@
 'use strict';
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { FirItemsData, FirItemDetail } from '@/app/types/firItem';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
@@ -29,6 +29,7 @@ interface ItemStatus {
         isCollectorRequirement?: boolean;
         isLightkeeperRequirement?: boolean;
         minPlayerLevel: number;
+        isItemCollected: boolean;
     }>;
 }
 
@@ -43,6 +44,8 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     const { userLevel } = useUserLevel();
 
     // Local Filter/Sort State
+    const [collectedFirItems, setCollectedFirItems] = useState<Set<string>>(new Set());
+
     const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
     const [sortOption, setSortOption] = useState<SortOption>('default');
     const [onlyActive, setOnlyActive] = useState(false); // 現在受注可能なタスクのみ
@@ -58,6 +61,31 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                 console.error('Failed to parse completed tasks:', e);
             }
         }
+
+        // Load collected fir items
+        const savedFirItems = localStorage.getItem('tarkov-fir-collected');
+        if (savedFirItems) {
+            try {
+                const parsed = JSON.parse(savedFirItems);
+                setCollectedFirItems(new Set(parsed));
+            } catch (e) {
+                console.error('Failed to parse collected fir items:', e);
+            }
+        }
+    }, []);
+
+    const toggleFirItemCollected = useCallback((taskId: string, itemId: string) => {
+        const key = `${taskId}-${itemId}`;
+        setCollectedFirItems((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
+            return newSet;
+        });
     }, []);
 
     // Process items data based on completed tasks
@@ -72,6 +100,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                 isCollectorRequirement: req.isCollectorRequirement,
                 isLightkeeperRequirement: req.isLightkeeperRequirement,
                 minPlayerLevel: req.minPlayerLevel,
+                isItemCollected: collectedFirItems.has(`${req.taskId}-${item.id}`),
             })).filter(task => {
                 // 基本フィルター（除外ロジック）
                 if (filterMode === 'exclude-collector' && task.taskName === 'Collector') return false;
@@ -93,7 +122,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
 
             const totalNeeded = relatedTasks.reduce((sum, task) => sum + task.count, 0);
             const remainingNeeded = relatedTasks.reduce(
-                (sum, task) => (task.isCompleted ? sum : sum + task.count),
+                (sum, task) => ((task.isCompleted || task.isItemCollected) ? sum : sum + task.count),
                 0
             );
 
@@ -116,7 +145,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
             };
         })
             .filter(status => status.totalNeeded > 0); // ここでのソートは削除し、filteredItemsで行う
-    }, [firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode, userLevel]);
+    }, [firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode, userLevel, collectedFirItems]);
 
     // Filter and Sort items
     const filteredItems = useMemo(() => {
@@ -321,18 +350,44 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                 <ul className="space-y-2">
                                     {status.relatedTasks.map((task, idx) => (
                                         <li key={`${task.taskId}-${idx}`} className="flex items-center justify-between group">
-                                            <Link
-                                                href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
-                                                className={`flex items-center gap-2 hover:underline ${task.isCompleted ? 'text-green-600 line-through decoration-green-600' : 'text-gray-300 hover:text-yellow-400'}`}
-                                            >
-                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>
-                                                    {task.trader}
-                                                </span>
-                                                <span className="truncate max-w-[120px] sm:max-w-[200px]" title={task.taskName}>
-                                                    {task.taskName}
-                                                </span>
-                                            </Link>
-                                            <span className={`text-xs font-mono font-bold ${task.isCompleted ? 'text-green-600' : 'text-yellow-500'}`}>
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!task.isCompleted) {
+                                                            toggleFirItemCollected(task.taskId, status.item.id);
+                                                        }
+                                                    }}
+                                                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${task.isItemCollected || task.isCompleted
+                                                        ? 'bg-green-500 border-green-500'
+                                                        : 'bg-gray-700 border-gray-500 hover:border-gray-400'
+                                                        } ${task.isCompleted ? 'cursor-default opacity-80' : ''}`}
+                                                    title={
+                                                        task.isCompleted ? 'タスク完了済みのため達成済み' :
+                                                            task.isItemCollected ? '納品済み/入手済み (クリックで解除)' : '未入手 (クリックで入手済みにする)'
+                                                    }
+                                                >
+                                                    {(task.isItemCollected || task.isCompleted) && <span className="text-white text-xs font-bold">✓</span>}
+                                                </button>
+                                                <Link
+                                                    href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
+                                                    className={`flex items-center gap-2 hover:underline truncate ${task.isCompleted
+                                                        ? 'text-green-600 line-through decoration-green-600'
+                                                        : task.isItemCollected
+                                                            ? 'text-green-400 line-through decoration-green-500'
+                                                            : 'text-gray-300 hover:text-yellow-400'
+                                                        }`}
+                                                >
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>
+                                                        {task.trader}
+                                                    </span>
+                                                    <span className="truncate" title={task.taskName}>
+                                                        {task.taskName}
+                                                    </span>
+                                                </Link>
+                                            </div>
+                                            <span className={`text-xs font-mono font-bold ml-2 ${task.isCompleted || task.isItemCollected ? 'text-green-600' : 'text-yellow-500'
+                                                }`}>
                                                 x{task.count}
                                             </span>
                                         </li>
