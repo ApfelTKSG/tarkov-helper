@@ -233,7 +233,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   // User Level Context
-  const { userLevel } = useUserLevel();
+  const { userLevel, setUserLevel } = useUserLevel();
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
 
@@ -332,13 +332,19 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const forceCompleteTask = useCallback((taskId: string) => {
     const allRequiredTaskIds = getAllRequiredTasks(taskId);
 
+    // Lvも上げる処理
+    const targetTask = allTasks.find(t => t.id === taskId);
+    if (targetTask && targetTask.minPlayerLevel > userLevel) {
+      setUserLevel(targetTask.minPlayerLevel);
+    }
+
     setCompletedTasks((prev) => {
       const newCompleted = new Set(prev);
       allRequiredTaskIds.forEach(id => newCompleted.add(id));
       localStorage.setItem('tarkov-completed-tasks', JSON.stringify(Array.from(newCompleted)));
       return newCompleted;
     });
-  }, [getAllRequiredTasks]);
+  }, [getAllRequiredTasks, allTasks, userLevel, setUserLevel]);
 
   // ノードとエッジを生成
   const { initialNodes, initialEdges } = useMemo(() => {

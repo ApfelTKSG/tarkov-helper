@@ -65,6 +65,7 @@ export default function HomeHeaderControls() {
                     if (window.confirm('本当にワイプ（初期化）しますか？\n完了したタスクと設定レベルが全てリセットされます。この操作は取り消せません。')) {
                         localStorage.removeItem('tarkov-completed-tasks');
                         localStorage.removeItem('tarkov-user-level');
+                        localStorage.removeItem('tarkov-fir-collected');
                         // リロードして反映
                         window.location.reload();
                     }
