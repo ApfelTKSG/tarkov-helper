@@ -38,7 +38,7 @@ type SortOption = 'default' | 'count-desc' | 'count-asc' | 'level-asc';
 export default function FirManager({ firData, filterMode = 'all' }: FirManagerProps) {
     const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
-    const [showCompleted, setShowCompleted] = useState(false);
+    const [showCompleted, setShowCompleted] = useState(true);
     // Global Filter State
     const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
     const { userLevel } = useUserLevel();
