@@ -28,6 +28,20 @@ export interface Task {
   taskRequirements: TaskRequirement[];
   isCollectorRequirement?: boolean;
   isLightkeeperRequirement?: boolean;
+
+  // Integrated types
+  type?: 'task' | 'hideout' | 'trader';
+
+  // Hideout specific
+  hideoutStationId?: string;
+  hideoutLevel?: number;
+  constructionTime?: number;
+
+  // Trader specific
+  traderId?: string;
+  traderLevel?: number;
+  requiredReputation?: number;
+  requiredCommerce?: number;
 }
 
 export interface TaskData {

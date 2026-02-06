@@ -153,6 +153,51 @@ export function getFirItemsData(): FirItemsData {
     }
   });
 
+  // Hideoutアイテムへの参照を追加
+  // Note: getHideoutItems relies on data-loader which imports JSONs. 
+  // Should be safe as long as we don't have circular imports with types.
+  const { getHideoutItems } = require('./data-loader');
+  const { items: hideoutItems, details: hideoutDetails } = getHideoutItems();
+
+  // 詳細マップのマージ
+  hideoutDetails.forEach((detail: FirItemDetail) => {
+    if (!firItemsMap.has(detail.id)) {
+      // Initialize with empty requiredByTasks, will be populated via hideoutItems loop
+      firItemsMap.set(detail.id, { ...detail, requiredByTasks: [] });
+    }
+  });
+
+  // タスクリストのマージ & 逆引きマップの更新
+  hideoutItems.forEach((task: TaskWithFirItems) => {
+    // FiR管理画面ではFiR必須のアイテムのみを表示
+    const firOnlyItems = task.firItems.filter(item => item.isFirRequired);
+
+    if (firOnlyItems.length === 0) return; // FiRアイテムがない場合はスキップ
+
+    firItemsByTask.push({
+      ...task,
+      firItems: firOnlyItems
+    });
+
+    firOnlyItems.forEach(item => {
+      const itemEntry = firItemsMap.get(item.itemId);
+      if (itemEntry) {
+        if (!itemEntry.requiredByTasks.find(t => t.taskId === task.taskId)) {
+          itemEntry.requiredByTasks.push({
+            taskId: task.taskId,
+            taskName: task.taskName,
+            trader: task.trader,
+            minPlayerLevel: task.minPlayerLevel,
+            count: item.count,
+            optional: item.optional,
+            isCollectorRequirement: false,
+            isLightkeeperRequirement: false
+          });
+        }
+      }
+    });
+  });
+
   cachedFirData = {
     summary: {
       totalTasks: taskData.tasks.length,

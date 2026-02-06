@@ -1,11 +1,9 @@
-import fs from 'fs';
-import path from 'path';
+import { loadAllTasks } from './data-loader';
 import { TaskData } from '@/app/types/task';
 
 export function getTaskData(): TaskData {
-  const filePath = path.join(process.cwd(), 'data', 'tarkov-tasks.json');
-  const fileContents = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(fileContents);
+  const tasks = loadAllTasks();
+  return { tasks };
 }
 
 export function getUniqueTraderNames(taskData: TaskData): string[] {

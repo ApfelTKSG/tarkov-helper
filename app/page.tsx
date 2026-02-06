@@ -18,8 +18,8 @@ export default function Home() {
     return acc;
   }, {} as Record<string, typeof taskData.tasks>);
 
-  // トレーダーリスト
-  const traders = Object.keys(tasksByTrader).sort();
+  // トレーダーリスト（Hideoutを除外）
+  const traders = Object.keys(tasksByTrader).filter(name => name !== 'Hideout').sort();
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -37,13 +37,22 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">トレーダー一覧</h2>
-            <Link
-              href="/fir"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg hover:shadow-blue-500/30"
-            >
-              <span className="text-xl">📦</span>
-              FiRアイテム管理へ
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/traders/Hideout"
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg hover:shadow-purple-500/30"
+              >
+                <span className="text-xl">🏠</span>
+                ハイドアウト
+              </Link>
+              <Link
+                href="/fir"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg hover:shadow-blue-500/30"
+              >
+                <span className="text-xl">📦</span>
+                FiRアイテム管理へ
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

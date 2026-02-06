@@ -2,7 +2,6 @@
 
 import { Task } from '../types/task';
 import { TaskFirItem, FirItemDetail } from '../types/firItem';
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 interface TaskDetailModalProps {
@@ -20,6 +19,7 @@ interface TaskDetailModalProps {
   collectedFirItems: Set<string>;
   onToggleFirItem: (itemId: string) => void;
   completedTasks: Set<string>;
+  showFirOnly?: boolean;
 }
 
 export default function TaskDetailModal({
@@ -37,6 +37,7 @@ export default function TaskDetailModal({
   collectedFirItems,
   onToggleFirItem,
   completedTasks,
+  showFirOnly = false,
 }: TaskDetailModalProps) {
   // 内部状態（useState/useEffect）を削除し、Propsから受け取ったデータを使用する
 
@@ -100,70 +101,81 @@ export default function TaskDetailModal({
         )}
 
         {/* FiRアイテムチェックリスト */}
-        {firItems && firItems.length > 0 && (
-          <div className="mb-6 bg-gray-750 p-4 rounded-lg border border-gray-700">
-            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <span className="text-blue-400 text-xl">📦</span>
-              必要なFound in Raidアイテム
-            </h3>
-            <div className="space-y-2">
-              {firItems.map((item, idx) => {
-                const details = itemDetailsMap?.get(item.itemId);
-                const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
-                const showAsCollected = isItemCollected || isCompleted;
+        {firItems && firItems.length > 0 && (() => {
+          const filteredItems = task.type === 'hideout' && showFirOnly
+            ? firItems.filter(item => item.isFirRequired)
+            : firItems;
 
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-3 p-2 rounded-lg border transition-colors select-none ${showAsCollected
-                      ? 'bg-green-900/30 border-green-700/50'
-                      : 'bg-gray-700 border-gray-600 hover:bg-gray-650'
-                      } ${!isCompleted ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
-                    onClick={() => {
-                      if (!isCompleted) {
-                        onToggleFirItem(item.itemId);
-                      }
-                    }}
-                  >
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${showAsCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
-                      }`}>
-                      {showAsCollected && <span className="text-white text-xs font-bold">✓</span>}
-                    </div>
+          return filteredItems.length > 0 ? (
+            <div className="mb-6 bg-gray-750 p-4 rounded-lg border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                <span className="text-blue-400 text-xl">📦</span>
+                {task.type === 'hideout' ? '必要なアイテム' : '必要なFound in Raidアイテム'}
+              </h3>
+              <div className="space-y-2">
+                {filteredItems.map((item, idx) => {
+                  const details = itemDetailsMap?.get(item.itemId);
+                  const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
+                  const showAsCollected = isItemCollected || isCompleted;
 
-                    {details?.iconLink && (
-                      <div className="relative w-10 h-10 bg-gray-900 rounded border border-gray-600 flex-shrink-0">
-                        <Image
-                          src={details.iconLink}
-                          alt={item.itemName}
-                          fill
-                          className="object-contain p-1"
-                          unoptimized
-                        />
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-3 p-2 rounded-lg border transition-colors select-none ${showAsCollected
+                        ? 'bg-green-900/30 border-green-700/50'
+                        : 'bg-gray-700 border-gray-600 hover:bg-gray-650'
+                        } ${!isCompleted ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
+                      onClick={() => {
+                        if (!isCompleted) {
+                          onToggleFirItem(item.itemId);
+                        }
+                      }}
+                    >
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${showAsCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
+                        }`}>
+                        {showAsCollected && <span className="text-white text-xs font-bold">✓</span>}
                       </div>
-                    )}
 
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <span className={`font-semibold ${showAsCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
-                          {item.itemName}
-                        </span>
-                        <span className="text-sm font-bg bg-gray-800 px-2 py-0.5 rounded text-blue-300">
-                          x{item.count}
-                        </span>
-                      </div>
-                      {item.optional && (
-                        <span className="text-xs text-yellow-500 block">オプショナル</span>
+                      {details?.iconLink && (
+                        <div className="relative w-10 h-10 bg-gray-900 rounded border border-gray-600 flex-shrink-0">
+                          <Image
+                            src={details.iconLink}
+                            alt={item.itemName}
+                            fill
+                            className="object-contain p-1"
+                            unoptimized
+                          />
+                        </div>
                       )}
+
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <span className={`font-semibold ${showAsCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
+                            {item.itemName}
+                          </span>
+                          <span className="text-sm font-bg bg-gray-800 px-2 py-0.5 rounded text-blue-300">
+                            x{item.count}
+                          </span>
+                        </div>
+                        {task.type === 'hideout' && item.isFirRequired && (
+                          <span className="text-xs font-bold text-yellow-500 bg-yellow-900/30 border border-yellow-700/50 px-1.5 py-0.5 rounded mt-1 inline-block mr-1">
+                            ✔ FiR
+                          </span>
+                        )}
+                        {item.optional && (
+                          <span className="text-xs text-yellow-500 block">オプショナル</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-400 mt-2 text-right">
+                {isCompleted ? 'タスク完了済みのため、アイテムも納品済みとして扱われます' : 'クリックして納品済みをマーク'}
+              </p>
             </div>
-            <p className="text-xs text-gray-400 mt-2 text-right">
-              {isCompleted ? 'タスク完了済みのため、アイテムも納品済みとして扱われます' : 'クリックして納品済みをマーク'}
-            </p>
-          </div>
-        )}
+          ) : null;
+        })()}
 
         {/* 他トレーダーの前提 */}
         {crossTraderRequirements.length > 0 && (
@@ -176,8 +188,8 @@ export default function TaskDetailModal({
                   <div
                     key={idx}
                     className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-colors ${isReqCompleted
-                        ? 'bg-gray-800/50 text-gray-400 opacity-70'
-                        : 'bg-gray-700 text-orange-400 hover:bg-gray-600 hover:text-orange-300'
+                      ? 'bg-gray-800/50 text-gray-400 opacity-70'
+                      : 'bg-gray-700 text-orange-400 hover:bg-gray-600 hover:text-orange-300'
                       }`}
                     onClick={() => {
                       onNavigateToTrader(reqTask.trader.name, reqTask.id);
@@ -250,6 +262,6 @@ export default function TaskDetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
