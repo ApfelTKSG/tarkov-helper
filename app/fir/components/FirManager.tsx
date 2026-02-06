@@ -11,7 +11,7 @@ import { useUserLevel } from '@/app/context/UserLevelContext';
 
 interface FirManagerProps {
     firData: FirItemsData;
-    filterMode?: 'all' | 'exclude-collector' | 'collector-only';
+    filterMode?: 'all' | 'exclude-collector' | 'collector-only' | 'hideout-only';
 }
 
 interface ItemStatus {
@@ -20,6 +20,7 @@ interface ItemStatus {
     remainingNeeded: number;
     minReqLevel: number; // 最低要求レベル（未完了タスクの中で）
     hasActiveTask: boolean; // 受注可能（レベル到達＆未完了）なタスクがあるか
+    minDependencies: number; // Hideout: 関連タスクの最小依存数
     relatedTasks: Array<{
         taskId: string;
         taskName: string;
@@ -30,6 +31,7 @@ interface ItemStatus {
         isLightkeeperRequirement?: boolean;
         minPlayerLevel: number;
         isItemCollected: boolean;
+        dependencyCount?: number; // Hideoutタスクの依存数
     }>;
 }
 
@@ -91,24 +93,41 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     // Process items data based on completed tasks
     const processedItems: ItemStatus[] = useMemo(() => {
         return firData.itemsIndex.map((item) => {
-            const relatedTasks = item.requiredByTasks.map((req) => ({
-                taskId: req.taskId,
-                taskName: req.taskName,
-                trader: req.trader,
-                count: req.count,
-                isCompleted: completedTasks.has(req.taskId),
-                isCollectorRequirement: req.isCollectorRequirement,
-                isLightkeeperRequirement: req.isLightkeeperRequirement,
-                minPlayerLevel: req.minPlayerLevel,
-                isItemCollected: collectedFirItems.has(`${req.taskId}-${item.id}`),
-            })).filter(task => {
+            const relatedTasks = item.requiredByTasks.map((req) => {
+                // Hideoutタスクの依存数を取得
+                const taskData = firData.itemsByTask.find(t => t.taskId === req.taskId);
+                const dependencyCount = taskData?.dependencyCount ?? taskData?.taskRequirements?.length ?? 0;
+
+                return {
+                    taskId: req.taskId,
+                    taskName: req.taskName,
+                    trader: req.trader,
+                    count: req.count,
+                    isCompleted: completedTasks.has(req.taskId),
+                    isCollectorRequirement: req.isCollectorRequirement,
+                    isLightkeeperRequirement: req.isLightkeeperRequirement,
+                    minPlayerLevel: req.minPlayerLevel,
+                    isItemCollected: collectedFirItems.has(`${req.taskId}-${item.id}`),
+                    dependencyCount,
+                };
+            }).filter(task => {
                 // 基本フィルター（除外ロジック）
-                if (filterMode === 'exclude-collector' && task.taskName === 'Collector') return false;
-                if (filterMode === 'collector-only' && task.taskName !== 'Collector') return false;
+                const isHideoutTask = task.trader === 'Hideout';
+
+                if (filterMode === 'hideout-only') {
+                    if (!isHideoutTask) return false;
+                } else if (filterMode === 'collector-only') {
+                    if (task.taskName !== 'Collector') return false;
+                } else if (filterMode === 'exclude-collector') {
+                    if (task.taskName === 'Collector') return false;
+                    // 通常モードではハイドアウトも除外（別枠管理のため）
+                    if (isHideoutTask) return false;
+                }
 
                 // モードフィルター（包含ロジック）
                 // どちらかのモードがオンの場合、そのモードの条件を満たすタスクのみを表示する
-                const isModeActive = kappaMode || lightkeeperMode;
+                // ただし、Hideoutモードのときは適用しない
+                const isModeActive = (kappaMode || lightkeeperMode) && filterMode !== 'hideout-only';
                 if (isModeActive) {
                     const matchesKappa = kappaMode && task.isCollectorRequirement;
                     const matchesLK = lightkeeperMode && task.isLightkeeperRequirement;
@@ -135,17 +154,23 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
             // 受注可能（レベル到達＆未完了）なタスクがあるか
             const hasActiveTask = uncompletedTasks.some(t => t.minPlayerLevel <= userLevel);
 
+            // Hideout: 関連タスクの最小依存数
+            const minDependencies = relatedTasks.length > 0
+                ? Math.min(...relatedTasks.map(t => t.dependencyCount || 0))
+                : 99;
+
             return {
                 item,
                 totalNeeded,
                 remainingNeeded,
                 minReqLevel,
                 hasActiveTask,
+                minDependencies,
                 relatedTasks,
             };
         })
             .filter(status => status.totalNeeded > 0); // ここでのソートは削除し、filteredItemsで行う
-    }, [firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode, userLevel, collectedFirItems]);
+    }, [firData, firData.itemsIndex, completedTasks, filterMode, kappaMode, lightkeeperMode, userLevel, collectedFirItems]);
 
     // Filter and Sort items
     const filteredItems = useMemo(() => {
@@ -177,6 +202,17 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     return a.minReqLevel - b.minReqLevel || b.remainingNeeded - a.remainingNeeded;
                 case 'default':
                 default:
+                    // Hideout mode: 依存数が少ない順 -> 残り必要数が多い順
+                    if (filterMode === 'hideout-only') {
+                        if (a.minDependencies !== b.minDependencies) {
+                            return a.minDependencies - b.minDependencies;
+                        }
+                        if (a.remainingNeeded !== b.remainingNeeded) {
+                            return b.remainingNeeded - a.remainingNeeded;
+                        }
+                        return b.totalNeeded - a.totalNeeded;
+                    }
+
                     // Default: Min Level (Asc) -> Remaining Needed (Desc)
                     if (a.minReqLevel !== b.minReqLevel) {
                         return a.minReqLevel - b.minReqLevel;
@@ -187,7 +223,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     return b.totalNeeded - a.totalNeeded;
             }
         });
-    }, [processedItems, searchQuery, showCompleted, sortOption, onlyActive]);
+    }, [processedItems, searchQuery, showCompleted, sortOption, onlyActive, filterMode]);
 
     const toggleExpand = (itemId: string) => {
         setExpandedItemId(expandedItemId === itemId ? null : itemId);
@@ -247,7 +283,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     </div>
 
                     {/* Filter Toggles */}
-                    {filterMode !== 'collector-only' && (
+                    {filterMode !== 'collector-only' && filterMode !== 'hideout-only' && (
                         <div className="flex items-center gap-4">
                             {/* Kappa Mode Switch */}
                             <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600">

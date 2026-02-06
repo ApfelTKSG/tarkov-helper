@@ -33,6 +33,12 @@ export default function CollectorPage() {
                             <span className="px-3 py-1 bg-gray-600 rounded text-sm text-white font-bold cursor-default shadow">
                                 Collector専用
                             </span>
+                            <Link
+                                href="/fir/hideout"
+                                className="px-3 py-1 text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                Hideout
+                            </Link>
                         </div>
                     </div>
                 </div>

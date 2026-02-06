@@ -30,6 +30,7 @@ export interface TaskFirItem {
   itemShortName: string;
   count: number;
   optional: boolean;
+  isFirRequired?: boolean; // Hideout用: FiRが必要かどうか
   objectiveDescription: string;
 }
 
@@ -48,6 +49,7 @@ export interface TaskWithFirItems {
   wikiLink?: string;
   firItems: TaskFirItem[];
   taskRequirements: TaskRequirement[];
+  dependencyCount?: number; // Hideout: number of prerequisite stations
 }
 
 export interface FirDataSummary {
