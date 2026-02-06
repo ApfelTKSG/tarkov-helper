@@ -16,8 +16,9 @@ interface TaskDetailModalProps {
   onNavigateToTrader: (traderName: string, taskId: string) => void;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
-  collectedFirItems: Set<string>;
-  onToggleFirItem: (itemId: string) => void;
+  collectedFirItems: Map<string, number>;
+  onIncrementFirItem: (taskId: string, itemId: string, maxCount: number) => void;
+  onDecrementFirItem: (taskId: string, itemId: string) => void;
   completedTasks: Set<string>;
   showFirOnly?: boolean;
 }
@@ -35,7 +36,8 @@ export default function TaskDetailModal({
   firItems,
   itemDetailsMap,
   collectedFirItems,
-  onToggleFirItem,
+  onIncrementFirItem,
+  onDecrementFirItem,
   completedTasks,
   showFirOnly = false,
 }: TaskDetailModalProps) {
@@ -115,29 +117,27 @@ export default function TaskDetailModal({
               <div className="space-y-2">
                 {filteredItems.map((item, idx) => {
                   const details = itemDetailsMap?.get(item.itemId);
-                  const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
-                  const showAsCollected = isItemCollected || isCompleted;
+                  const collectedCount = collectedFirItems.get(`${task.id}-${item.itemId}`) || 0;
+                  const isFullyCollected = collectedCount >= item.count;
+                  const showAsCollected = isFullyCollected || isCompleted;
 
                   return (
                     <div
                       key={idx}
-                      className={`flex items-center gap-3 p-2 rounded-lg border transition-colors select-none ${showAsCollected
-                        ? 'bg-green-900/30 border-green-700/50'
-                        : 'bg-gray-700 border-gray-600 hover:bg-gray-650'
-                        } ${!isCompleted ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
-                      onClick={() => {
-                        if (!isCompleted) {
-                          onToggleFirItem(item.itemId);
-                        }
-                      }}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors select-none ${showAsCollected
+                        ? 'bg-green-900/40 border-green-700/50'
+                        : 'bg-gray-800 border-gray-600'
+                        }`}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${showAsCollected ? 'bg-green-500 border-green-500' : 'bg-gray-800 border-gray-500'
-                        }`}>
-                        {showAsCollected && <span className="text-white text-xs font-bold">✓</span>}
-                      </div>
-
+                      {/* アイコン */}
                       {details?.iconLink && (
-                        <div className="relative w-10 h-10 bg-gray-900 rounded border border-gray-600 flex-shrink-0">
+                        <div className="relative w-12 h-12 bg-gray-900 rounded border border-gray-600 flex-shrink-0">
+                          {showAsCollected && (
+                            <div className="absolute inset-0 bg-green-500/50 z-10 flex items-center justify-center rounded">
+                              <span className="text-white font-bold text-lg">✓</span>
+                            </div>
+                          )}
                           <Image
                             src={details.iconLink}
                             alt={item.itemName}
@@ -148,30 +148,75 @@ export default function TaskDetailModal({
                         </div>
                       )}
 
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className={`font-semibold ${showAsCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col">
+                          <span className={`font-semibold text-sm ${showAsCollected ? 'text-gray-400 line-through' : 'text-gray-200'}`}>
                             {item.itemName}
                           </span>
-                          <span className="text-sm font-bg bg-gray-800 px-2 py-0.5 rounded text-blue-300">
-                            x{item.count}
-                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            {task.type === 'hideout' && item.isFirRequired && (
+                              <span className="text-[10px] font-bold text-yellow-500 bg-yellow-900/30 border border-yellow-700/50 px-1.5 py-0.5 rounded">
+                                FiR
+                              </span>
+                            )}
+                            {item.optional && (
+                              <span className="text-[10px] text-yellow-500 border border-yellow-500/30 px-1.5 py-0.5 rounded">
+                                Optional
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {task.type === 'hideout' && item.isFirRequired && (
-                          <span className="text-xs font-bold text-yellow-500 bg-yellow-900/30 border border-yellow-700/50 px-1.5 py-0.5 rounded mt-1 inline-block mr-1">
-                            ✔ FiR
-                          </span>
-                        )}
-                        {item.optional && (
-                          <span className="text-xs text-yellow-500 block">オプショナル</span>
-                        )}
+                      </div>
+
+                      {/* カウンターコントロール */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => {
+                            if (!isCompleted) {
+                              onDecrementFirItem(task.id, item.itemId);
+                            }
+                          }}
+                          disabled={isCompleted || collectedCount === 0}
+                          className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${isCompleted || collectedCount === 0
+                              ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                              : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
+                            }`}
+                        >
+                          <span className="text-lg font-bold">−</span>
+                        </button>
+
+                        <div className={`min-w-[3rem] text-center font-bold px-2 py-1 rounded border ${isFullyCollected
+                            ? 'bg-green-900/50 border-green-700 text-green-400'
+                            : collectedCount > 0
+                              ? 'bg-yellow-900/50 border-yellow-700 text-yellow-400'
+                              : 'bg-gray-700 border-gray-600 text-gray-400'
+                          }`}>
+                          <span className="text-lg">{collectedCount}</span>
+                          <span className="text-sm text-gray-500 mx-1">/</span>
+                          <span className="text-sm">{item.count}</span>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            if (!isCompleted) {
+                              onIncrementFirItem(task.id, item.itemId, item.count);
+                            }
+                          }}
+                          disabled={isCompleted || isFullyCollected}
+                          className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${isCompleted || isFullyCollected
+                              ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                              : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
+                            }`}
+                        >
+                          <span className="text-lg font-bold">+</span>
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
               <p className="text-xs text-gray-400 mt-2 text-right">
-                {isCompleted ? 'タスク完了済みのため、アイテムも納品済みとして扱われます' : 'クリックして納品済みをマーク'}
+                {isCompleted ? 'タスク完了済みのため、アイテムも納品済みとして扱われます' : '「+」ボタンで収集済み数を増やす'}
               </p>
             </div>
           ) : null;
