@@ -5,20 +5,11 @@
 
 これにより、他のサイト・アプリケーションではわかりにくい「前提タスク」がカーソルのホバーだけでわかります！
 
-一方で、
-- 詳細の解説
-- 必要なFiR品
-
-などは海外Wikiへ丸投げなので、改善していきたいですね。
+現状、ハイドアウト周りの管理をもっとわかりやすくすることを目標にしています。
 
 ## Data Source
 
 このアプリケーションは [The Hideout](https://github.com/the-hideout) の [tarkov-api](https://github.com/the-hideout/tarkov-api) を使用してEscape from Tarkovのゲームデータを取得しています。
-
-今後は
-- インレイド品の管理
-- ハイドアウトのFiR品管理
-を追加します！
 
 ## License
 
