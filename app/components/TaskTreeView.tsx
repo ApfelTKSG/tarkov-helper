@@ -46,10 +46,12 @@ interface TaskNodeData {
   crossTraderRequirements: Array<{ task: Task }>;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
-  collectedFirItems: Set<string>;
+  collectedFirItems: Map<string, number>;
   showFirItems: boolean;
   showFirOnly?: boolean;
   onToggleComplete: () => void;
+  onIncrementFirItem: (taskId: string, itemId: string, maxCount: number) => void;
+  onDecrementFirItem: (taskId: string, itemId: string) => void;
   onHover: (taskId: string | null) => void;
   onNavigateToTrader: (traderName: string, taskId: string) => void;
   onClick: () => void;
@@ -73,6 +75,8 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     showFirItems,
     showFirOnly,
     onToggleComplete,
+    onIncrementFirItem,
+    onDecrementFirItem,
     onHover,
     onNavigateToTrader,
     onClick
@@ -169,8 +173,10 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               <div className="space-y-1.5">
                 {displayItems.slice(0, 6).map((item, idx) => {
                   const details = itemDetailsMap?.get(item.itemId);
-                  const isItemCollected = collectedFirItems.has(`${task.id}-${item.itemId}`);
-                  const showAsCollected = isItemCollected || isCompleted;
+                  const collectedCount = collectedFirItems.get(`${task.id}-${item.itemId}`) || 0;
+                  const isFullyCollected = collectedCount >= item.count;
+                  const showAsCollected = isFullyCollected || isCompleted;
+
                   return (
                     <div key={idx} className={`flex items-center gap-2 p-1 rounded border shadow-sm ${showAsCollected ? 'bg-green-100 border-green-300' : 'bg-gray-100/80 border-gray-200'}`}>
                       {details?.iconLink && (
@@ -190,11 +196,44 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
                         </div>
                       )}
                       <div className="flex-1 min-w-0 flex justify-between items-center pr-1">
-                        <div className={`text-[11px] font-bold truncate leading-tight mr-1 ${showAsCollected ? 'text-green-800 decoration-green-800' : 'text-gray-800'}`} title={item.itemName}>
+                        <div className={`text-[11px] font-bold truncate leading-tight mr-1 flex-1 ${showAsCollected ? 'text-green-800 decoration-green-800' : 'text-gray-800'}`} title={item.itemName}>
                           {item.itemShortName || item.itemName}
                         </div>
-                        <div className={`text-[10px] font-semibold px-1 rounded ${showAsCollected ? 'text-green-700 bg-green-200' : 'text-blue-700 bg-blue-100'}`}>
-                          x{item.count}
+
+                        {/* Counter Controls */}
+                        <div className="flex items-center gap-0.5 bg-white/50 rounded border border-gray-300 px-0.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isCompleted) {
+                                onDecrementFirItem(task.id, item.itemId);
+                              }
+                            }}
+                            disabled={isCompleted || collectedCount === 0}
+                            className={`w-4 h-4 flex items-center justify-center text-[10px] rounded hover:bg-red-100 transition-colors ${isCompleted || collectedCount === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 font-bold'}`}
+                          >
+                            −
+                          </button>
+                          <span className={`text-[9px] font-bold min-w-[20px] text-center ${isFullyCollected
+                            ? 'text-green-600'
+                            : collectedCount > 0
+                              ? 'text-yellow-600'
+                              : 'text-gray-500'
+                            }`}>
+                            {collectedCount}/{item.count}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isCompleted) {
+                                onIncrementFirItem(task.id, item.itemId, item.count);
+                              }
+                            }}
+                            disabled={isCompleted || isFullyCollected}
+                            className={`w-4 h-4 flex items-center justify-center text-[10px] rounded hover:bg-green-100 transition-colors ${isCompleted || isFullyCollected ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 font-bold'}`}
+                          >
+                            +
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -267,7 +306,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
   const { fitView, getNode } = useReactFlow();
 
-  const [collectedFirItems, setCollectedFirItems] = useState<Set<string>>(new Set());
+  // Map<taskId-itemId, count> で個数管理
+  const [collectedFirItems, setCollectedFirItems] = useState<Map<string, number>>(new Map());
   const [showFirOnly, setShowFirOnly] = useState(false);
   const [hideStash, setHideStash] = useState(false);
 
@@ -276,24 +316,41 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setCollectedFirItems(new Set(parsed));
+        // 配列形式 [[key, count], ...] から Mapを構築
+        // 旧形式 (配列の配列でない場合) の互換性チェックは今回は省略し、Mapとしてロード
+        setCollectedFirItems(new Map(parsed));
       } catch (e) {
         console.error('Failed to parse collected fir items:', e);
       }
     }
   }, []);
 
-  const toggleFirItemCollected = useCallback((taskId: string, itemId: string) => {
+  // アイテム数をインクリメント
+  const incrementFirItemCount = useCallback((taskId: string, itemId: string, maxCount: number) => {
     const key = `${taskId}-${itemId}`;
     setCollectedFirItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
+      const newMap = new Map(prev);
+      const currentCount = newMap.get(key) || 0;
+      const newCount = Math.min(currentCount + 1, maxCount);
+      newMap.set(key, newCount);
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+      return newMap;
+    });
+  }, []);
+
+  // アイテム数をデクリメント
+  const decrementFirItemCount = useCallback((taskId: string, itemId: string) => {
+    const key = `${taskId}-${itemId}`;
+    setCollectedFirItems((prev) => {
+      const newMap = new Map(prev);
+      const currentCount = newMap.get(key) || 0;
+      if (currentCount <= 1) {
+        newMap.delete(key);
       } else {
-        newSet.add(key);
+        newMap.set(key, currentCount - 1);
       }
-      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
-      return newSet;
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+      return newMap;
     });
   }, []);
 
@@ -716,6 +773,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           showFirItems: true, // TODO: Toggle button for this?
           showFirOnly: traderName === 'Hideout' ? showFirOnly : false,
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
+          onIncrementFirItem: incrementFirItemCount,
+          onDecrementFirItem: decrementFirItemCount,
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
@@ -989,7 +1048,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
             window.location.href = `${basePath}/traders/${traderSlug}?taskId=${taskId}`;
           }}
           collectedFirItems={collectedFirItems}
-          onToggleFirItem={(itemId) => toggleFirItemCollected(selectedTask.id, itemId)}
+          onIncrementFirItem={incrementFirItemCount}
+          onDecrementFirItem={decrementFirItemCount}
           completedTasks={completedTasks}
           showFirOnly={showFirOnly}
         />

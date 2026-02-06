@@ -30,7 +30,7 @@ interface ItemStatus {
         isCollectorRequirement?: boolean;
         isLightkeeperRequirement?: boolean;
         minPlayerLevel: number;
-        isItemCollected: boolean;
+        collectedCount: number; // 収集済み個数
         dependencyCount?: number; // Hideoutタスクの依存数
     }>;
 }
@@ -46,7 +46,8 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     const { userLevel } = useUserLevel();
 
     // Local Filter/Sort State
-    const [collectedFirItems, setCollectedFirItems] = useState<Set<string>>(new Set());
+    // Map<taskId-itemId, count> で個数管理
+    const [collectedFirItems, setCollectedFirItems] = useState<Map<string, number>>(new Map());
 
     const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
     const [sortOption, setSortOption] = useState<SortOption>('default');
@@ -64,29 +65,45 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
             }
         }
 
-        // Load collected fir items
+        // Load collected fir items (Map形式でロード)
         const savedFirItems = localStorage.getItem('tarkov-fir-collected');
         if (savedFirItems) {
             try {
                 const parsed = JSON.parse(savedFirItems);
-                setCollectedFirItems(new Set(parsed));
+                // 配列形式 [[key, count], ...] から Mapを構築
+                setCollectedFirItems(new Map(parsed));
             } catch (e) {
                 console.error('Failed to parse collected fir items:', e);
             }
         }
     }, []);
 
-    const toggleFirItemCollected = useCallback((taskId: string, itemId: string) => {
+    // アイテム数をインクリメント
+    const incrementFirItemCount = useCallback((taskId: string, itemId: string, maxCount: number) => {
         const key = `${taskId}-${itemId}`;
         setCollectedFirItems((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(key)) {
-                newSet.delete(key);
+            const newMap = new Map(prev);
+            const currentCount = newMap.get(key) || 0;
+            const newCount = Math.min(currentCount + 1, maxCount);
+            newMap.set(key, newCount);
+            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+            return newMap;
+        });
+    }, []);
+
+    // アイテム数をデクリメント
+    const decrementFirItemCount = useCallback((taskId: string, itemId: string) => {
+        const key = `${taskId}-${itemId}`;
+        setCollectedFirItems((prev) => {
+            const newMap = new Map(prev);
+            const currentCount = newMap.get(key) || 0;
+            if (currentCount <= 1) {
+                newMap.delete(key);
             } else {
-                newSet.add(key);
+                newMap.set(key, currentCount - 1);
             }
-            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newSet)));
-            return newSet;
+            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+            return newMap;
         });
     }, []);
 
@@ -98,6 +115,8 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                 const taskData = firData.itemsByTask.find(t => t.taskId === req.taskId);
                 const dependencyCount = taskData?.dependencyCount ?? taskData?.taskRequirements?.length ?? 0;
 
+                const collectedCount = collectedFirItems.get(`${req.taskId}-${item.id}`) || 0;
+
                 return {
                     taskId: req.taskId,
                     taskName: req.taskName,
@@ -107,7 +126,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     isCollectorRequirement: req.isCollectorRequirement,
                     isLightkeeperRequirement: req.isLightkeeperRequirement,
                     minPlayerLevel: req.minPlayerLevel,
-                    isItemCollected: collectedFirItems.has(`${req.taskId}-${item.id}`),
+                    collectedCount, // 収集済み個数
                     dependencyCount,
                 };
             }).filter(task => {
@@ -141,7 +160,11 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
 
             const totalNeeded = relatedTasks.reduce((sum, task) => sum + task.count, 0);
             const remainingNeeded = relatedTasks.reduce(
-                (sum, task) => ((task.isCompleted || task.isItemCollected) ? sum : sum + task.count),
+                (sum, task) => {
+                    if (task.isCompleted) return sum;
+                    const remaining = Math.max(0, task.count - task.collectedCount);
+                    return sum + remaining;
+                },
                 0
             );
 
@@ -387,31 +410,56 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                     {status.relatedTasks.map((task, idx) => (
                                         <li key={`${task.taskId}-${idx}`} className="flex items-center justify-between group">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (!task.isCompleted) {
-                                                            toggleFirItemCollected(task.taskId, status.item.id);
-                                                        }
-                                                    }}
-                                                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${task.isItemCollected || task.isCompleted
-                                                        ? 'bg-green-500 border-green-500'
-                                                        : 'bg-gray-700 border-gray-500 hover:border-gray-400'
-                                                        } ${task.isCompleted ? 'cursor-default opacity-80' : ''}`}
-                                                    title={
-                                                        task.isCompleted ? 'タスク完了済みのため達成済み' :
-                                                            task.isItemCollected ? '納品済み/入手済み (クリックで解除)' : '未入手 (クリックで入手済みにする)'
-                                                    }
-                                                >
-                                                    {(task.isItemCollected || task.isCompleted) && <span className="text-white text-xs font-bold">✓</span>}
-                                                </button>
+                                                {/* カウンターコントロール */}
+                                                <div className={`flex items-center gap-1 flex-shrink-0 ${task.isCompleted ? 'opacity-50' : ''}`}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!task.isCompleted) {
+                                                                decrementFirItemCount(task.taskId, status.item.id);
+                                                            }
+                                                        }}
+                                                        disabled={task.isCompleted || task.collectedCount === 0}
+                                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount === 0
+                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                                : 'bg-gray-700 border-gray-500 hover:border-red-400 hover:bg-red-500/20 text-white'
+                                                            }`}
+                                                        title="個数を減らす"
+                                                    >
+                                                        <span className="text-xs font-bold">−</span>
+                                                    </button>
+                                                    <div className={`w-10 h-6 rounded border flex items-center justify-center text-xs font-bold ${task.collectedCount >= task.count
+                                                            ? 'bg-green-500/20 border-green-500 text-green-400'
+                                                            : task.collectedCount > 0
+                                                                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                                                                : 'bg-gray-700 border-gray-600 text-gray-400'
+                                                        }`}>
+                                                        {task.isCompleted ? '✓' : task.collectedCount}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!task.isCompleted) {
+                                                                incrementFirItemCount(task.taskId, status.item.id, task.count);
+                                                            }
+                                                        }}
+                                                        disabled={task.isCompleted || task.collectedCount >= task.count}
+                                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount >= task.count
+                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                                : 'bg-gray-700 border-gray-500 hover:border-green-400 hover:bg-green-500/20 text-white'
+                                                            }`}
+                                                        title="個数を増やす"
+                                                    >
+                                                        <span className="text-xs font-bold">+</span>
+                                                    </button>
+                                                </div>
                                                 <Link
                                                     href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
                                                     className={`flex items-center gap-2 hover:underline truncate ${task.isCompleted
-                                                        ? 'text-green-600 line-through decoration-green-600'
-                                                        : task.isItemCollected
-                                                            ? 'text-green-400 line-through decoration-green-500'
-                                                            : 'text-gray-300 hover:text-yellow-400'
+                                                            ? 'text-green-600 line-through decoration-green-600'
+                                                            : task.collectedCount >= task.count
+                                                                ? 'text-green-400 line-through decoration-green-500'
+                                                                : 'text-gray-300 hover:text-yellow-400'
                                                         }`}
                                                 >
                                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>
@@ -422,7 +470,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                     </span>
                                                 </Link>
                                             </div>
-                                            <span className={`text-xs font-mono font-bold ml-2 ${task.isCompleted || task.isItemCollected ? 'text-green-600' : 'text-yellow-500'
+                                            <span className={`text-xs font-mono font-bold ml-2 ${task.isCompleted || task.collectedCount >= task.count ? 'text-green-600' : 'text-yellow-500'
                                                 }`}>
                                                 x{task.count}
                                             </span>
