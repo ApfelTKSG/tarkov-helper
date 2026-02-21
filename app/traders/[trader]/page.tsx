@@ -89,7 +89,7 @@ export default async function TraderPage({ params }: PageProps) {
             </div>
 
             <div className="md:ml-auto self-start">
-              <HomeHeaderControls />
+              <HomeHeaderControls disableModes={['BTR Driver', 'Lightkeeper', 'Fence', 'Ref', 'Hideout'].includes(traderName)} />
             </div>
           </div>
         </div>

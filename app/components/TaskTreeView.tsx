@@ -604,10 +604,11 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
     // 表示対象のタスクをフィルタリング
     // KappaモードとLightkeeperモードは独立して動作 (両方ONなら両方のタスクを表示)
-    // ただし、Hideoutでは常に全タスクを表示
+    // ただし、Kappa/LKに関連しない固定トレーダー（Hideout等）では常に全タスクを表示
     let visibleTasks = tasks;
+    const ignoreModesTraders = ['Hideout', 'BTR Driver', 'Lightkeeper', 'Fence', 'Ref'];
 
-    if ((kappaMode || lightkeeperMode) && traderName !== 'Hideout') {
+    if ((kappaMode || lightkeeperMode) && !ignoreModesTraders.includes(traderName)) {
       visibleTasks = tasks.filter(t => {
         const isKappa = kappaMode && kappaRequiredTaskIds.has(t.id);
         const isLightkeeper = lightkeeperMode && lightkeeperRequiredTaskIds.has(t.id);

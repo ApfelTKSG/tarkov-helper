@@ -3,15 +3,15 @@
 import { useFilterMode } from '../context/FilterModeContext';
 import { useUserLevel } from '../context/UserLevelContext';
 
-export default function HomeHeaderControls() {
+export default function HomeHeaderControls({ disableModes = false }: { disableModes?: boolean }) {
     const { kappaMode, setKappaMode, lightkeeperMode, setLightkeeperMode } = useFilterMode();
     const { userLevel, setUserLevel } = useUserLevel();
 
     return (
         <div className="grid grid-cols-2 gap-2">
             {/* Kappa Mode Switch */}
-            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className={`flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600 transition-opacity ${disableModes ? 'opacity-30 pointer-events-none' : ''}`}>
+                <label className="flex items-center gap-2 cursor-pointer select-none" title={disableModes ? "このトレーダーでは無効です" : "Kappa必須タスクのみ表示"}>
                     <span className="text-sm font-bold text-orange-400 w-16 text-right">κ Mode</span>
                     <div className="relative">
                         <input
@@ -26,8 +26,8 @@ export default function HomeHeaderControls() {
             </div>
 
             {/* Lightkeeper Mode Switch */}
-            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className={`flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg border border-gray-600 transition-opacity ${disableModes ? 'opacity-30 pointer-events-none' : ''}`}>
+                <label className="flex items-center gap-2 cursor-pointer select-none" title={disableModes ? "このトレーダーでは無効です" : "Lightkeeper必須タスクのみ表示"}>
                     <span className="text-sm font-bold text-cyan-400 w-16 text-right">LK Mode</span>
                     <div className="relative">
                         <input
