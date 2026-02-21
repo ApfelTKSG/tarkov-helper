@@ -432,9 +432,11 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     return (
                         <div
                             key={status.item.id}
-                            className={`bg-gray-800 rounded-lg border transition-all duration-200 overflow-hidden ${status.remainingNeeded === 0
-                                ? 'border-green-800/50 opacity-60'
-                                : 'border-gray-700 hover:border-yellow-500/50 hover:shadow-lg'
+                            className={`bg-gray-800 rounded-lg border transition-all duration-200 overflow-hidden ${uncompletedTasks.length === 0
+                                ? 'border-gray-700 opacity-50'
+                                : status.remainingNeeded === 0
+                                    ? 'border-green-600/50 bg-green-900/10'
+                                    : 'border-gray-700 hover:border-yellow-500/50 hover:shadow-lg'
                                 }`}
                         >
                             {/* Card Header */}
@@ -466,8 +468,16 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                 </div>
 
                                 <div className="text-right flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                    {uncompletedTasks.length <= 1 ? (
-                                        <div className={`flex items-center bg-gray-900/50 rounded border focus-within:border-yellow-500 overflow-hidden transition-colors ${status.remainingNeeded === 0 ? 'border-green-800/50' : 'border-gray-600'}`}>
+                                    {uncompletedTasks.length === 0 ? (
+                                        <div className="text-sm font-bold text-gray-400 cursor-pointer px-2 py-1 bg-gray-900/50 rounded border border-gray-700" title="すべてのタスクが完了しました" onClick={() => toggleExpand(status.item.id)}>
+                                            タスク完了
+                                        </div>
+                                    ) : status.remainingNeeded === 0 ? (
+                                        <div className="text-sm font-bold text-green-400 cursor-pointer px-2 py-1 bg-green-900/20 rounded border border-green-800/50 shadow-[0_0_8px_rgba(22,163,74,0.15)]" title="必要なアイテムをすべて収集しました" onClick={() => toggleExpand(status.item.id)}>
+                                            収集済み
+                                        </div>
+                                    ) : uncompletedTasks.length === 1 ? (
+                                        <div className="flex items-center bg-gray-900/50 rounded border border-gray-600 focus-within:border-yellow-500 overflow-hidden transition-colors">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -478,15 +488,15 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                     setItemTotalCount(status.item.id, isNaN(val) ? 0 : val, status.relatedTasks);
                                                 }}
                                                 disabled={uncompletedNeeded === 0}
-                                                className={`w-12 bg-transparent text-right font-bold focus:outline-none p-1 ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`}
+                                                className="w-12 bg-transparent text-right font-bold focus:outline-none p-1 text-yellow-400"
                                             />
                                             <span className="text-xs text-gray-500 font-bold pr-2 bg-gray-800/80 h-full flex items-center">
                                                 / {uncompletedNeeded}
                                             </span>
                                         </div>
                                     ) : (
-                                        <div className={`text-xl font-bold cursor-pointer ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`} title="クリックして詳細を表示" onClick={() => toggleExpand(status.item.id)}>
-                                            {status.remainingNeeded > 0 ? `残り: ${status.remainingNeeded}` : '完了'}
+                                        <div className="text-xl font-bold cursor-pointer text-yellow-400" title="クリックして詳細を表示" onClick={() => toggleExpand(status.item.id)}>
+                                            残り: {status.remainingNeeded}
                                         </div>
                                     )}
                                     <div className="text-[10px] text-gray-500">
