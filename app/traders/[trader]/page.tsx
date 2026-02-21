@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import TaskTreeView from '@/app/components/TaskTreeView';
 import ProgressStats from '@/app/components/ProgressStats';
 import TraderTaskSync from '@/app/components/TraderTaskSync';
+import HomeHeaderControls from '@/app/components/HomeHeaderControls';
+import TraderNav, { TRADER_IMAGES } from '@/app/components/TraderNav';
 import { getTaskData, getUniqueTraderNames } from '@/app/lib/taskData';
 import { getFirItemsData } from '@/app/lib/firItemData';
 import { traderNameToSlug, slugToTraderName } from '@/app/lib/traderSlug';
@@ -58,32 +61,43 @@ export default async function TraderPage({ params }: PageProps) {
   }
 
   const totalExperience = traderTasks.reduce((sum, task) => sum + task.experience, 0);
+  const traders = getUniqueTraderNames(taskData).filter(name => name !== 'Hideout').sort();
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
+      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10 flex-shrink-0">
         <div className="container mx-auto px-4 py-6">
-          <Link
-            href="/"
-            className="text-yellow-400 hover:text-yellow-300 text-sm mb-3 inline-block"
-          >
-            ← トレーダー一覧に戻る
-          </Link>
+          <TraderNav currentTrader={traderName} traders={traders} />
 
-          <div className="flex items-center gap-4 mb-3">
-            <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-            <h1 className="text-4xl font-bold text-white">{traderName}</h1>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mt-6">
+            <div className="flex items-center gap-4">
+              {TRADER_IMAGES[traderName] ? (
+                <div className="w-16 h-16 relative rounded-lg overflow-hidden shadow-lg border border-gray-600 flex-shrink-0">
+                  <Image src={TRADER_IMAGES[traderName]} alt={traderName} fill className="object-cover" unoptimized />
+                </div>
+              ) : (
+                <div className="w-16 h-16 relative rounded-lg shadow-lg border border-gray-600 flex items-center justify-center bg-gray-700 flex-shrink-0">
+                  {traderName === 'Hideout' ? <span className="text-3xl">🛠️</span> : <span className="text-3xl">👑</span>}
+                </div>
+              )}
+              <div>
+                <h1 className="text-4xl font-bold text-white">{traderName}</h1>
+                <div className="mt-2">
+                  <ProgressStats tasks={traderTasks} traderName={traderName} />
+                </div>
+              </div>
+            </div>
 
-            <div className="flex-1 ml-8">
-              <ProgressStats tasks={traderTasks} traderName={traderName} />
+            <div className="md:ml-auto self-start">
+              <HomeHeaderControls />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4" style={{ paddingTop: '2rem', paddingBottom: '2rem', height: 'calc(100vh - var(--header-height, 140px))' }}>
+      <main className="container mx-auto px-4 flex-1 flex flex-col pt-8 pb-8" style={{ minHeight: 0 }}>
         <TraderTaskSync traderName={traderName} taskIds={traderTasks.map(t => t.id)} />
-        <div style={{ height: 'calc(100% - 2rem)' }}>
+        <div className="flex-1 w-full relative min-h-[600px]">
           <TaskTreeView
             tasks={traderTasks}
             allTasks={uniqueTasks}
