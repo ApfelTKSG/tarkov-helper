@@ -52,6 +52,34 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
     const [sortOption, setSortOption] = useState<SortOption>('default');
     const [onlyActive, setOnlyActive] = useState(false); // 現在受注可能なタスクのみ
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load local settings from localStorage
+    useEffect(() => {
+        const savedShowCompleted = localStorage.getItem('tarkov-fir-show-completed');
+        if (savedShowCompleted) setShowCompleted(savedShowCompleted === 'true');
+
+        const savedSortOption = localStorage.getItem('tarkov-fir-sort-option');
+        if (savedSortOption) setSortOption(savedSortOption as SortOption);
+
+        const savedOnlyActive = localStorage.getItem('tarkov-fir-only-active');
+        if (savedOnlyActive) setOnlyActive(savedOnlyActive === 'true');
+
+        setIsLoaded(true);
+    }, []);
+
+    // Save local settings to localStorage
+    useEffect(() => {
+        if (isLoaded) localStorage.setItem('tarkov-fir-show-completed', String(showCompleted));
+    }, [showCompleted, isLoaded]);
+
+    useEffect(() => {
+        if (isLoaded) localStorage.setItem('tarkov-fir-sort-option', sortOption);
+    }, [sortOption, isLoaded]);
+
+    useEffect(() => {
+        if (isLoaded) localStorage.setItem('tarkov-fir-only-active', String(onlyActive));
+    }, [onlyActive, isLoaded]);
 
     // Load completed tasks from localStorage
     useEffect(() => {
@@ -421,18 +449,18 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                         }}
                                                         disabled={task.isCompleted || task.collectedCount === 0}
                                                         className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount === 0
-                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
-                                                                : 'bg-gray-700 border-gray-500 hover:border-red-400 hover:bg-red-500/20 text-white'
+                                                            ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                            : 'bg-gray-700 border-gray-500 hover:border-red-400 hover:bg-red-500/20 text-white'
                                                             }`}
                                                         title="個数を減らす"
                                                     >
                                                         <span className="text-xs font-bold">−</span>
                                                     </button>
                                                     <div className={`w-10 h-6 rounded border flex items-center justify-center text-xs font-bold ${task.collectedCount >= task.count
-                                                            ? 'bg-green-500/20 border-green-500 text-green-400'
-                                                            : task.collectedCount > 0
-                                                                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
-                                                                : 'bg-gray-700 border-gray-600 text-gray-400'
+                                                        ? 'bg-green-500/20 border-green-500 text-green-400'
+                                                        : task.collectedCount > 0
+                                                            ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                                                            : 'bg-gray-700 border-gray-600 text-gray-400'
                                                         }`}>
                                                         {task.isCompleted ? '✓' : task.collectedCount}
                                                     </div>
@@ -445,8 +473,8 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                         }}
                                                         disabled={task.isCompleted || task.collectedCount >= task.count}
                                                         className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount >= task.count
-                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
-                                                                : 'bg-gray-700 border-gray-500 hover:border-green-400 hover:bg-green-500/20 text-white'
+                                                            ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                            : 'bg-gray-700 border-gray-500 hover:border-green-400 hover:bg-green-500/20 text-white'
                                                             }`}
                                                         title="個数を増やす"
                                                     >
@@ -456,10 +484,10 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                 <Link
                                                     href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
                                                     className={`flex items-center gap-2 hover:underline truncate ${task.isCompleted
-                                                            ? 'text-green-600 line-through decoration-green-600'
-                                                            : task.collectedCount >= task.count
-                                                                ? 'text-green-400 line-through decoration-green-500'
-                                                                : 'text-gray-300 hover:text-yellow-400'
+                                                        ? 'text-green-600 line-through decoration-green-600'
+                                                        : task.collectedCount >= task.count
+                                                            ? 'text-green-400 line-through decoration-green-500'
+                                                            : 'text-gray-300 hover:text-yellow-400'
                                                         }`}
                                                 >
                                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>

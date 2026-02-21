@@ -310,6 +310,27 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const [collectedFirItems, setCollectedFirItems] = useState<Map<string, number>>(new Map());
   const [showFirOnly, setShowFirOnly] = useState(false);
   const [hideStash, setHideStash] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load Hideout settings from localStorage
+  useEffect(() => {
+    const savedFirOnly = localStorage.getItem('tarkov-hideout-fir-only');
+    if (savedFirOnly) setShowFirOnly(savedFirOnly === 'true');
+
+    const savedHideStash = localStorage.getItem('tarkov-hideout-hide-stash');
+    if (savedHideStash) setHideStash(savedHideStash === 'true');
+
+    setIsLoaded(true);
+  }, []);
+
+  // Save Hideout settings to localStorage
+  useEffect(() => {
+    if (isLoaded) localStorage.setItem('tarkov-hideout-fir-only', String(showFirOnly));
+  }, [showFirOnly, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) localStorage.setItem('tarkov-hideout-hide-stash', String(hideStash));
+  }, [hideStash, isLoaded]);
 
   useEffect(() => {
     const saved = localStorage.getItem('tarkov-fir-collected');
