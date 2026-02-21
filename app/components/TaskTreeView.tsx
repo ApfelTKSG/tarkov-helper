@@ -175,16 +175,16 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
           </div>
 
           {task.type === 'hideout' && onToggleIgnore && (
-            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-              <label className="flex items-center gap-1 cursor-pointer text-[10px] bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded border border-gray-400">
-                <input
-                  type="checkbox"
-                  checked={!isIgnored}
-                  onChange={() => onToggleIgnore(task.id)}
-                  className="w-3 h-3 text-purple-600 rounded bg-white border-gray-400"
-                />
-                <span>必要</span>
-              </label>
+            <div className="ml-auto" onClick={(e) => {
+              e.stopPropagation();
+              onToggleIgnore(task.id);
+            }}>
+              <div
+                className={`flex items-center justify-center w-6 h-6 cursor-pointer text-sm font-bold rounded border transition-colors ${!isIgnored ? 'bg-purple-100 border-purple-400 hover:bg-purple-200 shadow-sm' : 'bg-gray-100 border-gray-300 hover:bg-gray-200 opacity-60'}`}
+                title={!isIgnored ? "現在目標として設定されています。クリックで無効化" : "現在アイテムの収集対象から外れています。クリックで有効化"}
+              >
+                {!isIgnored ? '🎯' : '❌'}
+              </div>
             </div>
           )}
         </div>
@@ -1028,6 +1028,10 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
         {/* Hideout用ボタン */}
         {traderName === 'Hideout' && (
           <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg text-xs text-gray-300 pointer-events-none mb-1">
+              💡 各設備の <span className="text-purple-400">🎯</span> / <span className="text-gray-500">❌</span> をクリックで<br />
+              FiRアイテム収集の対象をON/OFFできます
+            </div>
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input

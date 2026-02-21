@@ -47,6 +47,14 @@ export default function TraderNav({ currentTrader, traders }: { currentTrader: s
                 </Link>
             ))}
 
+            <Link
+                href="/traders/Hideout"
+                className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${currentTrader === 'Hideout' ? 'bg-purple-900/40 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                title="Hideout"
+            >
+                <span className="text-2xl">🛠️</span>
+            </Link>
+
             <div className="flex-1"></div>
 
             <Link
