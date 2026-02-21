@@ -43,6 +43,7 @@ interface TaskNodeData {
   userLevel: number;
   isCollectorRequirement: boolean;
   isLightkeeperRequirement: boolean;
+  isIgnored: boolean;
   crossTraderRequirements: Array<{ task: Task }>;
   firItems?: TaskFirItem[];
   itemDetailsMap?: Map<string, FirItemDetail>;
@@ -52,6 +53,8 @@ interface TaskNodeData {
   onToggleComplete: () => void;
   onIncrementFirItem: (taskId: string, itemId: string, maxCount: number) => void;
   onDecrementFirItem: (taskId: string, itemId: string) => void;
+  onSetFirItemCount?: (taskId: string, itemId: string, count: number, maxCount: number) => void;
+  onToggleIgnore?: (taskId: string) => void;
   onHover: (taskId: string | null) => void;
   onNavigateToTrader: (traderName: string, taskId: string) => void;
   onClick: () => void;
@@ -68,6 +71,7 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     userLevel,
     isCollectorRequirement,
     isLightkeeperRequirement,
+    isIgnored,
     crossTraderRequirements,
     firItems,
     itemDetailsMap,
@@ -77,6 +81,8 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
     onToggleComplete,
     onIncrementFirItem,
     onDecrementFirItem,
+    onSetFirItemCount,
+    onToggleIgnore,
     onHover,
     onNavigateToTrader,
     onClick
@@ -102,23 +108,25 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
         }}
         className={`${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} relative group`}
         style={{
-          background: (isLocked || levelLocked) ? '#fef2f2' :
-            isCompleted ? '#f3f4f6' :
-              task.type === 'hideout' ? '#faf5ff' : // Light purple for Hideout
-                task.type === 'trader' ? '#eff6ff' : // Light blue for Trader
-                  '#ffffff',
+          background: isIgnored ? '#e5e7eb' :
+            (isLocked || levelLocked) ? '#fef2f2' :
+              isCompleted ? '#f3f4f6' :
+                task.type === 'hideout' ? '#faf5ff' : // Light purple for Hideout
+                  task.type === 'trader' ? '#eff6ff' : // Light blue for Trader
+                    '#ffffff',
           border: `2px solid ${isHovered ? '#fbbf24' :
-            isLocked ? '#ef4444' :
-              levelLocked ? '#ef4444' :
-                isCompleted ? '#22c55e' :
-                  task.type === 'hideout' ? '#a855f7' : // Purple border
-                    task.type === 'trader' ? '#3b82f6' : // Blue border
-                      task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
+            isIgnored ? '#9ca3af' :
+              isLocked ? '#ef4444' :
+                levelLocked ? '#ef4444' :
+                  isCompleted ? '#22c55e' :
+                    task.type === 'hideout' ? '#a855f7' : // Purple border
+                      task.type === 'trader' ? '#3b82f6' : // Blue border
+                        task.taskRequirements.length === 0 ? '#10b981' : '#3b82f6'
             }`,
           borderRadius: '8px',
           padding: '12px',
           width: 280,
-          opacity: isLocked ? 0.6 : isCompleted ? 0.5 : 1, // Level Locked (only) stays Opacity 1
+          opacity: isIgnored ? 0.4 : isLocked ? 0.6 : isCompleted ? 0.5 : 1, // Level Locked (only) stays Opacity 1
           boxShadow: isHovered ? '0 0 20px rgba(251, 191, 36, 0.6)' : 'none',
           transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'all 0.2s ease-in-out',
@@ -165,6 +173,20 @@ const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
               </span>
             ) : null}
           </div>
+
+          {task.type === 'hideout' && onToggleIgnore && (
+            <div className="ml-auto" onClick={(e) => {
+              e.stopPropagation();
+              onToggleIgnore(task.id);
+            }}>
+              <div
+                className={`flex items-center justify-center w-6 h-6 cursor-pointer text-sm font-bold rounded border transition-colors ${!isIgnored ? 'bg-purple-100 border-purple-400 hover:bg-purple-200 shadow-sm' : 'bg-gray-100 border-gray-300 hover:bg-gray-200 opacity-60'}`}
+                title={!isIgnored ? "現在目標として設定されています。クリックで無効化" : "現在アイテムの収集対象から外れています。クリックで有効化"}
+              >
+                {!isIgnored ? '🎯' : '❌'}
+              </div>
+            </div>
+          )}
         </div>
 
         {
@@ -310,6 +332,37 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
   const [collectedFirItems, setCollectedFirItems] = useState<Map<string, number>>(new Map());
   const [showFirOnly, setShowFirOnly] = useState(false);
   const [hideStash, setHideStash] = useState(false);
+  const [ignoredTasks, setIgnoredTasks] = useState<Set<string>>(new Set());
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load Hideout settings from localStorage
+  useEffect(() => {
+    const savedFirOnly = localStorage.getItem('tarkov-hideout-fir-only');
+    if (savedFirOnly) setShowFirOnly(savedFirOnly === 'true');
+
+    const savedHideStash = localStorage.getItem('tarkov-hideout-hide-stash');
+    if (savedHideStash) setHideStash(savedHideStash === 'true');
+
+    const savedIgnored = localStorage.getItem('tarkov-ignored-tasks');
+    if (savedIgnored) {
+      try {
+        setIgnoredTasks(new Set(JSON.parse(savedIgnored)));
+      } catch (e) {
+        console.error('Failed to parse ignored tasks:', e);
+      }
+    }
+
+    setIsLoaded(true);
+  }, []);
+
+  // Save Hideout settings to localStorage
+  useEffect(() => {
+    if (isLoaded) localStorage.setItem('tarkov-hideout-fir-only', String(showFirOnly));
+  }, [showFirOnly, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) localStorage.setItem('tarkov-hideout-hide-stash', String(hideStash));
+  }, [hideStash, isLoaded]);
 
   useEffect(() => {
     const saved = localStorage.getItem('tarkov-fir-collected');
@@ -335,6 +388,31 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
       newMap.set(key, newCount);
       localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
       return newMap;
+    });
+  }, []);
+
+  // 直接入力で設定
+  const setFirItemCount = useCallback((taskId: string, itemId: string, count: number, maxCount: number) => {
+    const key = `${taskId}-${itemId}`;
+    setCollectedFirItems((prev) => {
+      const newMap = new Map(prev);
+      const validCount = Math.max(0, Math.min(count, maxCount));
+      newMap.set(key, validCount);
+      localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+      return newMap;
+    });
+  }, []);
+
+  const toggleTaskIgnore = useCallback((taskId: string) => {
+    setIgnoredTasks((prev) => {
+      const newIgnored = new Set(prev);
+      if (newIgnored.has(taskId)) {
+        newIgnored.delete(taskId);
+      } else {
+        newIgnored.add(taskId);
+      }
+      localStorage.setItem('tarkov-ignored-tasks', JSON.stringify(Array.from(newIgnored)));
+      return newIgnored;
     });
   }, []);
 
@@ -526,10 +604,11 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
     // 表示対象のタスクをフィルタリング
     // KappaモードとLightkeeperモードは独立して動作 (両方ONなら両方のタスクを表示)
-    // ただし、Hideoutでは常に全タスクを表示
+    // ただし、Kappa/LKに関連しない固定トレーダー（Hideout等）では常に全タスクを表示
     let visibleTasks = tasks;
+    const ignoreModesTraders = ['Hideout', 'BTR Driver', 'Lightkeeper', 'Fence', 'Ref'];
 
-    if ((kappaMode || lightkeeperMode) && traderName !== 'Hideout') {
+    if ((kappaMode || lightkeeperMode) && !ignoreModesTraders.includes(traderName)) {
       visibleTasks = tasks.filter(t => {
         const isKappa = kappaMode && kappaRequiredTaskIds.has(t.id);
         const isLightkeeper = lightkeeperMode && lightkeeperRequiredTaskIds.has(t.id);
@@ -742,7 +821,9 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
       const uncompletedRequirements = task.taskRequirements.filter(req => !completedTasks.has(req.task.id));
       const hasReqLock = uncompletedRequirements.length > 0;
       const levelLocked = task.minPlayerLevel > userLevel;
-      const isLocked = hasReqLock; // 従来のロック（前提タスク）
+      const isLocked = traderName === 'Hideout'
+        ? uncompletedRequirements.some(req => taskMap.get(req.task.id)?.trader.name === 'Hideout')
+        : hasReqLock;
 
       // 別トレーダーの前提タスクを抽出（Mapで高速検索）
       const crossTraderRequirements = uncompletedRequirements
@@ -766,6 +847,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           userLevel,
           isCollectorRequirement,
           isLightkeeperRequirement,
+          isIgnored: ignoredTasks.has(task.id),
           crossTraderRequirements,
           firItems: firItemsMap.get(task.id),
           itemDetailsMap,
@@ -775,6 +857,8 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           onToggleComplete: () => !isLocked && toggleTaskComplete(task.id),
           onIncrementFirItem: incrementFirItemCount,
           onDecrementFirItem: decrementFirItemCount,
+          onSetFirItemCount: setFirItemCount,
+          onToggleIgnore: toggleTaskIgnore,
           onHover: setHoveredTaskId,
           onNavigateToTrader: (traderName: string, taskId: string) => {
             const basePath = process.env.NODE_ENV === 'production' ? '/tarkov-helper' : '';
@@ -934,53 +1018,20 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
 
   return (
     <>
-      <div className="relative w-full h-full bg-gray-900 rounded-lg border border-gray-700">
+      <div className="absolute inset-0 w-full h-full bg-gray-900 rounded-lg border border-gray-700">
         <style jsx global>{`
           .react-flow__edge {
             pointer-events: none !important;
           }
         `}</style>
 
-        {/* Toggle Buttons Container */}
-        {traderName !== 'Hideout' && (
-          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-            {/* Kappaモードトグルボタン */}
-            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span className="text-sm font-bold text-orange-400 mr-1 w-16 text-right">κ Mode</span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={kappaMode}
-                    onChange={(e) => setKappaMode(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                </div>
-              </label>
-            </div>
-
-            {/* Lightkeeperモードトグルボタン */}
-            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span className="text-sm font-bold text-cyan-400 mr-1 w-16 text-right">LK Mode</span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={lightkeeperMode}
-                    onChange={(e) => setLightkeeperMode(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                </div>
-              </label>
-            </div>
-          </div>
-        )}
-
         {/* Hideout用ボタン */}
         {traderName === 'Hideout' && (
           <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg text-xs text-gray-300 pointer-events-none mb-1">
+              💡 各設備の <span className="text-purple-400">🎯</span> / <span className="text-gray-500">❌</span> をクリックで<br />
+              FiRアイテム収集の対象をON/OFFできます
+            </div>
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 shadow-lg">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -1050,6 +1101,7 @@ function TaskTreeViewInner({ tasks, allTasks, traderName, firItemsData, initialS
           collectedFirItems={collectedFirItems}
           onIncrementFirItem={incrementFirItemCount}
           onDecrementFirItem={decrementFirItemCount}
+          onSetFirItemCount={setFirItemCount}
           completedTasks={completedTasks}
           showFirOnly={showFirOnly}
         />

@@ -19,6 +19,7 @@ interface TaskDetailModalProps {
   collectedFirItems: Map<string, number>;
   onIncrementFirItem: (taskId: string, itemId: string, maxCount: number) => void;
   onDecrementFirItem: (taskId: string, itemId: string) => void;
+  onSetFirItemCount?: (taskId: string, itemId: string, count: number, maxCount: number) => void;
   completedTasks: Set<string>;
   showFirOnly?: boolean;
 }
@@ -38,6 +39,7 @@ export default function TaskDetailModal({
   collectedFirItems,
   onIncrementFirItem,
   onDecrementFirItem,
+  onSetFirItemCount,
   completedTasks,
   showFirOnly = false,
 }: TaskDetailModalProps) {
@@ -178,22 +180,31 @@ export default function TaskDetailModal({
                           }}
                           disabled={isCompleted || collectedCount === 0}
                           className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${isCompleted || collectedCount === 0
-                              ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
-                              : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
+                            ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
                             }`}
                         >
                           <span className="text-lg font-bold">−</span>
                         </button>
 
-                        <div className={`min-w-[3rem] text-center font-bold px-2 py-1 rounded border ${isFullyCollected
-                            ? 'bg-green-900/50 border-green-700 text-green-400'
-                            : collectedCount > 0
-                              ? 'bg-yellow-900/50 border-yellow-700 text-yellow-400'
-                              : 'bg-gray-700 border-gray-600 text-gray-400'
-                          }`}>
-                          <span className="text-lg">{collectedCount}</span>
-                          <span className="text-sm text-gray-500 mx-1">/</span>
-                          <span className="text-sm">{item.count}</span>
+                        <div className={`flex items-center bg-gray-900/50 rounded border transition-colors ${isFullyCollected ? 'border-green-700' : 'border-gray-600 focus-within:border-yellow-500'}`}>
+                          <input
+                            type="number"
+                            min="0"
+                            max={item.count}
+                            value={collectedCount === 0 && item.count === 0 ? "" : collectedCount}
+                            onChange={(e) => {
+                              if (!isCompleted && onSetFirItemCount) {
+                                const val = parseInt(e.target.value);
+                                onSetFirItemCount(task.id, item.itemId, isNaN(val) ? 0 : val, item.count);
+                              }
+                            }}
+                            disabled={isCompleted}
+                            className={`w-12 bg-transparent text-right font-bold focus:outline-none p-1 ${isFullyCollected ? 'text-green-400' : collectedCount > 0 ? 'text-yellow-400' : 'text-gray-300'}`}
+                          />
+                          <span className="text-sm text-gray-500 font-bold px-2 bg-gray-800/80 h-full flex items-center">
+                            / {item.count}
+                          </span>
                         </div>
 
                         <button
@@ -204,8 +215,8 @@ export default function TaskDetailModal({
                           }}
                           disabled={isCompleted || isFullyCollected}
                           className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${isCompleted || isFullyCollected
-                              ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
-                              : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
+                            ? 'bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-700 border-gray-500 text-white hover:bg-gray-600 hover:border-gray-400'
                             }`}
                         >
                           <span className="text-lg font-bold">+</span>

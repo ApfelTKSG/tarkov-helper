@@ -12,6 +12,10 @@ export default function ProgressStats({ tasks, traderName }: ProgressStatsProps)
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCompletedCount, setTotalCompletedCount] = useState(0);
 
+  if (traderName === 'Hideout') {
+    return null;
+  }
+
   // κタスクのみをフィルタリング
   const collectorTasks = tasks.filter(t => t.isCollectorRequirement);
   const collectorTaskIds = collectorTasks.map(t => t.id);
@@ -41,8 +45,8 @@ export default function ProgressStats({ tasks, traderName }: ProgressStatsProps)
     return () => clearInterval(interval);
   }, [collectorTaskIds, allTaskIds]);
 
-  const percentage = collectorTasks.length > 0 
-    ? Math.round((completedCount / collectorTasks.length) * 100) 
+  const percentage = collectorTasks.length > 0
+    ? Math.round((completedCount / collectorTasks.length) * 100)
     : 0;
   const totalPercentage = Math.round((totalCompletedCount / tasks.length) * 100);
 
@@ -64,7 +68,7 @@ export default function ProgressStats({ tasks, traderName }: ProgressStatsProps)
           </div>
         </div>
       )}
-      
+
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-blue-400 font-semibold text-sm">全タスク</span>
