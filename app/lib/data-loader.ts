@@ -70,42 +70,7 @@ interface RawTrader {
 export function loadAllTasks(): Task[] {
     const tasks: Task[] = [...(taskData as any).tasks.map((t: any) => ({ ...t, type: 'task' }))];
 
-    // Process Traders
-    (traderData as RawTrader[]).forEach(trader => {
-        trader.levels.forEach(levelData => {
-            if (levelData.level === 1) return; // Level 1 is start, no requirements usually (or implicitly default)
-
-            const taskId = `trader-${trader.normalizedName}-${levelData.level}`;
-            const prevLevelId = `trader-${trader.normalizedName}-${levelData.level - 1}`;
-
-            const reqs: TaskRequirement[] = [];
-
-            // Dependency on previous level? Valid logic, but usually LL2 just requires Level/Rep/Commerce.
-            // But showing it as a progression chain is nice.
-            if (levelData.level > 1) {
-                // We don't strictly enforce LL1 completion as a "task" because everyone starts at LL1.
-                // But purely for visual tree, we can link them.
-                // For now, let's NOT link to previous level to avoid clutter, unless we treat LL1 as a root node.
-            }
-
-            const traderTask: Task = {
-                id: taskId,
-                name: `${trader.name} LL${levelData.level}`,
-                type: 'trader',
-                trader: { name: trader.name },
-                minPlayerLevel: levelData.requiredPlayerLevel,
-                experience: 0,
-                objectives: [],
-                taskRequirements: [],
-                traderId: trader.id,
-                traderLevel: levelData.level,
-                requiredReputation: levelData.requiredReputation,
-                requiredCommerce: levelData.requiredCommerce,
-            };
-
-            tasks.push(traderTask);
-        });
-    });
+    // Trader LL pseudo-tasks have been removed as per user request
 
     // Process Hideout
     (hideoutData as RawHideoutStation[]).forEach(station => {
@@ -123,14 +88,7 @@ export function loadAllTasks(): Task[] {
                 });
             });
 
-            // Trader Requirements
-            levelData.traderRequirements.forEach(req => {
-                const reqId = `trader-${req.trader.normalizedName}-${req.level}`;
-                reqs.push({
-                    task: { id: reqId, name: `${req.trader.name} LL${req.level}` },
-                    status: 'complete'
-                });
-            });
+            // Trader requirements for Hideout nodes have been removed as per user request
 
             // Requirements for previous level of same station?
             // implicitly, Level 2 requires Level 1. The API might not return this explicitly, or it might.
