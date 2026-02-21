@@ -145,6 +145,18 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
         });
     }, []);
 
+    // 単一タスクへの直接入力
+    const setFirItemCount = useCallback((taskId: string, itemId: string, count: number, maxCount: number) => {
+        const key = `${taskId}-${itemId}`;
+        setCollectedFirItems((prev) => {
+            const newMap = new Map(prev);
+            const validCount = Math.max(0, Math.min(count, maxCount));
+            newMap.set(key, validCount);
+            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+            return newMap;
+        });
+    }, []);
+
     // 直接入力でアイテム数を設定
     const setItemTotalCount = useCallback((itemId: string, newTotal: number, relatedTasks: ItemStatus['relatedTasks']) => {
         setCollectedFirItems((prev) => {
@@ -454,23 +466,29 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                 </div>
 
                                 <div className="text-right flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <div className={`flex items-center bg-gray-900/50 rounded border focus-within:border-yellow-500 overflow-hidden transition-colors ${status.remainingNeeded === 0 ? 'border-green-800/50' : 'border-gray-600'}`}>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max={uncompletedNeeded}
-                                            value={currentCollected === 0 && uncompletedNeeded === 0 ? "" : currentCollected}
-                                            onChange={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                setItemTotalCount(status.item.id, isNaN(val) ? 0 : val, status.relatedTasks);
-                                            }}
-                                            disabled={uncompletedNeeded === 0}
-                                            className={`w-12 bg-transparent text-right font-bold focus:outline-none p-1 ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`}
-                                        />
-                                        <span className="text-xs text-gray-500 font-bold pr-2 bg-gray-800/80 h-full flex items-center">
-                                            / {uncompletedNeeded}
-                                        </span>
-                                    </div>
+                                    {uncompletedTasks.length <= 1 ? (
+                                        <div className={`flex items-center bg-gray-900/50 rounded border focus-within:border-yellow-500 overflow-hidden transition-colors ${status.remainingNeeded === 0 ? 'border-green-800/50' : 'border-gray-600'}`}>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={uncompletedNeeded}
+                                                value={currentCollected === 0 && uncompletedNeeded === 0 ? "" : currentCollected}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    setItemTotalCount(status.item.id, isNaN(val) ? 0 : val, status.relatedTasks);
+                                                }}
+                                                disabled={uncompletedNeeded === 0}
+                                                className={`w-12 bg-transparent text-right font-bold focus:outline-none p-1 ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`}
+                                            />
+                                            <span className="text-xs text-gray-500 font-bold pr-2 bg-gray-800/80 h-full flex items-center">
+                                                / {uncompletedNeeded}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className={`text-xl font-bold cursor-pointer ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`} title="クリックして詳細を表示" onClick={() => toggleExpand(status.item.id)}>
+                                            {status.remainingNeeded > 0 ? `残り: ${status.remainingNeeded}` : '完了'}
+                                        </div>
+                                    )}
                                     <div className="text-[10px] text-gray-500">
                                         Total: {status.totalNeeded}
                                     </div>
@@ -503,13 +521,21 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                                                         >
                                                             <span className="text-xs font-bold">−</span>
                                                         </button>
-                                                        <div className={`w-10 h-6 rounded border flex items-center justify-center text-xs font-bold ${task.collectedCount >= task.count
-                                                            ? 'bg-green-500/20 border-green-500 text-green-400'
-                                                            : task.collectedCount > 0
-                                                                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
-                                                                : 'bg-gray-700 border-gray-600 text-gray-400'
-                                                            }`}>
-                                                            {task.isCompleted ? '✓' : task.collectedCount}
+                                                        <div className={`flex items-center bg-gray-900/50 rounded border transition-colors ${task.collectedCount >= task.count ? 'border-green-500' : 'border-gray-600 focus-within:border-yellow-500'}`}>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max={task.count}
+                                                                value={task.isCompleted ? '✓' : (task.collectedCount === 0 && task.count === 0 ? "" : task.collectedCount)}
+                                                                onChange={(e) => {
+                                                                    if (!task.isCompleted) {
+                                                                        const val = parseInt(e.target.value);
+                                                                        setFirItemCount(task.taskId, status.item.id, isNaN(val) ? 0 : val, task.count);
+                                                                    }
+                                                                }}
+                                                                disabled={task.isCompleted}
+                                                                className={`w-10 h-6 bg-transparent text-center text-xs font-bold focus:outline-none ${task.collectedCount >= task.count ? 'text-green-400' : task.collectedCount > 0 ? 'text-yellow-400' : 'text-gray-400'}`}
+                                                            />
                                                         </div>
                                                         <button
                                                             onClick={(e) => {
