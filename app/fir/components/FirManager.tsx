@@ -53,6 +53,7 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
     const [sortOption, setSortOption] = useState<SortOption>('default');
     const [onlyActive, setOnlyActive] = useState(false); // 現在受注可能なタスクのみ
     const [isLoaded, setIsLoaded] = useState(false);
+    const [ignoredTasks, setIgnoredTasks] = useState<Set<string>>(new Set());
 
     // Load local settings from localStorage
     useEffect(() => {
@@ -64,6 +65,15 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
 
         const savedOnlyActive = localStorage.getItem('tarkov-fir-only-active');
         if (savedOnlyActive) setOnlyActive(savedOnlyActive === 'true');
+
+        const savedIgnored = localStorage.getItem('tarkov-ignored-tasks');
+        if (savedIgnored) {
+            try {
+                setIgnoredTasks(new Set(JSON.parse(savedIgnored)));
+            } catch (e) {
+                console.error('Failed to parse ignored tasks:', e);
+            }
+        }
 
         setIsLoaded(true);
     }, []);
@@ -135,6 +145,28 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
         });
     }, []);
 
+    // 直接入力でアイテム数を設定
+    const setItemTotalCount = useCallback((itemId: string, newTotal: number, relatedTasks: ItemStatus['relatedTasks']) => {
+        setCollectedFirItems((prev) => {
+            const newMap = new Map(prev);
+            let remaining = newTotal;
+
+            for (const task of relatedTasks) {
+                const key = `${task.taskId}-${itemId}`;
+                if (task.isCompleted) {
+                    newMap.set(key, 0);
+                    continue;
+                }
+                const needed = task.count;
+                const allocate = Math.min(remaining, needed);
+                newMap.set(key, allocate);
+                remaining -= allocate;
+            }
+            localStorage.setItem('tarkov-fir-collected', JSON.stringify(Array.from(newMap.entries())));
+            return newMap;
+        });
+    }, []);
+
     // Process items data based on completed tasks
     const processedItems: ItemStatus[] = useMemo(() => {
         return firData.itemsIndex.map((item) => {
@@ -158,6 +190,8 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
                     dependencyCount,
                 };
             }).filter(task => {
+                // Filter out user ignored hideout tasks
+                if (task.trader === 'Hideout' && ignoredTasks.has(task.taskId)) return false;
                 // 基本フィルター（除外ロジック）
                 const isHideoutTask = task.trader === 'Hideout';
 
@@ -245,31 +279,25 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
         return result.sort((a, b) => {
             switch (sortOption) {
                 case 'count-desc':
-                    return b.remainingNeeded - a.remainingNeeded || b.totalNeeded - a.totalNeeded;
+                    return b.totalNeeded - a.totalNeeded;
                 case 'count-asc':
-                    return a.remainingNeeded - b.remainingNeeded || a.totalNeeded - b.totalNeeded;
+                    return a.totalNeeded - b.totalNeeded;
                 case 'level-asc':
                     // レベルが低い順。完了済み(99)は後ろに
-                    return a.minReqLevel - b.minReqLevel || b.remainingNeeded - a.remainingNeeded;
+                    return a.minReqLevel - b.minReqLevel || b.totalNeeded - a.totalNeeded;
                 case 'default':
                 default:
-                    // Hideout mode: 依存数が少ない順 -> 残り必要数が多い順
+                    // Hideout mode: 依存数が少ない順 -> 総必要数が多い順
                     if (filterMode === 'hideout-only') {
                         if (a.minDependencies !== b.minDependencies) {
                             return a.minDependencies - b.minDependencies;
                         }
-                        if (a.remainingNeeded !== b.remainingNeeded) {
-                            return b.remainingNeeded - a.remainingNeeded;
-                        }
                         return b.totalNeeded - a.totalNeeded;
                     }
 
-                    // Default: Min Level (Asc) -> Remaining Needed (Desc)
+                    // Default: Min Level (Asc) -> Total Needed (Desc)
                     if (a.minReqLevel !== b.minReqLevel) {
                         return a.minReqLevel - b.minReqLevel;
-                    }
-                    if (a.remainingNeeded !== b.remainingNeeded) {
-                        return b.remainingNeeded - a.remainingNeeded;
                     }
                     return b.totalNeeded - a.totalNeeded;
             }
@@ -384,141 +412,161 @@ export default function FirManager({ firData, filterMode = 'all' }: FirManagerPr
 
             {/* Items Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredItems.map((status) => (
-                    <div
-                        key={status.item.id}
-                        className={`bg-gray-800 rounded-lg border transition-all duration-200 overflow-hidden ${status.remainingNeeded === 0
-                            ? 'border-green-800/50 opacity-60'
-                            : 'border-gray-700 hover:border-yellow-500/50 hover:shadow-lg'
-                            }`}
-                    >
-                        {/* Card Header */}
+                {filteredItems.map((status) => {
+                    const uncompletedTasks = status.relatedTasks.filter(t => !t.isCompleted);
+                    const uncompletedNeeded = uncompletedTasks.reduce((sum, t) => sum + t.count, 0);
+                    const currentCollected = uncompletedTasks.reduce((sum, t) => sum + t.collectedCount, 0);
+
+                    return (
                         <div
-                            className="p-3 flex items-center gap-3 cursor-pointer select-none"
-                            onClick={() => toggleExpand(status.item.id)}
+                            key={status.item.id}
+                            className={`bg-gray-800 rounded-lg border transition-all duration-200 overflow-hidden ${status.remainingNeeded === 0
+                                ? 'border-green-800/50 opacity-60'
+                                : 'border-gray-700 hover:border-yellow-500/50 hover:shadow-lg'
+                                }`}
                         >
-                            <div className="relative w-12 h-12 flex-shrink-0 bg-gray-700 rounded border border-gray-600 p-1">
-                                {status.item.iconLink ? (
-                                    <Image
-                                        src={status.item.iconLink}
-                                        alt={status.item.name}
-                                        fill
-                                        className="object-contain"
-                                        unoptimized
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">No Img</div>
-                                )}
+                            {/* Card Header */}
+                            <div
+                                className="p-3 flex items-center gap-3 cursor-pointer select-none"
+                                onClick={() => toggleExpand(status.item.id)}
+                            >
+                                <div className="relative w-12 h-12 flex-shrink-0 bg-gray-700 rounded border border-gray-600 p-1">
+                                    {status.item.iconLink ? (
+                                        <Image
+                                            src={status.item.iconLink}
+                                            alt={status.item.name}
+                                            fill
+                                            className="object-contain"
+                                            unoptimized
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">No Img</div>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-gray-200 truncate text-sm" title={status.item.name}>
+                                        {status.item.name}
+                                    </div>
+                                    <div className="text-xs text-gray-400 truncate">
+                                        {status.item.shortName}
+                                    </div>
+                                </div>
+
+                                <div className="text-right flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <div className={`flex items-center bg-gray-900/50 rounded border focus-within:border-yellow-500 overflow-hidden transition-colors ${status.remainingNeeded === 0 ? 'border-green-800/50' : 'border-gray-600'}`}>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max={uncompletedNeeded}
+                                            value={currentCollected === 0 && uncompletedNeeded === 0 ? "" : currentCollected}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setItemTotalCount(status.item.id, isNaN(val) ? 0 : val, status.relatedTasks);
+                                            }}
+                                            disabled={uncompletedNeeded === 0}
+                                            className={`w-12 bg-transparent text-right font-bold focus:outline-none p-1 ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`}
+                                        />
+                                        <span className="text-xs text-gray-500 font-bold pr-2 bg-gray-800/80 h-full flex items-center">
+                                            / {uncompletedNeeded}
+                                        </span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                        Total: {status.totalNeeded}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="font-bold text-gray-200 truncate text-sm" title={status.item.name}>
-                                    {status.item.name}
-                                </div>
-                                <div className="text-xs text-gray-400 truncate">
-                                    {status.item.shortName}
-                                </div>
-                            </div>
-
-                            <div className="text-right">
-                                <div className={`text-xl font-bold ${status.remainingNeeded > 0 ? 'text-yellow-400' : 'text-green-500'}`}>
-                                    {status.remainingNeeded}
-                                </div>
-                                <div className="text-[10px] text-gray-500">
-                                    Total: {status.totalNeeded}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Expandable Details */}
-                        {expandedItemId === status.item.id && (
-                            <div className="bg-gray-900/50 border-t border-gray-700 p-3 text-sm animate-fadeIn">
-                                <div className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">必要なタスク</div>
-                                <ul className="space-y-2">
-                                    {status.relatedTasks.map((task, idx) => (
-                                        <li key={`${task.taskId}-${idx}`} className="flex items-center justify-between group">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                {/* カウンターコントロール */}
-                                                <div className={`flex items-center gap-1 flex-shrink-0 ${task.isCompleted ? 'opacity-50' : ''}`}>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (!task.isCompleted) {
-                                                                decrementFirItemCount(task.taskId, status.item.id);
-                                                            }
-                                                        }}
-                                                        disabled={task.isCompleted || task.collectedCount === 0}
-                                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount === 0
-                                                            ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
-                                                            : 'bg-gray-700 border-gray-500 hover:border-red-400 hover:bg-red-500/20 text-white'
-                                                            }`}
-                                                        title="個数を減らす"
-                                                    >
-                                                        <span className="text-xs font-bold">−</span>
-                                                    </button>
-                                                    <div className={`w-10 h-6 rounded border flex items-center justify-center text-xs font-bold ${task.collectedCount >= task.count
-                                                        ? 'bg-green-500/20 border-green-500 text-green-400'
-                                                        : task.collectedCount > 0
-                                                            ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
-                                                            : 'bg-gray-700 border-gray-600 text-gray-400'
-                                                        }`}>
-                                                        {task.isCompleted ? '✓' : task.collectedCount}
+                            {/* Expandable Details */}
+                            {expandedItemId === status.item.id && (
+                                <div className="bg-gray-900/50 border-t border-gray-700 p-3 text-sm animate-fadeIn">
+                                    <div className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">必要なタスク</div>
+                                    <ul className="space-y-2">
+                                        {status.relatedTasks.map((task, idx) => (
+                                            <li key={`${task.taskId}-${idx}`} className="flex items-center justify-between group">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    {/* カウンターコントロール */}
+                                                    <div className={`flex items-center gap-1 flex-shrink-0 ${task.isCompleted ? 'opacity-50' : ''}`}>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (!task.isCompleted) {
+                                                                    decrementFirItemCount(task.taskId, status.item.id);
+                                                                }
+                                                            }}
+                                                            disabled={task.isCompleted || task.collectedCount === 0}
+                                                            className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount === 0
+                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                                : 'bg-gray-700 border-gray-500 hover:border-red-400 hover:bg-red-500/20 text-white'
+                                                                }`}
+                                                            title="個数を減らす"
+                                                        >
+                                                            <span className="text-xs font-bold">−</span>
+                                                        </button>
+                                                        <div className={`w-10 h-6 rounded border flex items-center justify-center text-xs font-bold ${task.collectedCount >= task.count
+                                                            ? 'bg-green-500/20 border-green-500 text-green-400'
+                                                            : task.collectedCount > 0
+                                                                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                                                                : 'bg-gray-700 border-gray-600 text-gray-400'
+                                                            }`}>
+                                                            {task.isCompleted ? '✓' : task.collectedCount}
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (!task.isCompleted) {
+                                                                    incrementFirItemCount(task.taskId, status.item.id, task.count);
+                                                                }
+                                                            }}
+                                                            disabled={task.isCompleted || task.collectedCount >= task.count}
+                                                            className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount >= task.count
+                                                                ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
+                                                                : 'bg-gray-700 border-gray-500 hover:border-green-400 hover:bg-green-500/20 text-white'
+                                                                }`}
+                                                            title="個数を増やす"
+                                                        >
+                                                            <span className="text-xs font-bold">+</span>
+                                                        </button>
                                                     </div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (!task.isCompleted) {
-                                                                incrementFirItemCount(task.taskId, status.item.id, task.count);
-                                                            }
-                                                        }}
-                                                        disabled={task.isCompleted || task.collectedCount >= task.count}
-                                                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${task.isCompleted || task.collectedCount >= task.count
-                                                            ? 'bg-gray-800 border-gray-600 text-gray-600 cursor-not-allowed'
-                                                            : 'bg-gray-700 border-gray-500 hover:border-green-400 hover:bg-green-500/20 text-white'
+                                                    <Link
+                                                        href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
+                                                        className={`flex items-center gap-2 hover:underline truncate ${task.isCompleted
+                                                            ? 'text-green-600 line-through decoration-green-600'
+                                                            : task.collectedCount >= task.count
+                                                                ? 'text-green-400 line-through decoration-green-500'
+                                                                : 'text-gray-300 hover:text-yellow-400'
                                                             }`}
-                                                        title="個数を増やす"
                                                     >
-                                                        <span className="text-xs font-bold">+</span>
-                                                    </button>
+                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>
+                                                            {task.trader}
+                                                        </span>
+                                                        <span className="truncate" title={task.taskName}>
+                                                            {task.taskName}
+                                                        </span>
+                                                    </Link>
                                                 </div>
-                                                <Link
-                                                    href={`/traders/${traderNameToSlug(task.trader)}?taskId=${task.taskId}`}
-                                                    className={`flex items-center gap-2 hover:underline truncate ${task.isCompleted
-                                                        ? 'text-green-600 line-through decoration-green-600'
-                                                        : task.collectedCount >= task.count
-                                                            ? 'text-green-400 line-through decoration-green-500'
-                                                            : 'text-gray-300 hover:text-yellow-400'
-                                                        }`}
-                                                >
-                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${getTraderColor(task.trader)} text-gray-900 min-w-[3.5rem] text-center`}>
-                                                        {task.trader}
-                                                    </span>
-                                                    <span className="truncate" title={task.taskName}>
-                                                        {task.taskName}
-                                                    </span>
-                                                </Link>
-                                            </div>
-                                            <span className={`text-xs font-mono font-bold ml-2 ${task.isCompleted || task.collectedCount >= task.count ? 'text-green-600' : 'text-yellow-500'
-                                                }`}>
-                                                x{task.count}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                {status.item.wikiLink && (
-                                    <a
-                                        href={status.item.wikiLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block mt-3 text-xs text-blue-400 hover:underline text-center border-t border-gray-700/50 pt-2"
-                                    >
-                                        Wikiを開く ↗
-                                    </a>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ))}
+                                                <span className={`text-xs font-mono font-bold ml-2 ${task.isCompleted || task.collectedCount >= task.count ? 'text-green-600' : 'text-yellow-500'
+                                                    }`}>
+                                                    x{task.count}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {status.item.wikiLink && (
+                                        <a
+                                            href={status.item.wikiLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block mt-3 text-xs text-blue-400 hover:underline text-center border-t border-gray-700/50 pt-2"
+                                        >
+                                            Wikiを開く ↗
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
 
                 {filteredItems.length === 0 && (
                     <div className="col-span-full py-12 text-center text-gray-500">
