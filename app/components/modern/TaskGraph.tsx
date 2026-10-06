@@ -46,12 +46,14 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
       {data.label}
-      <span
-        className="absolute bottom-1 left-2 text-[10px] text-slate-300"
-        title={data.progressTitle}
-      >
-        {data.progressLabel}
-      </span>
+      {data.progressLabel && (
+        <span
+          className="absolute bottom-1 left-2 text-[10px] text-slate-300"
+          title={data.progressTitle}
+        >
+          {data.progressLabel}
+        </span>
+      )}
       <span
         className="absolute bottom-1 right-2 text-[10px] font-semibold text-amber-300"
         title={data.loyaltyTitle}
@@ -144,7 +146,7 @@ export default function TaskGraph({
         data: {
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
           loyaltyTitle: placement.inheritedFrom.length ? `前提経由 LL${column}` : undefined,
-          progressLabel: `${progress.met}/${progress.total}`,
+          progressLabel: progress.total ? `前提 ${progress.met}/${progress.total}` : '',
           progressTitle: `満たした前提タスク数 / 全前提タスク数: ${progress.met}/${progress.total}`,
           background: state === 'complete' ? '#064e3b' : '#1e293b',
           borderColor:
@@ -159,9 +161,9 @@ export default function TaskGraph({
               <div className="mt-1 text-xs">
                 {stateNames[state]} · {availabilityNames[result.state]}
               </div>
-              <div className="mt-1 text-slate-300">
-                {task.minPlayerLevel ? `PMC Lv.${task.minPlayerLevel}` : 'PMC条件なし'}
-              </div>
+              {!!task.minPlayerLevel && (
+                <div className="mt-1 text-slate-300">要求レベル {task.minPlayerLevel}</div>
+              )}
             </div>
           ),
         },
@@ -209,7 +211,7 @@ export default function TaskGraph({
           y: 70 + row * 120,
         },
         data: {
-          progressLabel: `${complete}/${folder.tasks.length}`,
+          progressLabel: `完了 ${complete}/${folder.tasks.length}`,
           progressTitle: `完了タスク数 / 格納タスク数: ${complete}/${folder.tasks.length}`,
           loyaltyLabel: folder.levels
             .map((level) => (level ? `LL${level}` : 'LL要確認'))
@@ -221,12 +223,11 @@ export default function TaskGraph({
               <strong>
                 {folder.expanded ? '📂' : '📁'} {folder.tasks[0].name} からのライン
               </strong>
-              <div className="mt-1">
-                {folder.tasks.length}件 ·{' '}
-                {folder.tasks[0].minPlayerLevel
-                  ? `PMC Lv.${folder.tasks[0].minPlayerLevel}から`
-                  : '先頭のPMC条件なし'}
-              </div>
+              {!!folder.tasks[0].minPlayerLevel && (
+                <div className="mt-1 text-slate-300">
+                  要求レベル {folder.tasks[0].minPlayerLevel}（先頭）
+                </div>
+              )}
               <div className="mt-1 text-sky-300">
                 {revealMatches || folder.tasks.some((t) => t.id === selectedId)
                   ? '検索・選択中は自動展開'
