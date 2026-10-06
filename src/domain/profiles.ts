@@ -3,6 +3,8 @@ import type { GameMode, GameSnapshot } from './game';
 
 export const STORAGE_KEY = 'tarkov-helper-profiles-v1';
 export interface Profile extends ProgressProfile {
+  /** Exact deltas already applied; absent legacy entries are never backfilled. */
+  taskReputation?: Record<string, Record<string, number>>;
   id: string;
   name: string;
   mode: GameMode;
@@ -131,6 +133,13 @@ export function parseDatabase(text: string): ProfileDatabase {
       'タスク状態が不正です',
     );
     assert(record(profile.traders), 'トレーダー設定が不正です');
+    if (profile.taskReputation !== undefined) {
+      assert(record(profile.taskReputation), '信頼度の反映記録が不正です');
+      for (const [taskId, deltas] of Object.entries(profile.taskReputation)) {
+        assert(safeKey(taskId), '信頼度のタスクIDが不正です');
+        numberMap(deltas, '信頼度の反映記録', true);
+      }
+    }
     for (const [key, trader] of Object.entries(profile.traders)) {
       assert(safeKey(key) && record(trader), 'トレーダー設定が不正です');
       assert(

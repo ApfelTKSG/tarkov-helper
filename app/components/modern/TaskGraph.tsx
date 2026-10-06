@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -12,7 +12,8 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
-import { taskDepths, ancestorIds } from '@/src/domain/task-view';
+import { ancestorIds } from '@/src/domain/task-view';
+import { loyaltyColumns, taskLoyaltyColumn } from '@/src/domain/task-columns';
 import { availabilityNames, stateNames } from './TaskPanel';
 
 const nodeTypes = {};
@@ -28,17 +29,17 @@ export default function TaskGraph({
   const { profile, availability } = useGame();
   const [hovered, setHovered] = useState<string | null>(null);
   const ancestors = hovered ? ancestorIds(tasks, hovered) : null;
-  const depths = useMemo(() => taskDepths(tasks), [tasks]);
   const columns = new Map<number, number>();
   const nodes: Node[] = tasks.map((task) => {
-    const depth = depths.get(task.id) ?? 0;
-    const row = columns.get(depth) ?? 0;
-    columns.set(depth, row + 1);
+    const column = taskLoyaltyColumn(task);
+    const index = loyaltyColumns.findIndex((c) => c.key === column);
+    const row = columns.get(column) ?? 0;
+    columns.set(column, row + 1);
     const result = availability(task);
     const state = profile.tasks[task.id] ?? 'unstarted';
     return {
       id: task.id,
-      position: { x: depth * 300, y: row * 120 },
+      position: { x: index * 300, y: 70 + row * 120 },
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       data: {
@@ -61,6 +62,23 @@ export default function TaskGraph({
       },
     };
   });
+  nodes.unshift(
+    ...loyaltyColumns.map((column, index) => ({
+      id: `ll-heading-${column.key}`,
+      position: { x: index * 300, y: 0 },
+      data: { label: `${column.label} (${columns.get(column.key) ?? 0}件)` },
+      type: 'default',
+      selectable: false,
+      style: {
+        width: 240,
+        background: '#0f172a',
+        color: '#fbbf24',
+        fontWeight: 700,
+        border: '1px solid #475569',
+        pointerEvents: 'none' as const,
+      },
+    })),
+  );
   const ids = new Set(tasks.map((task) => task.id));
   const edges: Edge[] = tasks.flatMap((task) =>
     task.taskRequirements
@@ -81,7 +99,7 @@ export default function TaskGraph({
   return (
     <div
       className="h-[550px] rounded-xl border border-slate-700 bg-slate-950"
-      aria-label="タスク依存グラフ"
+      aria-label="LL別タスクグラフ"
     >
       <ReactFlow
         key={`${profile.id}:${tasks.map((t) => t.id).join(',')}`}

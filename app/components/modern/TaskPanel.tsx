@@ -5,6 +5,7 @@ import { useGame } from '@/app/context/GameContext';
 import type { GameTask, Objective } from '@/src/domain/game';
 import type { TaskState } from '@/src/domain/progression';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
+import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -108,9 +109,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             className={control}
             value={taskState}
             disabled={!!storageError}
-            onChange={(e) =>
-              edit((p) => ({ ...p, tasks: { ...p.tasks, [task.id]: e.target.value as TaskState } }))
-            }
+            onChange={(e) => edit((p) => changeTaskState(p, task, e.target.value as TaskState))}
           >
             {Object.entries(stateNames).map(([state, name]) => (
               <option key={state} value={state}>
@@ -120,6 +119,17 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           </select>
         </div>
       </div>
+      <p className="mt-3 text-xs text-slate-300">
+        信頼度（完了）:{' '}
+        {Object.entries(reputationRewards(task, 'complete'))
+          .map(([id, amount]) => `${resolveName(id) || id} ${amount >= 0 ? '+' : ''}${amount}`)
+          .join(' / ') || '変動なし'}
+        {' · '}失敗:{' '}
+        {Object.entries(reputationRewards(task, 'failed'))
+          .map(([id, amount]) => `${resolveName(id) || id} ${amount >= 0 ? '+' : ''}${amount}`)
+          .join(' / ') || '変動なし'}
+        {' · '}状態変更時に自動反映。取り消すと反映分を戻します。
+      </p>
       <div className="my-3 flex flex-wrap items-center gap-3 text-sm">
         <span
           className={`rounded px-2 py-1 ${result.state === 'eligible' ? 'bg-emerald-900 text-emerald-200' : result.state === 'blocked' ? 'bg-red-950 text-red-200' : 'bg-amber-950 text-amber-200'}`}

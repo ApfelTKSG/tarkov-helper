@@ -136,6 +136,7 @@ export default function ProfileControls() {
         <summary className="cursor-pointer text-amber-300">トレーダーの信頼度・LLを設定</summary>
         <p className="my-3 text-sm text-slate-300">
           実際のゲームの値を入力してください。LLを「自動」にすると、解放済み・PMCレベル・信頼度が入力されている場合に計算します。
+          タスク完了・失敗の信頼度は自動反映します。未入力の場合は0から加算します。デイリーなどの変動はここで現在値に修正できます。既存の完了済みタスクには遡って加算しません。
         </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {snapshot?.traders

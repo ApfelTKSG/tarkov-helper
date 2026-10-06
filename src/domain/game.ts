@@ -25,6 +25,8 @@ export interface Objective {
   wearing?: string[][];
 }
 export interface GameTask extends TaskDefinition {
+  finishRewards?: { traderStanding: { trader: string; standing: number }[] };
+  failureOutcome?: { traderStanding: { trader: string; standing: number }[] };
   name: string;
   englishName: string;
   trader: string;
