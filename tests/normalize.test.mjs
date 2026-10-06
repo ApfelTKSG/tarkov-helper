@@ -11,8 +11,15 @@ test('translations fall back to English, preserving IDs, casing, and raw candida
   assert.equal(snapshot.tasks[0].objectives[0].count, 3);
   assert.equal(snapshot.tasks[1].otherRequirements[0].variableId, 'opaque');
   assert.equal(snapshot.items.unused, undefined);
-  const envelope = { data: { name: 'Front_plate', other: 'front_plate', id: 'Front_plate' }, translations: ['$.data.name', '$.data.other'] };
-  assert.deepEqual(translateEnvelope(envelope, { Front_plate: 'A', front_plate: 'B' }).data, { name: 'A', other: 'B', id: 'Front_plate' });
+  const envelope = {
+    data: { name: 'Front_plate', other: 'front_plate', id: 'Front_plate' },
+    translations: ['$.data.name', '$.data.other'],
+  };
+  assert.deepEqual(translateEnvelope(envelope, { Front_plate: 'A', front_plate: 'B' }).data, {
+    name: 'A',
+    other: 'B',
+    id: 'Front_plate',
+  });
 });
 
 test('volatile trader reset times, source timestamps, key order and prices do not change revision', () => {
@@ -21,7 +28,9 @@ test('volatile trader reset times, source timestamps, key order and prices do no
   feeds.traders.body.data.traderA.resetTime = 'later';
   feeds.items.body.data.items.itemA.avg24hPrice = 999;
   feeds.tasks.fetchedAt = 'later';
-  feeds.tasks.body.data.tasks = Object.fromEntries(Object.entries(feeds.tasks.body.data.tasks).reverse());
+  feeds.tasks.body.data.tasks = Object.fromEntries(
+    Object.entries(feeds.tasks.body.data.tasks).reverse(),
+  );
   const second = normalizeMode('regular', feeds);
   assert.equal(second.revision, first.revision);
   assert.deepEqual(diffSnapshots(first, second).changed, []);
@@ -47,8 +56,22 @@ test('missing prerequisite and unknown condition type fail validation', () => {
 });
 
 test('JSONPath unions and recursive body parts translate without changing references', () => {
-  const base = { data: { objectives: [{ nested: { bodyParts: ['body'] }, healthEffect: { effects: ['effect'] }, playerHealthEffect: { effects: ['effect'] }, item: 'body' }] },
-    translations: ["$.data.objectives[*]..bodyParts[*]", "$.data.objectives[*]['healthEffect','playerHealthEffect'].effects[*]"] };
+  const base = {
+    data: {
+      objectives: [
+        {
+          nested: { bodyParts: ['body'] },
+          healthEffect: { effects: ['effect'] },
+          playerHealthEffect: { effects: ['effect'] },
+          item: 'body',
+        },
+      ],
+    },
+    translations: [
+      '$.data.objectives[*]..bodyParts[*]',
+      "$.data.objectives[*]['healthEffect','playerHealthEffect'].effects[*]",
+    ],
+  };
   const result = translateEnvelope(base, { body: '胴体', effect: '効果' });
   assert.equal(result.data.objectives[0].nested.bodyParts[0], '胴体');
   assert.equal(result.data.objectives[0].healthEffect.effects[0], '効果');
@@ -59,6 +82,11 @@ test('JSONPath unions and recursive body parts translate without changing refere
 
 test('nullable count is preserved for non-count objectives', () => {
   const feeds = makeFeeds();
-  feeds.tasks.body.data.tasks.taskA.objectives.push({ id: 'stateGate', type: 'taskStatus', description: 'state', count: null });
+  feeds.tasks.body.data.tasks.taskA.objectives.push({
+    id: 'stateGate',
+    type: 'taskStatus',
+    description: 'state',
+    count: null,
+  });
   assert.equal(normalizeMode('regular', feeds).tasks[0].objectives[1].count, null);
 });

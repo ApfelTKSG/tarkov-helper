@@ -20,6 +20,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
-      - name: Lint modernization modules
-        run: npx eslint src scripts/update-game-data.mjs tests --max-warnings 0
+      - run: npm run lint -- --max-warnings 0
       - run: npm run build
