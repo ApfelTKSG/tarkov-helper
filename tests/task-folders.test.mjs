@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { taskFolders, visibleTaskFolders } from '../src/domain/task-folders.ts';
 
 const task = (id, previous = [], level = 1, trader = 'trader') => ({
@@ -20,15 +21,41 @@ test('folders contain ordered maximal lines with at least three members', () => 
   );
   assert.equal(taskFolders(tasks.slice(0, 2)).length, 0);
 });
-test('branch and merge boundaries remain individual, including cross-trader branches', () => {
+test('same-trader branch and merge boundaries remain individual', () => {
   const tasks = line();
-  tasks.push(task('branch', ['a'], 1, 'other'));
+  tasks.push(task('branch', ['a']));
   assert.deepEqual(
     taskFolders(tasks).map((f) => f.tasks.map((t) => t.id)),
     [['b', 'c', 'd']],
   );
   tasks[2].taskRequirements.push({ task: 'branch', status: ['complete'] });
   assert.equal(taskFolders(tasks).length, 0);
+});
+test('external prerequisites and successors do not split a trader line', () => {
+  const tasks = line();
+  tasks.push(task('external', [], 1, 'other'), task('external-next', ['a'], 1, 'other'));
+  tasks[3].taskRequirements.push({ task: 'external', status: ['complete'] });
+  assert.deepEqual(
+    taskFolders(tasks).map((f) => f.tasks.map((t) => t.id)),
+    [['a', 'b', 'c', 'd']],
+  );
+  assert.equal(tasks[3].taskRequirements.length, 2); // eligibility still retains both gates
+});
+test('Higher They Fly includes Choose Your Friends Wisely in every mode', async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
+  );
+  for (const mode of ['regular', 'pve', 'pvp-season']) {
+    const snapshot = JSON.parse(
+      await readFile(new URL(`../public/game-data/${manifest.modes[mode].file}`, import.meta.url)),
+    );
+    const folder = taskFolders(snapshot.tasks).find(
+      (f) => f.tasks[0].englishName === 'The Higher They Fly',
+    );
+    assert.equal(folder.tasks.length, 6);
+    assert.equal(folder.tasks.at(-1).englishName, 'Choose Your Friends Wisely');
+    assert.equal(folder.tasks.at(-1).taskRequirements.length, 2);
+  }
 });
 test('different LL and trader split lines, unknown tiers never become folders', () => {
   const tasks = line();

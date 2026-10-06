@@ -7,21 +7,24 @@ export interface TaskFolder {
   level: number;
 }
 
-/** Detect against the full catalogue: filtering must never hide a branch or merge. */
+/** Detect each trader's lines against the full catalogue, independent of display filters. */
 export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const byId = new Map(allTasks.map((task) => [task.id, task]));
   const outgoing = new Map<string, Set<string>>();
   for (const task of allTasks) {
     for (const req of task.taskRequirements) {
+      if (byId.get(req.task)?.trader !== task.trader) continue;
       const next = outgoing.get(req.task) ?? new Set<string>();
       next.add(task.id);
       outgoing.set(req.task, next);
     }
   }
   const levels = new Map(allTasks.map((task) => [task.id, taskLoyaltyColumn(task, allTasks)]));
+  const predecessors = (task: GameTask) =>
+    task.taskRequirements.filter((req) => byId.get(req.task)?.trader === task.trader);
   const eligible = (task: GameTask) =>
     (levels.get(task.id) ?? 0) > 0 &&
-    task.taskRequirements.length <= 1 &&
+    predecessors(task).length <= 1 &&
     (outgoing.get(task.id)?.size ?? 0) <= 1 &&
     task.taskRequirements.every(
       (req) =>
@@ -38,7 +41,7 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const folders: TaskFolder[] = [];
   for (const task of allTasks) {
     if (!eligible(task) || visited.has(task.id)) continue;
-    const previousId = task.taskRequirements[0]?.task;
+    const previousId = predecessors(task)[0]?.task;
     const previous = previousId ? byId.get(previousId) : undefined;
     if (previous && follows(previous, task)) continue;
     const line: GameTask[] = [];
