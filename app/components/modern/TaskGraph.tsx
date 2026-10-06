@@ -18,7 +18,7 @@ import { ancestorIds } from '@/src/domain/task-view';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
-import { taskGraphStatus } from '@/src/domain/task-presentation';
+import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentation';
 import { stateNames } from './TaskPanel';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
@@ -34,12 +34,13 @@ interface TaskNodeData {
   progressLabel: string;
   progressTitle: string;
   requiredLevel?: number;
+  rewards?: ReturnType<typeof taskRewardLabels>;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.requiredLevel ? 'pt-7' : ''}`}
+      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
       style={{
         opacity: ancestors && !ancestors.has(id) ? 0.25 : 1,
         background: data.background,
@@ -49,7 +50,16 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
       <Handle type="target" position={Position.Left} isConnectable={false} />
       {!!data.requiredLevel && (
         <span className="absolute left-2 top-1 text-[10px] text-slate-300">
-          レベル {data.requiredLevel}
+          レベル {data.requiredLevel}～
+        </span>
+      )}
+      {data.rewards && (
+        <span
+          className="absolute right-2 top-1 text-right text-[10px] leading-3 text-slate-300"
+          title="完了報酬（APIの基本値）"
+        >
+          <span className="block">{data.rewards.experience}</span>
+          <span className="block">{data.rewards.money}</span>
         </span>
       )}
       {data.label}
@@ -153,6 +163,7 @@ export default function TaskGraph({
         targetPosition: Position.Left,
         data: {
           requiredLevel: task.minPlayerLevel,
+          rewards: taskRewardLabels(task),
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
           loyaltyTitle: placement.inheritedFrom.length ? `前提経由 LL${column}` : undefined,
           progressLabel: progress.total ? `前提 ${progress.met}/${progress.total}` : '',

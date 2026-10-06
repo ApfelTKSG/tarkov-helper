@@ -26,7 +26,10 @@ export interface Objective {
 }
 export interface GameTask extends TaskDefinition {
   supplementLoyaltyLevel?: number;
-  finishRewards?: { traderStanding: { trader: string; standing: number }[] };
+  finishRewards?: {
+    traderStanding: { trader: string; standing: number }[];
+    items?: { item: string; count: number }[];
+  };
   failureOutcome?: { traderStanding: { trader: string; standing: number }[] };
   name: string;
   englishName: string;
