@@ -32,13 +32,13 @@ test('same-trader branch and merge boundaries remain individual', () => {
   tasks[2].taskRequirements.push({ task: 'branch', status: ['complete'] });
   assert.equal(taskFolders(tasks).length, 0);
 });
-test('external prerequisites and successors remain outside folders', () => {
+test('external prerequisites exclude members while foreign successors do not split lines', () => {
   const tasks = line();
   tasks.push(task('external', [], 1, 'other'), task('external-next', ['a'], 1, 'other'));
   tasks[3].taskRequirements.push({ task: 'external', status: ['complete'] });
   assert.deepEqual(
     taskFolders(tasks).map((f) => f.tasks.map((t) => t.id)),
-    [['b', 'c']],
+    [['a', 'b', 'c']],
   );
   assert.equal(tasks[3].taskRequirements.length, 2); // eligibility still retains both gates
 });
@@ -63,7 +63,10 @@ test('LL changes and unknown tiers do not split lines, trader changes do', () =>
   assert.deepEqual(taskFolders(tasks)[0].levels, [1, 2]);
   tasks[2].traderRequirements[0].value = 1;
   tasks[2].trader = 'other';
-  assert.equal(taskFolders(tasks).length, 0);
+  assert.deepEqual(
+    taskFolders(tasks).map((f) => f.tasks.map((t) => t.id)),
+    [['a', 'b']],
+  );
   tasks[2].trader = 'trader';
   for (const t of tasks) {
     t.traderRequirements = [];
@@ -72,7 +75,7 @@ test('LL changes and unknown tiers do not split lines, trader changes do', () =>
   assert.equal(taskFolders(tasks).length, 1);
   assert.deepEqual(taskFolders(tasks)[0].levels, [0]);
 });
-test('Punisher chains still span LL; every folder excludes incoming and outgoing external gates', async () => {
+test('Punisher includes Part 6 across LL; folders exclude only incoming external gates', async () => {
   const manifest = JSON.parse(
     await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
   );
@@ -82,7 +85,7 @@ test('Punisher chains still span LL; every folder excludes incoming and outgoing
     );
     const folders = taskFolders(snapshot.tasks);
     const folder = folders.find((f) => f.tasks[0].englishName === 'The Punisher - Part 1');
-    for (const part of [1, 2, 3])
+    for (const part of [1, 2, 3, 4, 5, 6])
       assert.ok(folder.tasks.some((t) => t.englishName === `The Punisher - Part ${part}`));
     assert.equal(folder.level, 1);
     assert.ok(folder.levels.includes(3));
@@ -91,11 +94,6 @@ test('Punisher chains still span LL; every folder excludes incoming and outgoing
       for (const member of f.tasks) {
         assert.ok(
           member.taskRequirements.every((req) => byId.get(req.task).trader === member.trader),
-        );
-        assert.ok(
-          snapshot.tasks
-            .filter((t) => t.taskRequirements.some((r) => r.task === member.id))
-            .every((t) => t.trader === member.trader),
         );
       }
   }

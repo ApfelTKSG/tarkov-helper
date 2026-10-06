@@ -76,7 +76,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
   return (
     <article
       id={`task-${task.id}`}
-      className="scroll-mt-4 rounded-xl border border-slate-700 bg-slate-800 p-4"
+      className={`scroll-mt-4 rounded-xl border p-4 ${result.state === 'eligible' || taskState === 'complete' ? 'border-emerald-500 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -128,7 +128,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
       </div>
       {!!placement.inheritedFrom.length && (
         <p className="mt-3 text-sm text-sky-200">
-          LL{placement.level}列に表示：前提タスク{' '}
+          LL{placement.level}に分類：前提タスク{' '}
           {placement.inheritedFrom.map((source) => resolveName(source.id)).join(' / ')}{' '}
           のLLから分類しています。
           前提がすでに完了している場合の受注可否は、下の解放条件で判定します。
@@ -146,11 +146,13 @@ export default function TaskPanel({ task }: { task: GameTask }) {
         {' · '}状態変更時に自動反映。取り消すと反映分を戻します。
       </p>
       <div className="my-3 flex flex-wrap items-center gap-3 text-sm">
-        <span
-          className={`rounded px-2 py-1 ${result.state === 'eligible' ? 'bg-emerald-900 text-emerald-200' : result.state === 'blocked' ? 'bg-red-950 text-red-200' : 'bg-amber-950 text-amber-200'}`}
-        >
-          {availabilityNames[result.state]}
-        </span>
+        {result.state !== 'eligible' && (
+          <span
+            className={`rounded px-2 py-1 ${result.state === 'blocked' ? 'bg-red-950 text-red-200' : 'bg-amber-950 text-amber-200'}`}
+          >
+            {availabilityNames[result.state]}
+          </span>
+        )}
         <label>
           <input
             type="checkbox"

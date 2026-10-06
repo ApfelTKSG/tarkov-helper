@@ -14,6 +14,8 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const outgoing = new Map<string, Set<string>>();
   for (const task of allTasks) {
     for (const req of task.taskRequirements) {
+      // Foreign successors do not branch this trader's folder line.
+      if (byId.get(req.task)?.trader !== task.trader) continue;
       const next = outgoing.get(req.task) ?? new Set<string>();
       next.add(task.id);
       outgoing.set(req.task, next);
@@ -25,7 +27,6 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const eligible = (task: GameTask) =>
     task.taskRequirements.length <= 1 &&
     (outgoing.get(task.id)?.size ?? 0) <= 1 &&
-    [...(outgoing.get(task.id) ?? [])].every((id) => byId.get(id)?.trader === task.trader) &&
     task.taskRequirements.every(
       (req) =>
         byId.has(req.task) &&

@@ -18,7 +18,8 @@ import { ancestorIds } from '@/src/domain/task-view';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
-import { availabilityNames, stateNames } from './TaskPanel';
+import { taskGraphStatus } from '@/src/domain/task-presentation';
+import { stateNames } from './TaskPanel';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
   hovered: null,
@@ -32,12 +33,13 @@ interface TaskNodeData {
   loyaltyTitle?: string;
   progressLabel: string;
   progressTitle: string;
+  requiredLevel?: number;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className="relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100"
+      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.requiredLevel ? 'pt-7' : ''}`}
       style={{
         opacity: ancestors && !ancestors.has(id) ? 0.25 : 1,
         background: data.background,
@@ -45,6 +47,11 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
       }}
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
+      {!!data.requiredLevel && (
+        <span className="absolute left-2 top-1 text-[10px] text-slate-300">
+          レベル {data.requiredLevel}
+        </span>
+      )}
       {data.label}
       {data.progressLabel && (
         <span
@@ -137,6 +144,7 @@ export default function TaskGraph({
       const result = availability(task);
       const state = profile.tasks[task.id] ?? 'unstarted';
       const progress = prerequisiteProgress(task, profile.tasks);
+      const presentation = taskGraphStatus(state, result.state);
       nodes.push({
         id: task.id,
         type: 'task',
@@ -144,26 +152,17 @@ export default function TaskGraph({
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         data: {
+          requiredLevel: task.minPlayerLevel,
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
           loyaltyTitle: placement.inheritedFrom.length ? `前提経由 LL${column}` : undefined,
           progressLabel: progress.total ? `前提 ${progress.met}/${progress.total}` : '',
           progressTitle: `満たした前提タスク数 / 全前提タスク数: ${progress.met}/${progress.total}`,
-          background: state === 'complete' ? '#064e3b' : '#1e293b',
-          borderColor:
-            result.state === 'eligible'
-              ? '#34d399'
-              : result.state === 'blocked'
-                ? '#f87171'
-                : '#fbbf24',
+          background: presentation.background,
+          borderColor: presentation.borderColor,
           label: (
             <div>
               <strong>{task.name}</strong>
-              <div className="mt-1 text-xs">
-                {stateNames[state]} · {availabilityNames[result.state]}
-              </div>
-              {!!task.minPlayerLevel && (
-                <div className="mt-1 text-slate-300">要求レベル {task.minPlayerLevel}</div>
-              )}
+              {presentation.label && <div className="mt-1 text-xs">{presentation.label}</div>}
             </div>
           ),
         },
@@ -211,6 +210,7 @@ export default function TaskGraph({
           y: 70 + row * 120,
         },
         data: {
+          requiredLevel: folder.tasks[0].minPlayerLevel,
           progressLabel: `完了 ${complete}/${folder.tasks.length}`,
           progressTitle: `完了タスク数 / 格納タスク数: ${complete}/${folder.tasks.length}`,
           loyaltyLabel: folder.levels
@@ -223,11 +223,6 @@ export default function TaskGraph({
               <strong>
                 {folder.expanded ? '📂' : '📁'} {folder.tasks[0].name} からのライン
               </strong>
-              {!!folder.tasks[0].minPlayerLevel && (
-                <div className="mt-1 text-slate-300">
-                  要求レベル {folder.tasks[0].minPlayerLevel}（先頭）
-                </div>
-              )}
               <div className="mt-1 text-sky-300">
                 {revealMatches || folder.tasks.some((t) => t.id === selectedId)
                   ? '検索・選択中は自動展開'
