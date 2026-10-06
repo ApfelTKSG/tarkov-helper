@@ -86,6 +86,11 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             {snapshot?.traders.find((t) => t.id === task.trader)?.name} · {task.experience ?? 0} XP
             · {task.id}
           </p>
+          {task.supplementLoyaltyLevel && (
+            <p className="text-xs text-slate-400">
+              補足データの分類: LL{task.supplementLoyaltyLevel}（受注判定は下の解放条件で確認）
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -212,10 +217,59 @@ export default function TaskPanel({ task }: { task: GameTask }) {
                       }))
                     }
                   >
-                    <option value="">未確認</option>
+                    <option value="">
+                      {condition.counter?.derived ? '自動判定を使用' : '未確認'}
+                    </option>
                     <option value="true">ゲーム内で達成を確認</option>
                     <option value="false">未達を確認</option>
                   </select>
+                )}
+                {condition.counter && (
+                  <details className="mt-2 text-slate-300">
+                    <summary className="cursor-pointer">
+                      カウント対象 {condition.counter.taskIds.length}件
+                      {condition.counter.derived &&
+                        condition.state === 'unmet' &&
+                        ` · あと${Math.max(0, condition.counter.required - condition.counter.completed)}件`}
+                      {' · '}
+                      {condition.counter.derived ? '補足データから計算' : '候補・自動判定対象外'}
+                    </summary>
+                    <p className="mt-1 text-xs text-slate-400">
+                      コミュニティの検証データに基づく計算です。ゲーム内の結果が異なる場合は上の手動確認を使用してください。
+                    </p>
+                    <ul className="my-2 space-y-1">
+                      {condition.counter.taskIds.map((id) => {
+                        const candidate = snapshot?.tasks.find((t) => t.id === id);
+                        const giver = snapshot?.traders.find((t) => t.id === candidate?.trader);
+                        return (
+                          <li key={id}>
+                            {profile.tasks[id] === 'complete' ? '✓ ' : '○ '}
+                            {candidate && giver ? (
+                              <Link
+                                className="text-sky-300 underline"
+                                href={`/traders/${traderNameToSlug(giver.englishName)}#task-${id}`}
+                              >
+                                {candidate.name}
+                              </Link>
+                            ) : (
+                              id
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {condition.counter.proof.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mr-2 text-xs text-sky-300 underline"
+                      >
+                        補足データの検証資料 ↗
+                      </a>
+                    ))}
+                  </details>
                 )}
               </li>
             );

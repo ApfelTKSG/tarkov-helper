@@ -25,6 +25,7 @@ export interface Objective {
   wearing?: string[][];
 }
 export interface GameTask extends TaskDefinition {
+  supplementLoyaltyLevel?: number;
   finishRewards?: { traderStanding: { trader: string; standing: number }[] };
   failureOutcome?: { traderStanding: { trader: string; standing: number }[] };
   name: string;
@@ -60,6 +61,8 @@ export interface StationLevel {
   skillRequirements: { id: string; skill: string; level: number }[];
 }
 export interface GameSnapshot {
+  progressionRuleRevision?: string;
+  progressionCounters?: Record<string, import('./progression').ProgressionCounter>;
   schemaVersion: number;
   mode: GameMode;
   seasonId: string | null;

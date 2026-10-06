@@ -144,7 +144,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         : task.requiredPrestige;
     return evaluateAvailability(
       { ...task, requiredPrestige: prestige ?? task.requiredPrestige },
-      { ...profile, traders: effectiveTraders },
+      {
+        ...profile,
+        traders: effectiveTraders,
+        progressionCounters: snapshot?.progressionCounters,
+        progressionRuleRevision: snapshot?.progressionRuleRevision,
+      },
     );
   };
   return (

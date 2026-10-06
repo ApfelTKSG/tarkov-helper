@@ -3,6 +3,10 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fetchEnvelope } from '../src/data/http-cache.mjs';
 import {
+  fetchProgressionOverlay,
+  supplementProgression,
+} from '../src/data/progression-overlay.mjs';
+import {
   MODES,
   RESOURCES,
   normalizeMode,
@@ -19,11 +23,17 @@ async function loadJson(path) {
   }
 }
 
-export async function updateGameData({ root = process.cwd(), fetcher, modes = MODES } = {}) {
+export async function updateGameData({
+  root = process.cwd(),
+  fetcher,
+  overlayFetcher,
+  modes = MODES,
+} = {}) {
   if (modes.some((mode) => !MODES.includes(mode))) throw new Error('Unsupported mode');
   const cacheDirectory = join(root, '.cache', 'tarkov-api');
   const output = join(root, 'public', 'game-data');
   const prior = await loadJson(join(output, 'manifest.json'));
+  const overlay = await fetchProgressionOverlay({ cacheDirectory, fetcher: overlayFetcher });
   if (prior && prior.schemaVersion !== 1) throw new Error('Unsupported manifest schema');
   const catalog = await fetchEnvelope('endpoints', { cacheDirectory, fetcher });
   if (modes.some((mode) => !catalog.body.data.gameModes?.includes(mode)))
@@ -50,7 +60,10 @@ export async function updateGameData({ root = process.cwd(), fetcher, modes = MO
       const failure = outcomes.find((result) => result.status === 'rejected');
       if (failure) throw failure.reason;
     }
-    const next = normalizeMode(mode, feeds, mode === 'pvp-season' ? season.body.data.id : null);
+    const next = supplementProgression(
+      normalizeMode(mode, feeds, mode === 'pvp-season' ? season.body.data.id : null),
+      overlay,
+    );
     const oldEntry = prior?.modes?.[mode];
     if (oldEntry && !new RegExp(`^${mode}/[a-f0-9]{64}\\.json$`).test(oldEntry.file))
       throw new Error(`${mode}: Invalid snapshot path`);

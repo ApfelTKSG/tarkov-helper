@@ -14,7 +14,7 @@ export function taskLoyaltyColumn(task: GameTask): number {
   const gates = task.traderRequirements.filter(
     (r) => r.trader === task.trader && r.requirementType === 'level',
   );
-  if (!gates.length) return task.otherRequirements?.length ? 0 : 1;
+  if (!gates.length) return task.supplementLoyaltyLevel ?? (task.otherRequirements?.length ? 0 : 1);
   for (let level = 1; level <= 4; level++)
     if (gates.every((r) => compareNumber(level, r.compareMethod, r.value) === true)) return level;
   return 0;

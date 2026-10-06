@@ -5,6 +5,8 @@ export interface TraderProgress {
   unlocked?: boolean;
 }
 export interface ProgressProfile {
+  progressionRuleRevision?: string;
+  progressionCounters?: Record<string, ProgressionCounter>;
   level?: number;
   faction?: 'USEC' | 'BEAR';
   prestige?: number;
@@ -33,10 +35,24 @@ export interface TaskDefinition {
   availableDelaySecondsMax?: number;
 }
 export interface ConditionResult {
+  counter?: {
+    completed: number;
+    required: number;
+    taskIds: string[];
+    proof: string[];
+    derived: boolean;
+  };
   kind: string;
   state: 'met' | 'unmet' | 'unknown';
   message: string;
   reference?: string;
+}
+export interface ProgressionCounter {
+  revision: string;
+  verification: 'verified' | 'unresolved';
+  coverage: 'complete' | 'partial';
+  taskIds: string[];
+  proof: string[];
 }
 export interface Availability {
   state: 'eligible' | 'blocked' | 'unknown';
@@ -136,16 +152,42 @@ export function evaluateAvailability(
   }
   for (const req of task.otherRequirements ?? []) {
     const key = req.id ? `${task.id}:${req.id}` : undefined;
+    const counter =
+      req.type === 'globalVariable' && typeof req.variableId === 'string'
+        ? profile.progressionCounters?.[req.variableId]
+        : undefined;
+    const automatic =
+      counter?.verification === 'verified' &&
+      counter.coverage === 'complete' &&
+      profile.progressionRuleRevision === counter.revision &&
+      counter.taskIds.length > 0;
+    const completed = counter?.taskIds.filter((id) => profile.tasks[id] === 'complete').length ?? 0;
+    const required = typeof req.value === 'number' ? req.value : undefined;
+    const derived = automatic && required !== undefined && typeof req.compareMethod === 'string';
+    const manual = key ? profile.confirmedRequirements?.[key] : undefined;
     add(
       req.type,
-      key ? profile.confirmedRequirements?.[key] : undefined,
+      manual ??
+        (derived ? compareNumber(completed, req.compareMethod as string, required!) : undefined),
       req.type === 'dialogue'
         ? 'ゲーム内の会話条件を確認'
         : req.type === 'globalVariable'
-          ? 'ゲーム内の追加解放条件を確認'
+          ? derived
+            ? `対象タスクの完了数 ${completed} / ${required}（${req.compareMethod} ${required}、記録から自動計算${manual === undefined ? '' : '・手動確認を優先'}）`
+            : counter
+              ? '対象タスクのカウント規則が未解決・不完全、または対応版が異なるためゲーム内で確認'
+              : 'ゲーム内の追加解放条件を確認'
           : '未対応の条件を確認',
       key,
     );
+    if (counter && required !== undefined)
+      conditions[conditions.length - 1].counter = {
+        completed,
+        required,
+        taskIds: counter.taskIds,
+        proof: counter.proof,
+        derived: !!derived,
+      };
   }
   const minimum = task.availableDelaySecondsMin ?? 0;
   const maximum = task.availableDelaySecondsMax ?? minimum;

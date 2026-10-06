@@ -31,10 +31,12 @@ npm run dev
 
 更新方式と自動実行の設定は [データ更新手順](docs/DATA_PIPELINE.md)、改修範囲は [改修計画](docs/TARKOV_MODERNIZATION_PLAN.md) を参照してください。
 
-タスク配布グループ・Lightkeeperの現在の経路については、APIで表現できない条件の検証と補完が残っています。関連タスクの表示はAPIのフラグに基づきます。端末内の進捗はゲームと自動同期しません。
+タスク配布グループは [TarkovTrackerの補足JSON](https://github.com/tarkovtracker-org/tarkov-data-overlay) を取り込み、検証済みの対象タスクの完了数を自動計算します。LLの分類、カウント対象一覧と不足数を表示し、未解決の条件には手動確認を残します。Lightkeeperの現在の経路やLL到達による別の解放経路には補完が残っています。端末内の進捗はゲームと自動同期しません。
 
 ## License
 
 このプロジェクトは GNU General Public License v3.0 の下でライセンスされています。詳細は [LICENSE](LICENSE) ファイルをご覧ください。
 
 This project uses [tarkov-api](https://github.com/the-hideout/tarkov-api) by The Hideout, which is also licensed under GPL-3.0.
+
+Supplemental progression data is from [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay), Copyright (c) 2026 TarkovTracker.org, under the MIT License. See [the retained license notice](docs/TARKOV_DATA_OVERLAY_LICENSE.txt).

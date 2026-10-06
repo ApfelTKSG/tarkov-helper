@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { updateGameData } from '../scripts/update-game-data.mjs';
+import { updateGameData as update } from '../scripts/update-game-data.mjs';
+import { signedOverlay } from './overlay-fixture.mjs';
+const updateGameData = (options) =>
+  update({ ...options, overlayFetcher: async () => new Response(JSON.stringify(signedOverlay())) });
 import { makeFeeds } from './fixtures.mjs';
 
 function server(feeds, version, failPath) {

@@ -297,6 +297,8 @@ export function diffSnapshots(previous, next) {
       'seasonId',
       'story',
       'prestige',
+      'progressionCounters',
+      'progressionRuleRevision',
     ].some((field) => contentHash(previous[field] ?? null) !== contentHash(next[field] ?? null)),
   };
 }
