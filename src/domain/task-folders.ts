@@ -26,7 +26,6 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
     task.taskRequirements.filter((req) => byId.get(req.task)?.trader === task.trader);
   const eligible = (task: GameTask) =>
     task.taskRequirements.length <= 1 &&
-    (outgoing.get(task.id)?.size ?? 0) <= 1 &&
     task.taskRequirements.every(
       (req) =>
         byId.has(req.task) &&
@@ -35,7 +34,10 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
         req.status.every((status) => status === 'active' || status === 'complete'),
     );
   const follows = (previous: GameTask, next: GameTask) =>
-    eligible(previous) && eligible(next) && previous.trader === next.trader;
+    eligible(previous) &&
+    eligible(next) &&
+    previous.trader === next.trader &&
+    outgoing.get(previous.id)?.size === 1;
   const visited = new Set<string>();
   const folders: TaskFolder[] = [];
   for (const task of allTasks) {
@@ -48,6 +50,8 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
     while (current && !visited.has(current.id)) {
       visited.add(current.id);
       line.push(current);
+      // A branch point can end a folder; its successors start separate lines.
+      if (outgoing.get(current.id)?.size !== 1) break;
       const nextId: string | undefined = outgoing.get(current.id)?.values().next().value;
       const next: GameTask | undefined = nextId ? byId.get(nextId) : undefined;
       current = next && follows(current, next) ? next : undefined;

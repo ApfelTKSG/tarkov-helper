@@ -22,7 +22,7 @@ test('folders contain ordered maximal lines with at least two members', () => {
   assert.equal(taskFolders(tasks.slice(0, 2)).length, 1);
   assert.equal(taskFolders(tasks.slice(0, 1)).length, 0);
 });
-test('same-trader branch and merge boundaries remain individual', () => {
+test('a branch at the start splits lines and multiple prerequisites stay outside', () => {
   const tasks = line();
   tasks.push(task('branch', ['a']));
   assert.deepEqual(
@@ -31,6 +31,47 @@ test('same-trader branch and merge boundaries remain individual', () => {
   );
   tasks[2].taskRequirements.push({ task: 'branch', status: ['complete'] });
   assert.equal(taskFolders(tasks).length, 0);
+});
+
+test('a branch point ends its incoming folder without choosing a successor', () => {
+  const tasks = [...line(), task('left', ['d']), task('left-next', ['left']), task('right', ['d'])];
+  for (const catalogue of [tasks, [...tasks].reverse()]) {
+    const folders = taskFolders(catalogue);
+    assert.deepEqual(
+      folders.find((f) => f.tasks[0].id === 'a').tasks.map((t) => t.id),
+      ['a', 'b', 'c', 'd'],
+    );
+    assert.deepEqual(
+      folders.find((f) => f.tasks[0].id === 'left').tasks.map((t) => t.id),
+      ['left', 'left-next'],
+    );
+    assert.ok(!folders.some((f) => f.tasks.some((t) => t.id === 'right')));
+    assert.equal(new Set(folders.flatMap((f) => f.tasks.map((t) => t.id))).size, 6);
+  }
+});
+
+test('Health Care Privacy Part 4 stays at the end of the Part 1 folder in every mode', async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
+  );
+  for (const mode of ['regular', 'pve', 'pvp-season']) {
+    const snapshot = JSON.parse(
+      await readFile(new URL(`../public/game-data/${manifest.modes[mode].file}`, import.meta.url)),
+    );
+    const folder = taskFolders(snapshot.tasks).find(
+      (f) => f.tasks[0].englishName === 'Health Care Privacy - Part 1',
+    );
+    assert.deepEqual(
+      folder.tasks.map((t) => t.englishName),
+      [1, 2, 3, 4].map((n) => `Health Care Privacy - Part ${n}`),
+    );
+    const end = folder.tasks.at(-1);
+    assert.ok(
+      snapshot.tasks.filter(
+        (t) => t.trader === end.trader && t.taskRequirements.some((r) => r.task === end.id),
+      ).length > 1,
+    );
+  }
 });
 test('external prerequisites exclude members while foreign successors do not split lines', () => {
   const tasks = line();
