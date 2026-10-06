@@ -14,7 +14,6 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const outgoing = new Map<string, Set<string>>();
   for (const task of allTasks) {
     for (const req of task.taskRequirements) {
-      if (byId.get(req.task)?.trader !== task.trader) continue;
       const next = outgoing.get(req.task) ?? new Set<string>();
       next.add(task.id);
       outgoing.set(req.task, next);
@@ -24,11 +23,13 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const predecessors = (task: GameTask) =>
     task.taskRequirements.filter((req) => byId.get(req.task)?.trader === task.trader);
   const eligible = (task: GameTask) =>
-    predecessors(task).length <= 1 &&
+    task.taskRequirements.length <= 1 &&
     (outgoing.get(task.id)?.size ?? 0) <= 1 &&
+    [...(outgoing.get(task.id) ?? [])].every((id) => byId.get(id)?.trader === task.trader) &&
     task.taskRequirements.every(
       (req) =>
         byId.has(req.task) &&
+        byId.get(req.task)?.trader === task.trader &&
         req.status.length > 0 &&
         req.status.every((status) => status === 'active' || status === 'complete'),
     );
@@ -50,7 +51,7 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
       const next: GameTask | undefined = nextId ? byId.get(nextId) : undefined;
       current = next && follows(current, next) ? next : undefined;
     }
-    if (line.length >= 3)
+    if (line.length >= 2)
       folders.push({
         id: `task-folder-${task.id}`,
         tasks: line,

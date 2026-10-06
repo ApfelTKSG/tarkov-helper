@@ -17,6 +17,7 @@ import type { GameTask } from '@/src/domain/game';
 import { ancestorIds } from '@/src/domain/task-view';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
+import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
 import { availabilityNames, stateNames } from './TaskPanel';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
@@ -28,6 +29,9 @@ interface TaskNodeData {
   background: string;
   borderColor: string;
   loyaltyLabel: string;
+  loyaltyTitle?: string;
+  progressLabel: string;
+  progressTitle: string;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
@@ -42,14 +46,31 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
       {data.label}
-      <span className="absolute bottom-1 right-2 text-[10px] font-semibold text-amber-300">
+      <span
+        className="absolute bottom-1 left-2 text-[10px] text-slate-300"
+        title={data.progressTitle}
+      >
+        {data.progressLabel}
+      </span>
+      <span
+        className="absolute bottom-1 right-2 text-[10px] font-semibold text-amber-300"
+        title={data.loyaltyTitle}
+      >
         {data.loyaltyLabel}
       </span>
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   );
 }
-const nodeTypes = { task: TaskNode };
+function FolderFrame() {
+  return (
+    <div
+      aria-hidden="true"
+      className="h-full rounded-xl border-2 border-sky-500/40 bg-sky-950/20"
+    />
+  );
+}
+const nodeTypes = { task: TaskNode, folderFrame: FolderFrame };
 const edgeTypes = {};
 const defaultViewport = { x: 24, y: 24, zoom: 0.85 };
 
@@ -113,6 +134,7 @@ export default function TaskGraph({
       columns.set(displayColumn, row + 1);
       const result = availability(task);
       const state = profile.tasks[task.id] ?? 'unstarted';
+      const progress = prerequisiteProgress(task, profile.tasks);
       nodes.push({
         id: task.id,
         type: 'task',
@@ -121,6 +143,9 @@ export default function TaskGraph({
         targetPosition: Position.Left,
         data: {
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
+          loyaltyTitle: placement.inheritedFrom.length ? `前提経由 LL${column}` : undefined,
+          progressLabel: `${progress.met}/${progress.total}`,
+          progressTitle: `満たした前提タスク数 / 全前提タスク数: ${progress.met}/${progress.total}`,
           background: state === 'complete' ? '#064e3b' : '#1e293b',
           borderColor:
             result.state === 'eligible'
@@ -134,9 +159,9 @@ export default function TaskGraph({
               <div className="mt-1 text-xs">
                 {stateNames[state]} · {availabilityNames[result.state]}
               </div>
-              {!!placement.inheritedFrom.length && (
-                <div className="mt-1 text-xs text-slate-300">前提経由 LL{column}</div>
-              )}
+              <div className="mt-1 text-slate-300">
+                {task.minPlayerLevel ? `PMC Lv.${task.minPlayerLevel}` : 'PMC条件なし'}
+              </div>
             </div>
           ),
         },
@@ -145,7 +170,13 @@ export default function TaskGraph({
         },
       });
     };
-    for (const task of tasks) {
+    const entries = tasks
+      .filter((task) => {
+        const folder = folderByTask.get(task.id);
+        return !folder || folder.tasks[0].id === task.id;
+      })
+      .sort(compareGraphTasks);
+    for (const task of entries) {
       const folder = folderByTask.get(task.id);
       if (!folder) {
         addTask(task);
@@ -156,6 +187,20 @@ export default function TaskGraph({
       const row = columns.get(folder.level) ?? 0;
       columns.set(folder.level, row + 1);
       const complete = folder.tasks.filter((t) => profile.tasks[t.id] === 'complete').length;
+      if (folder.expanded)
+        nodes.push({
+          id: `${folder.id}-frame`,
+          type: 'folderFrame',
+          position: {
+            x: loyaltyColumns.findIndex((c) => c.key === folder.level) * 300 - 12,
+            y: 70 + row * 120 - 12,
+          },
+          data: {},
+          selectable: false,
+          focusable: false,
+          zIndex: -1,
+          style: { width: 264, height: (folder.tasks.length + 1) * 120, pointerEvents: 'none' },
+        });
       nodes.push({
         id: folder.id,
         type: 'task',
@@ -164,6 +209,8 @@ export default function TaskGraph({
           y: 70 + row * 120,
         },
         data: {
+          progressLabel: `${complete}/${folder.tasks.length}`,
+          progressTitle: `完了タスク数 / 格納タスク数: ${complete}/${folder.tasks.length}`,
           loyaltyLabel: folder.levels
             .map((level) => (level ? `LL${level}` : 'LL要確認'))
             .join(' / '),
@@ -175,7 +222,10 @@ export default function TaskGraph({
                 {folder.expanded ? '📂' : '📁'} {folder.tasks[0].name} からのライン
               </strong>
               <div className="mt-1">
-                {folder.tasks.length}件 · 完了 {complete}/{folder.tasks.length}
+                {folder.tasks.length}件 ·{' '}
+                {folder.tasks[0].minPlayerLevel
+                  ? `PMC Lv.${folder.tasks[0].minPlayerLevel}から`
+                  : '先頭のPMC条件なし'}
               </div>
               <div className="mt-1 text-sky-300">
                 {revealMatches || folder.tasks.some((t) => t.id === selectedId)

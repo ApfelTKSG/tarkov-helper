@@ -12,14 +12,15 @@ const task = (id, previous = [], level = 1, trader = 'trader') => ({
 });
 const line = () => [task('a'), task('b', ['a']), task('c', ['b']), task('d', ['c'])];
 
-test('folders contain ordered maximal lines with at least three members', () => {
+test('folders contain ordered maximal lines with at least two members', () => {
   const tasks = line();
   const folders = taskFolders([...tasks].reverse());
   assert.deepEqual(
     folders.map((f) => f.tasks.map((t) => t.id)),
     [['a', 'b', 'c', 'd']],
   );
-  assert.equal(taskFolders(tasks.slice(0, 2)).length, 0);
+  assert.equal(taskFolders(tasks.slice(0, 2)).length, 1);
+  assert.equal(taskFolders(tasks.slice(0, 1)).length, 0);
 });
 test('same-trader branch and merge boundaries remain individual', () => {
   const tasks = line();
@@ -31,17 +32,17 @@ test('same-trader branch and merge boundaries remain individual', () => {
   tasks[2].taskRequirements.push({ task: 'branch', status: ['complete'] });
   assert.equal(taskFolders(tasks).length, 0);
 });
-test('external prerequisites and successors do not split a trader line', () => {
+test('external prerequisites and successors remain outside folders', () => {
   const tasks = line();
   tasks.push(task('external', [], 1, 'other'), task('external-next', ['a'], 1, 'other'));
   tasks[3].taskRequirements.push({ task: 'external', status: ['complete'] });
   assert.deepEqual(
     taskFolders(tasks).map((f) => f.tasks.map((t) => t.id)),
-    [['a', 'b', 'c', 'd']],
+    [['b', 'c']],
   );
   assert.equal(tasks[3].taskRequirements.length, 2); // eligibility still retains both gates
 });
-test('Higher They Fly includes Choose Your Friends Wisely in every mode', async () => {
+test('Higher They Fly and Choose Your Friends Wisely remain outside due to external gates', async () => {
   const manifest = JSON.parse(
     await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
   );
@@ -49,12 +50,10 @@ test('Higher They Fly includes Choose Your Friends Wisely in every mode', async 
     const snapshot = JSON.parse(
       await readFile(new URL(`../public/game-data/${manifest.modes[mode].file}`, import.meta.url)),
     );
-    const folder = taskFolders(snapshot.tasks).find(
-      (f) => f.tasks[0].englishName === 'The Higher They Fly',
-    );
-    assert.equal(folder.tasks.length, 6);
-    assert.equal(folder.tasks.at(-1).englishName, 'Choose Your Friends Wisely');
-    assert.equal(folder.tasks.at(-1).taskRequirements.length, 2);
+    const members = taskFolders(snapshot.tasks).flatMap((f) => f.tasks);
+    assert.ok(!members.some((t) => t.englishName === 'The Higher They Fly'));
+    assert.ok(!members.some((t) => t.englishName === 'Choose Your Friends Wisely'));
+    assert.ok(members.some((t) => t.englishName === 'Route Deviation'));
   }
 });
 test('LL changes and unknown tiers do not split lines, trader changes do', () => {
@@ -73,7 +72,7 @@ test('LL changes and unknown tiers do not split lines, trader changes do', () =>
   assert.equal(taskFolders(tasks).length, 1);
   assert.deepEqual(taskFolders(tasks)[0].levels, [0]);
 });
-test('Punisher Parts 1 through 6 share a folder across LL in every mode', async () => {
+test('Punisher chains still span LL; every folder excludes incoming and outgoing external gates', async () => {
   const manifest = JSON.parse(
     await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
   );
@@ -81,13 +80,24 @@ test('Punisher Parts 1 through 6 share a folder across LL in every mode', async 
     const snapshot = JSON.parse(
       await readFile(new URL(`../public/game-data/${manifest.modes[mode].file}`, import.meta.url)),
     );
-    const folder = taskFolders(snapshot.tasks).find(
-      (f) => f.tasks[0].englishName === 'The Punisher - Part 1',
-    );
-    for (const part of [1, 2, 3, 4, 5, 6])
+    const folders = taskFolders(snapshot.tasks);
+    const folder = folders.find((f) => f.tasks[0].englishName === 'The Punisher - Part 1');
+    for (const part of [1, 2, 3])
       assert.ok(folder.tasks.some((t) => t.englishName === `The Punisher - Part ${part}`));
     assert.equal(folder.level, 1);
-    assert.deepEqual(folder.levels, [1, 3, 4]);
+    assert.ok(folder.levels.includes(3));
+    const byId = new Map(snapshot.tasks.map((t) => [t.id, t]));
+    for (const f of folders)
+      for (const member of f.tasks) {
+        assert.ok(
+          member.taskRequirements.every((req) => byId.get(req.task).trader === member.trader),
+        );
+        assert.ok(
+          snapshot.tasks
+            .filter((t) => t.taskRequirements.some((r) => r.task === member.id))
+            .every((t) => t.trader === member.trader),
+        );
+      }
   }
 });
 test('cycles, missing predecessors, and failure alternatives do not become folders', () => {
