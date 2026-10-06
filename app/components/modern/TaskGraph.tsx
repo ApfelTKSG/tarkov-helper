@@ -15,7 +15,7 @@ import 'reactflow/dist/style.css';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
 import { ancestorIds } from '@/src/domain/task-view';
-import { loyaltyColumns, taskLoyaltyColumn } from '@/src/domain/task-columns';
+import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { availabilityNames, stateNames } from './TaskPanel';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
@@ -55,7 +55,7 @@ export default function TaskGraph({
   tasks: GameTask[];
   onSelect: (task: GameTask) => void;
 }) {
-  const { profile, availability } = useGame();
+  const { profile, availability, snapshot } = useGame();
   const [hovered, setHovered] = useState<string | null>(null);
   const hover = useMemo(
     () => ({ hovered, ancestors: hovered ? ancestorIds(tasks, hovered) : null }),
@@ -71,7 +71,8 @@ export default function TaskGraph({
   const nodes = useMemo(() => {
     const columns = new Map<number, number>();
     const nodes: Node[] = tasks.map((task) => {
-      const column = taskLoyaltyColumn(task);
+      const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? tasks);
+      const column = placement.level;
       const index = loyaltyColumns.findIndex((c) => c.key === column);
       const row = columns.get(column) ?? 0;
       columns.set(column, row + 1);
@@ -97,6 +98,9 @@ export default function TaskGraph({
               <div className="mt-1 text-xs">
                 {stateNames[state]} · {availabilityNames[result.state]}
               </div>
+              {!!placement.inheritedFrom.length && (
+                <div className="mt-1 text-xs text-slate-300">前提経由 LL{column}</div>
+              )}
             </div>
           ),
         },
@@ -123,7 +127,7 @@ export default function TaskGraph({
       })),
     );
     return nodes;
-  }, [tasks, profile.tasks, availability]);
+  }, [tasks, profile.tasks, availability, snapshot?.tasks]);
   const edges = useMemo(() => {
     const ids = new Set(tasks.map((task) => task.id));
     const edges: Edge[] = tasks.flatMap((task) =>

@@ -6,6 +6,7 @@ import type { GameTask, Objective } from '@/src/domain/game';
 import type { TaskState } from '@/src/domain/progression';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation';
+import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -67,6 +68,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
   const result = availability(task);
   const favorite = profile.favorites.includes(task.id);
   const taskState = profile.tasks[task.id] ?? 'unstarted';
+  const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? []);
   const resolveName = (reference?: string) =>
     snapshot?.tasks.find((t) => t.id === reference)?.name ??
     snapshot?.traders.find((t) => t.id === reference)?.name ??
@@ -124,6 +126,14 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           </select>
         </div>
       </div>
+      {!!placement.inheritedFrom.length && (
+        <p className="mt-3 text-sm text-sky-200">
+          LL{placement.level}列に表示：前提タスク{' '}
+          {placement.inheritedFrom.map((source) => resolveName(source.id)).join(' / ')}{' '}
+          のLLから分類しています。
+          前提がすでに完了している場合の受注可否は、下の解放条件で判定します。
+        </p>
+      )}
       <p className="mt-3 text-xs text-slate-300">
         信頼度（完了）:{' '}
         {Object.entries(reputationRewards(task, 'complete'))

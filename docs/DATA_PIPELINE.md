@@ -78,6 +78,8 @@ npm run data:update -- --mode=regular
 
 グラフは左からLL1〜LL4、LL要確認の列に配置する。本人トレーダーのAPIの明示LL条件を優先し、明示条件がないものには補足JSONの `supplementLoyaltyLevel` を使用する。分類もなく内部条件があるタスクはLL要確認へ、両方ないものはLL1へ置く。補足LL分類は受注条件に追加しない。LL1列はすべて受注可能という意味ではなく、PMCレベル・前提タスクなどの判定は別途行う。
 
+前提が受注中・完了を必要とする経路もたどり、本人トレーダーのLL分類の最大値を表示列へ継承する。The Punisher Part 5・6はPart 4のLL4からLL4列へ配置し、ノードと詳細に「前提経由」と根拠を表示する。検索で非表示の前提も、同じモードの全タスクから参照する。別トレーダー自身のLLは流用せず、失敗を許す経路では継承しない。循環・欠落した参照があっても探索を終了する。これは前提を受注するまでのLLに基づく表示分類であり、完了済みの前提のLLを現在の受注条件に追加しない。
+
 ## 配布グループの補足JSON
 
 `src/data/progression-overlay.mjs` が [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay) の公開JSONをデータ更新ごとに1回取得する。既存の6時間cronでも同じ処理が走る。ETagが同じなら304の検証済みキャッシュを使い、変更時は上流のSHA-256方式（`$meta.sha256` を除いて `JSON.stringify(value, null, 2)`）を検証する。固定した配信元のmainを追跡し、採用した版・digestをスナップショットのsourcesへ記録する。digestは内容の整合性であり、署名ではない。取得・検証失敗は更新を止め、既存manifestを維持する。
