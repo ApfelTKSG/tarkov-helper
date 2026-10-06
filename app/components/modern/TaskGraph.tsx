@@ -27,12 +27,13 @@ interface TaskNodeData {
   label: ReactNode;
   background: string;
   borderColor: string;
+  loyaltyLabel: string;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className="rounded-[10px] border-2 p-[10px] text-center text-xs text-slate-100"
+      className="relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100"
       style={{
         opacity: ancestors && !ancestors.has(id) ? 0.25 : 1,
         background: data.background,
@@ -41,6 +42,9 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
       {data.label}
+      <span className="absolute bottom-1 right-2 text-[10px] font-semibold text-amber-300">
+        {data.loyaltyLabel}
+      </span>
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   );
@@ -100,12 +104,13 @@ export default function TaskGraph({
     const columns = new Map<number, number>();
     const nodes: Node[] = [];
     const emitted = new Set<string>();
-    const addTask = (task: GameTask) => {
+    const addTask = (task: GameTask, folderColumn?: number) => {
       const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? tasks);
       const column = placement.level;
-      const index = loyaltyColumns.findIndex((c) => c.key === column);
-      const row = columns.get(column) ?? 0;
-      columns.set(column, row + 1);
+      const displayColumn = folderColumn ?? column;
+      const index = loyaltyColumns.findIndex((c) => c.key === displayColumn);
+      const row = columns.get(displayColumn) ?? 0;
+      columns.set(displayColumn, row + 1);
       const result = availability(task);
       const state = profile.tasks[task.id] ?? 'unstarted';
       nodes.push({
@@ -115,6 +120,7 @@ export default function TaskGraph({
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         data: {
+          loyaltyLabel: column ? `LL${column}` : 'LL要確認',
           background: state === 'complete' ? '#064e3b' : '#1e293b',
           borderColor:
             result.state === 'eligible'
@@ -158,6 +164,9 @@ export default function TaskGraph({
           y: 70 + row * 120,
         },
         data: {
+          loyaltyLabel: folder.levels
+            .map((level) => (level ? `LL${level}` : 'LL要確認'))
+            .join(' / '),
           background: complete === folder.tasks.length ? '#064e3b' : '#172554',
           borderColor: '#60a5fa',
           label: (
@@ -180,7 +189,7 @@ export default function TaskGraph({
         },
         style: { width: 240 },
       });
-      if (folder.expanded) folder.tasks.forEach(addTask);
+      if (folder.expanded) folder.tasks.forEach((task) => addTask(task, folder.level));
     }
     nodes.unshift(
       ...loyaltyColumns.map((column, index) => ({

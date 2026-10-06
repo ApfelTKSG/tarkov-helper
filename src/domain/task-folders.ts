@@ -5,6 +5,7 @@ export interface TaskFolder {
   id: string;
   tasks: GameTask[];
   level: number;
+  levels: number[];
 }
 
 /** Detect each trader's lines against the full catalogue, independent of display filters. */
@@ -23,7 +24,6 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
   const predecessors = (task: GameTask) =>
     task.taskRequirements.filter((req) => byId.get(req.task)?.trader === task.trader);
   const eligible = (task: GameTask) =>
-    (levels.get(task.id) ?? 0) > 0 &&
     predecessors(task).length <= 1 &&
     (outgoing.get(task.id)?.size ?? 0) <= 1 &&
     task.taskRequirements.every(
@@ -33,10 +33,7 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
         req.status.every((status) => status === 'active' || status === 'complete'),
     );
   const follows = (previous: GameTask, next: GameTask) =>
-    eligible(previous) &&
-    eligible(next) &&
-    previous.trader === next.trader &&
-    levels.get(previous.id) === levels.get(next.id);
+    eligible(previous) && eligible(next) && previous.trader === next.trader;
   const visited = new Set<string>();
   const folders: TaskFolder[] = [];
   for (const task of allTasks) {
@@ -54,7 +51,12 @@ export function taskFolders(allTasks: GameTask[]): TaskFolder[] {
       current = next && follows(current, next) ? next : undefined;
     }
     if (line.length >= 3)
-      folders.push({ id: `task-folder-${task.id}`, tasks: line, level: levels.get(task.id)! });
+      folders.push({
+        id: `task-folder-${task.id}`,
+        tasks: line,
+        level: levels.get(task.id)!,
+        levels: [...new Set(line.map((t) => levels.get(t.id)!))].sort((a, b) => a - b),
+      });
   }
   // Cycles have no start and are deliberately left as individual tasks.
   return folders;

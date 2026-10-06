@@ -57,18 +57,38 @@ test('Higher They Fly includes Choose Your Friends Wisely in every mode', async 
     assert.equal(folder.tasks.at(-1).taskRequirements.length, 2);
   }
 });
-test('different LL and trader split lines, unknown tiers never become folders', () => {
+test('LL changes and unknown tiers do not split lines, trader changes do', () => {
   const tasks = line();
   tasks[2].traderRequirements[0].value = 2;
-  assert.equal(taskFolders(tasks).length, 0);
+  assert.equal(taskFolders(tasks).length, 1);
+  assert.deepEqual(taskFolders(tasks)[0].levels, [1, 2]);
   tasks[2].traderRequirements[0].value = 1;
   tasks[2].trader = 'other';
   assert.equal(taskFolders(tasks).length, 0);
+  tasks[2].trader = 'trader';
   for (const t of tasks) {
     t.traderRequirements = [];
     t.otherRequirements = [{ id: 'unknown' }];
   }
-  assert.equal(taskFolders(tasks).length, 0);
+  assert.equal(taskFolders(tasks).length, 1);
+  assert.deepEqual(taskFolders(tasks)[0].levels, [0]);
+});
+test('Punisher Parts 1 through 6 share a folder across LL in every mode', async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL('../public/game-data/manifest.json', import.meta.url)),
+  );
+  for (const mode of ['regular', 'pve', 'pvp-season']) {
+    const snapshot = JSON.parse(
+      await readFile(new URL(`../public/game-data/${manifest.modes[mode].file}`, import.meta.url)),
+    );
+    const folder = taskFolders(snapshot.tasks).find(
+      (f) => f.tasks[0].englishName === 'The Punisher - Part 1',
+    );
+    for (const part of [1, 2, 3, 4, 5, 6])
+      assert.ok(folder.tasks.some((t) => t.englishName === `The Punisher - Part ${part}`));
+    assert.equal(folder.level, 1);
+    assert.deepEqual(folder.levels, [1, 3, 4]);
+  }
 });
 test('cycles, missing predecessors, and failure alternatives do not become folders', () => {
   const tasks = line();
