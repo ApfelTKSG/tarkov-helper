@@ -80,6 +80,8 @@ export interface GameSnapshot {
   prestige: {
     id: string;
     prestigeLevel: number;
+    imageLink?: string;
+    iconLink?: string;
     rewards?: { customization?: { customizationType: string; imageLink?: string }[] };
   }[];
 }

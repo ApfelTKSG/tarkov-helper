@@ -27,9 +27,7 @@ export default function ProfileControls() {
   const [preview, setPreview] = useState<ProfileDatabase | null>(null);
   const [importError, setImportError] = useState('');
   const [importText, setImportText] = useState('');
-  const prestigeIcon = snapshot?.prestige
-    .find((p) => p.prestigeLevel === profile.prestige)
-    ?.rewards?.customization?.find((c) => c.customizationType === 'Stub')?.imageLink;
+  const prestigeIcon = snapshot?.prestige.find((p) => p.prestigeLevel === profile.prestige)?.imageLink;
   const maximumPrestige = Math.max(
     6,
     profile.prestige ?? 0,
