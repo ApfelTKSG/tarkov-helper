@@ -22,19 +22,27 @@ test('completion cash rewards keep currencies separate and ignore non-currency i
   assert.deepEqual(taskRewardLabels({}), { experience: '0 XP', money: 'お金なし' });
 });
 
-test('eligible active and unstarted tasks are green with no availability or acceptance caption', () => {
+test('accepted and automatically available tasks are opaque gray; unavailable tasks are translucent gray', () => {
   for (const state of ['active', 'unstarted']) {
     assert.deepEqual(taskGraphStatus(state, 'eligible'), {
-      label: '',
-      background: '#064e3b',
-      borderColor: '#34d399',
+      label: '受注中',
+      background: '#374151',
+      borderColor: '#9ca3af',
+      opacity: 1,
     });
-    assert.equal(taskGraphStatus(state, 'blocked').label, '条件未達');
-    assert.equal(taskGraphStatus(state, 'unknown').label, '要確認');
   }
+  assert.equal(taskGraphStatus('active', 'blocked').label, '受注中');
+  assert.equal(taskGraphStatus('unstarted', 'blocked').opacity, 0.4);
+  assert.equal(taskGraphStatus('unstarted', 'unknown').opacity, 0.4);
+  assert.equal(taskGraphStatus('unstarted', 'unknown').borderColor, '#fbbf24');
+  assert.equal(taskGraphStatus('unstarted', 'blocked').borderColor, '#9ca3af');
+  assert.equal(taskGraphStatus('unstarted', 'blocked').label, '条件未達');
+  assert.equal(taskGraphStatus('unstarted', 'unknown').label, '要確認');
 });
 test('recorded complete and failed states remain visible independent of current gates', () => {
   assert.equal(taskGraphStatus('complete', 'blocked').label, '完了');
   assert.equal(taskGraphStatus('complete', 'blocked').borderColor, '#34d399');
   assert.equal(taskGraphStatus('failed', 'eligible').label, '失敗');
+  assert.equal(taskGraphStatus('failed', 'eligible').background, '#7f1d1d');
+  assert.equal(taskGraphStatus('complete', 'blocked').opacity, 1);
 });

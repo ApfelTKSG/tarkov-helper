@@ -21,14 +21,24 @@ export function taskRewardLabels(task: GameTask) {
   };
 }
 
+export function canToggleTaskCompletion(
+  state: TaskState,
+  availability: Availability['state'],
+): boolean {
+  return taskGraphStatus(state, availability).opacity === 1;
+}
+
 export function taskGraphStatus(state: TaskState, availability: Availability['state']) {
-  if (state === 'complete') return { label: '完了', background: '#064e3b', borderColor: '#34d399' };
-  if (state === 'failed') return { label: '失敗', background: '#1e293b', borderColor: '#f87171' };
-  if (availability === 'eligible')
-    return { label: '', background: '#064e3b', borderColor: '#34d399' };
+  if (state === 'complete')
+    return { label: '完了', background: '#064e3b', borderColor: '#34d399', opacity: 1 };
+  if (state === 'failed')
+    return { label: '失敗', background: '#7f1d1d', borderColor: '#f87171', opacity: 1 };
+  if (state === 'active' || availability === 'eligible')
+    return { label: '受注中', background: '#374151', borderColor: '#9ca3af', opacity: 1 };
   return {
     label: availability === 'blocked' ? '条件未達' : '要確認',
-    background: '#1e293b',
-    borderColor: availability === 'blocked' ? '#f87171' : '#fbbf24',
+    background: '#374151',
+    borderColor: availability === 'unknown' ? '#fbbf24' : '#9ca3af',
+    opacity: 0.4,
   };
 }

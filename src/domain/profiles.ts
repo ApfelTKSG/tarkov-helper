@@ -5,6 +5,7 @@ export const STORAGE_KEY = 'tarkov-helper-profiles-v1';
 export interface Profile extends ProgressProfile {
   /** Exact deltas already applied; absent legacy entries are never backfilled. */
   taskReputation?: Record<string, Record<string, number>>;
+  taskStateBeforeCompletion?: Record<string, 'unstarted' | 'active' | 'failed'>;
   id: string;
   name: string;
   mode: GameMode;
@@ -18,6 +19,7 @@ export interface Profile extends ProgressProfile {
   pinnedRevision?: string;
   seenRevision?: string;
   dataRevision?: string;
+  taskFilter?: 'all' | 'active' | 'favorites';
 }
 export interface ProfileDatabase {
   schemaVersion: 1;
@@ -80,6 +82,21 @@ export function createDatabase(): ProfileDatabase {
     migratedLegacy: false,
   };
 }
+
+/** Reset the current character's progress; permanent prestige and display choices survive. */
+export function resetProfileProgress(profile: Profile): Profile {
+  return {
+    ...createProfile(profile.mode, profile.seasonId),
+    name: profile.name,
+    level: 1,
+    faction: profile.faction,
+    prestige: profile.prestige,
+    taskFilter: profile.taskFilter,
+    pinnedRevision: profile.pinnedRevision,
+    dataRevision: profile.dataRevision,
+    seenRevision: profile.seenRevision,
+  };
+}
 export function parseDatabase(text: string): ProfileDatabase {
   assert(text.length <= 10_000_000, 'バックアップが大きすぎます');
   const value: unknown = JSON.parse(text);
@@ -125,6 +142,11 @@ export function parseDatabase(text: string): ProfileDatabase {
       '陣営が不正です',
     );
     assert(
+      profile.taskFilter === undefined ||
+        ['all', 'active', 'favorites'].includes(String(profile.taskFilter)),
+      '表示フィルターが不正です',
+    );
+    assert(
       record(profile.tasks) &&
         Object.entries(profile.tasks).every(
           ([key, state]) =>
@@ -133,6 +155,25 @@ export function parseDatabase(text: string): ProfileDatabase {
       'タスク状態が不正です',
     );
     assert(record(profile.traders), 'トレーダー設定が不正です');
+    if (profile.taskAvailabilityOverrides !== undefined) {
+      assert(
+        record(profile.taskAvailabilityOverrides) &&
+          Object.entries(profile.taskAvailabilityOverrides).every(
+            ([id, state]) => safeKey(id) && ['available', 'unavailable'].includes(String(state)),
+          ),
+        '受注条件の上書きが不正です',
+      );
+    }
+    if (profile.taskStateBeforeCompletion !== undefined) {
+      assert(
+        record(profile.taskStateBeforeCompletion) &&
+          Object.entries(profile.taskStateBeforeCompletion).every(
+            ([id, state]) =>
+              safeKey(id) && ['unstarted', 'active', 'failed'].includes(String(state)),
+          ),
+        '完了前のタスク状態が不正です',
+      );
+    }
     if (profile.taskReputation !== undefined) {
       assert(record(profile.taskReputation), '信頼度の反映記録が不正です');
       for (const [taskId, deltas] of Object.entries(profile.taskReputation)) {

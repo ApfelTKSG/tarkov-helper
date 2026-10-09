@@ -121,6 +121,7 @@ export default function HideoutView({ firOnly = false }: { firOnly?: boolean }) 
                           key={req.id}
                           title={snapshot.items[req.item]?.name ?? req.item}
                           foundInRaid={req.attributes?.foundInRaid}
+                          foundInRaidRequired={false}
                           items={[req.item]}
                           label={`${station.name} ${snapshot.items[req.item]?.name ?? req.item}`}
                           value={Math.min(profile.objectiveCounts[key] ?? 0, req.count)}

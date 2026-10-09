@@ -9,6 +9,8 @@ import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation
 import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
+import { taskGraphStatus } from '@/src/domain/task-presentation';
+import { setTaskAvailability, type TaskAvailabilityChoice } from '@/src/domain/task-availability';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -68,8 +70,12 @@ export function ObjectiveProgress({ taskId, objective }: { taskId: string; objec
 export default function TaskPanel({ task }: { task: GameTask }) {
   const { profile, snapshot, edit, availability, storageError } = useGame();
   const result = availability(task);
-  const favorite = profile.favorites.includes(task.id);
+  const needsManualConfirmation =
+    result.conditions.some((condition) => condition.state === 'unknown') &&
+    !result.conditions.some((condition) => condition.state === 'unmet');
+  const favorite = profile.tasks[task.id] !== 'complete' && profile.favorites.includes(task.id);
   const taskState = profile.tasks[task.id] ?? 'unstarted';
+  const presentation = taskGraphStatus(taskState, result.state);
   const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? []);
   const resolveName = (reference?: string) =>
     snapshot?.tasks.find((t) => t.id === reference)?.name ??
@@ -78,7 +84,8 @@ export default function TaskPanel({ task }: { task: GameTask }) {
   return (
     <article
       id={`task-${task.id}`}
-      className={`scroll-mt-4 rounded-xl border p-4 ${task.id === COLLECTOR_ID ? 'ring-2 ring-amber-400/60' : ''} ${result.state === 'eligible' || taskState === 'complete' ? 'border-emerald-500 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'}`}
+      className={`scroll-mt-4 rounded-xl border p-4 ${task.id === COLLECTOR_ID ? 'ring-2 ring-amber-400/60' : ''}`}
+      style={{ background: presentation.background, borderColor: presentation.borderColor }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -106,7 +113,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             aria-label={`${task.name} お気に入り`}
             aria-pressed={favorite}
             className={`${control} ${favorite ? 'text-amber-300' : ''}`}
-            disabled={!!storageError}
+            disabled={!!storageError || taskState === 'complete'}
             onClick={() =>
               edit((p) => ({
                 ...p,
@@ -118,19 +125,27 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           >
             {favorite ? '★' : '☆'}
           </button>
-          <select
-            aria-label={`${task.name} 状態`}
-            className={control}
-            value={taskState}
-            disabled={!!storageError}
-            onChange={(e) => edit((p) => changeTaskState(p, task, e.target.value as TaskState))}
-          >
-            {Object.entries(stateNames).map(([state, name]) => (
-              <option key={state} value={state}>
-                {name}
-              </option>
-            ))}
-          </select>
+          {taskState === 'unstarted' && result.state !== 'eligible' ? (
+            <span className="text-sm text-slate-400">
+              {result.state === 'blocked' ? '受けられない' : '条件未確認'}
+            </span>
+          ) : (
+            <select
+              aria-label={`${task.name} 状態`}
+              className={control}
+              value={taskState === 'unstarted' ? 'active' : taskState}
+              disabled={!!storageError}
+              onChange={(e) => edit((p) => changeTaskState(p, task, e.target.value as TaskState))}
+            >
+              {Object.entries(stateNames)
+                .filter(([state]) => state !== 'unstarted')
+                .map(([state, name]) => (
+                  <option key={state} value={state}>
+                    {name}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
       </div>
       {!!placement.inheritedFrom.length && (
@@ -160,20 +175,35 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             {availabilityNames[result.state]}
           </span>
         )}
-        <label>
-          <input
-            type="checkbox"
-            checked={result.confirmedInGame}
+        <label className="flex flex-wrap items-center gap-2">
+          {needsManualConfirmation ? 'ゲーム内の表示' : '受注条件'}
+          <select
+            aria-label={`${task.name} ${needsManualConfirmation ? 'ゲーム内の表示' : '受注条件'}`}
+            className={control}
+            value={
+              profile.taskAvailabilityOverrides?.[task.id] === 'available'
+                ? 'available'
+                : 'automatic'
+            }
             disabled={!!storageError}
             onChange={(e) =>
-              edit((p) => ({
-                ...p,
-                confirmedAvailable: { ...p.confirmedAvailable, [task.id]: e.target.checked },
-              }))
+              edit((p) => setTaskAvailability(p, task, e.target.value as TaskAvailabilityChoice))
             }
-          />{' '}
-          ゲーム内で受注可能と確認
+          >
+            <option value="automatic">
+              {needsManualConfirmation ? '出ていない' : '条件自動判定'}
+            </option>
+            <option value="available">
+              {needsManualConfirmation ? '出ている' : '条件を無視して受注可能にする'}
+            </option>
+          </select>
         </label>
+        <p className="w-full text-xs text-slate-300">
+          {needsManualConfirmation
+            ? 'ゲーム内にタスクが出ているかを選んでください。「出ている」で受注可能、「出ていない」で半透明になります。'
+            : '条件自動判定では、条件未達・未確認のタスクを半透明にします。条件を無視すると受注可能になります。'}
+          切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。
+        </p>
         {task.wikiLink && (
           <a
             className="text-sky-300 hover:underline"

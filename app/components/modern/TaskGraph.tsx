@@ -19,7 +19,11 @@ import { layeredTaskRows } from '@/src/domain/task-layout';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
-import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentation';
+import {
+  canToggleTaskCompletion,
+  taskGraphStatus,
+  taskRewardLabels,
+} from '@/src/domain/task-presentation';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
@@ -41,14 +45,17 @@ interface TaskNodeData {
   requiredLevel?: number;
   rewards?: ReturnType<typeof taskRewardLabels>;
   collector?: boolean;
+  favorite?: boolean;
+  opacity?: number;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.collector ? 'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.25)]' : ''} ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
+      data-hovered={hovered === id}
+      className={`${styles.taskNode} relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.collector || data.favorite ? 'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.25)]' : ''} ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
       style={{
-        opacity: ancestors && !ancestors.has(id) ? 0.25 : 1,
+        opacity: (data.opacity ?? 1) * (ancestors && !ancestors.has(id) ? 0.25 : 1),
         background: data.background,
         borderColor: hovered === id ? '#38bdf8' : data.borderColor,
       }}
@@ -236,6 +243,8 @@ export default function TaskGraph({
         targetPosition: Position.Left,
         data: {
           collector: task.id === COLLECTOR_ID,
+          favorite: state !== 'complete' && profile.favorites.includes(task.id),
+          opacity: presentation.opacity,
           requiredLevel: task.minPlayerLevel,
           rewards: taskRewardLabels(task),
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
@@ -247,6 +256,11 @@ export default function TaskGraph({
           label: (
             <div>
               <strong className={task.id === COLLECTOR_ID ? 'text-amber-200' : undefined}>
+                {state !== 'complete' && profile.favorites.includes(task.id) && (
+                  <span className="mr-1 text-amber-300" aria-label="お気に入り">
+                    ★
+                  </span>
+                )}
                 {task.name}
               </strong>
               {taskVariantLabel(task, snapshot?.tasks ?? tasks) && (
@@ -336,7 +350,9 @@ export default function TaskGraph({
     }
     nodes.unshift(
       ...graphColumns.flatMap((column, index) =>
-        layout === 'depth' || column.key <= 0
+        layout === 'depth' ||
+        column.key <= 0 ||
+        !tasks.some((task) => columnForTask(task) === column.key)
           ? []
           : [
               {
@@ -363,6 +379,7 @@ export default function TaskGraph({
   }, [
     tasks,
     profile.tasks,
+    profile.favorites,
     availability,
     snapshot?.tasks,
     folderByTask,
@@ -423,7 +440,12 @@ export default function TaskGraph({
     if (details) {
       setHovered(null);
       onSelect(task);
-    } else if (ready && !storageError) edit((p) => toggleTaskCompletion(p, task));
+    } else if (
+      ready &&
+      !storageError &&
+      canToggleTaskCompletion(profile.tasks[task.id] ?? 'unstarted', availability(task).state)
+    )
+      edit((p) => toggleTaskCompletion(p, task));
   };
   return (
     <HoverContext.Provider value={hover}>

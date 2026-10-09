@@ -1,4 +1,4 @@
-import GameWorkspace from '@/app/components/modern/GameWorkspace';
+import { notFound } from 'next/navigation';
 export default function HideoutFirPage() {
-  return <GameWorkspace section="hideout-fir" />;
+  notFound();
 }

@@ -5,6 +5,14 @@ import { useGame } from '@/app/context/GameContext';
 import { objectiveRemaining } from '@/src/domain/task-view';
 import { ObjectiveProgress } from './TaskPanel';
 
+const hiddenRaidMapIds = new Set([
+  '59fc81d786f774390775787e', // Night Factory
+  '65b8d6f5cdde2479cb2a3125', // Ground Zero 21+
+  '65cc8f81a9aac3e77d0cfd3e', // Terminal
+  '68236e8153654e8c1200798a', // Ground Zero Tutorial
+  '6a294a5b5eb5f9a1700417b7', // The Lab (Dark)
+]);
+
 export default function RaidView() {
   const { snapshot, profile } = useGame();
   const [map, setMap] = useState('');
@@ -46,11 +54,13 @@ export default function RaidView() {
           onChange={(e) => setMap(e.target.value)}
         >
           <option value="">全マップ・マップ不明</option>
-          {snapshot.maps.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
+          {snapshot.maps
+            .filter((m) => !hiddenRaidMapIds.has(m.id))
+            .map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
         </select>
       </label>
       <p className="text-sm text-slate-300">
