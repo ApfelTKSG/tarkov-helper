@@ -22,6 +22,7 @@ import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order
 import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentation';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
+import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
   hovered: null,
@@ -37,12 +38,13 @@ interface TaskNodeData {
   progressTitle: string;
   requiredLevel?: number;
   rewards?: ReturnType<typeof taskRewardLabels>;
+  collector?: boolean;
 }
 function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
+      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.collector ? 'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.25)]' : ''} ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
       style={{
         opacity: ancestors && !ancestors.has(id) ? 0.25 : 1,
         background: data.background,
@@ -231,6 +233,7 @@ export default function TaskGraph({
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         data: {
+          collector: task.id === COLLECTOR_ID,
           requiredLevel: task.minPlayerLevel,
           rewards: taskRewardLabels(task),
           loyaltyLabel: column ? `LL${column}` : 'LL要確認',
@@ -241,7 +244,14 @@ export default function TaskGraph({
           borderColor: presentation.borderColor,
           label: (
             <div>
-              <strong>{task.name}</strong>
+              <strong className={task.id === COLLECTOR_ID ? 'text-amber-200' : undefined}>
+                {task.name}
+              </strong>
+              {task.id === COLLECTOR_ID && (
+                <span className="ml-2">
+                  <CollectorBadge />
+                </span>
+              )}
               {presentation.label && <div className="mt-1 text-xs">{presentation.label}</div>}
             </div>
           ),

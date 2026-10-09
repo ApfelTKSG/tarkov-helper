@@ -15,6 +15,7 @@ import HideoutView from './HideoutView';
 import RaidView from './RaidView';
 import ItemOverview from './ItemOverview';
 import ApiImage from './ApiImage';
+import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 
 export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
@@ -288,7 +289,7 @@ export default function GameWorkspace({
                   {tasks.slice(0, limit).map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800 p-3"
+                      className={`flex items-center gap-3 rounded border bg-slate-800 p-3 ${task.id === COLLECTOR_ID ? 'border-amber-400/70 ring-1 ring-amber-400/30' : 'border-slate-700'}`}
                     >
                       <button
                         className={`flex-1 text-left ${profile.tasks[task.id] === 'complete' ? 'text-emerald-300' : ''}`}
@@ -301,6 +302,11 @@ export default function GameWorkspace({
                       >
                         {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
                         {task.name}
+                        {task.id === COLLECTOR_ID && (
+                          <span className="ml-2">
+                            <CollectorBadge />
+                          </span>
+                        )}
                       </button>
                       <button className={control} onClick={() => setSelected(task)}>
                         詳細

@@ -7,6 +7,7 @@ import type { TaskState } from '@/src/domain/progression';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation';
 import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
+import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -76,11 +77,13 @@ export default function TaskPanel({ task }: { task: GameTask }) {
   return (
     <article
       id={`task-${task.id}`}
-      className={`scroll-mt-4 rounded-xl border p-4 ${result.state === 'eligible' || taskState === 'complete' ? 'border-emerald-500 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'}`}
+      className={`scroll-mt-4 rounded-xl border p-4 ${task.id === COLLECTOR_ID ? 'ring-2 ring-amber-400/60' : ''} ${result.state === 'eligible' || taskState === 'complete' ? 'border-emerald-500 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold">{task.name}</h3>
+          <h3 className="text-lg font-semibold">
+            {task.name} {task.id === COLLECTOR_ID && <CollectorBadge />}
+          </h3>
           {task.name !== task.englishName && (
             <p className="text-sm text-slate-400">{task.englishName}</p>
           )}
