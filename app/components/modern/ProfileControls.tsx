@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import { useGame } from '@/app/context/GameContext';
-import { parseDatabase, type ProfileDatabase } from '@/src/domain/profiles';
+import {
+  parseDatabase,
+  resetProfileProgress,
+  type ProfileDatabase,
+  type Profile,
+} from '@/src/domain/profiles';
 import { updateDatabase } from '@/src/client/profile-store';
 import { deriveLoyaltyLevel } from '@/src/domain/progression';
 import type { GameMode } from '@/src/domain/game';
@@ -23,10 +28,13 @@ export default function ProfileControls() {
     storageError,
     notices,
     refresh,
+    ready,
   } = useGame();
   const [preview, setPreview] = useState<ProfileDatabase | null>(null);
   const [importError, setImportError] = useState('');
   const [importText, setImportText] = useState('');
+  const [resetConfirmation, setResetConfirmation] = useState(false);
+  const [beforeReset, setBeforeReset] = useState<Profile | null>(null);
   const prestigeIcon = snapshot?.prestige.find(
     (p) => p.prestigeLevel === profile.prestige,
   )?.imageLink;
@@ -262,6 +270,24 @@ export default function ProfileControls() {
           <button className={field} onClick={refresh}>
             配信データを再確認
           </button>
+          <button
+            className={`${field} border-red-500 text-red-300`}
+            disabled={!ready || !!storageError}
+            onClick={() => setResetConfirmation(true)}
+          >
+            セルフワイプ
+          </button>
+          {beforeReset?.id === profile.id && (
+            <button
+              className={field}
+              disabled={!!storageError}
+              onClick={() => {
+                if (edit(() => beforeReset)) setBeforeReset(null);
+              }}
+            >
+              ワイプ直前に戻す
+            </button>
+          )}
           {profile.pinnedRevision && (
             <button
               className={field}
@@ -294,6 +320,44 @@ export default function ProfileControls() {
             />
           </label>
         </div>
+        {resetConfirmation && (
+          <div
+            className="mt-3 space-y-3 rounded border border-red-500/60 p-3"
+            role="group"
+            aria-label="セルフワイプの確認"
+          >
+            <p>
+              「{profile.name}
+              」のタスク・アイテム・ハイドアウト・スキル・信頼度・LL・お気に入り・手動確認をリセットし、PMCレベルを1に戻します。プレステージと陣営、表示設定、他のプロフィールは保持します。
+            </p>
+            <p className="text-sm text-slate-300">
+              必要なら先に「全プロフィールを書き出す」でバックアップできます。
+            </p>
+            <div className="flex gap-3">
+              <button
+                className={`${field} border-red-500 text-red-300`}
+                disabled={!ready || !!storageError}
+                onClick={() => {
+                  let original: Profile | undefined;
+                  if (
+                    edit((p) => {
+                      original = p;
+                      return resetProfileProgress(p);
+                    })
+                  ) {
+                    setBeforeReset(original ?? null);
+                    setResetConfirmation(false);
+                  }
+                }}
+              >
+                このプロフィールをワイプする
+              </button>
+              <button className={field} onClick={() => setResetConfirmation(false)}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        )}
         {importError && (
           <p role="alert" className="mt-2 text-red-300">
             {importError}

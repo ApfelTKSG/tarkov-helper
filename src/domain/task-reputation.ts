@@ -22,13 +22,16 @@ export function toggleTaskCompletion(profile: Profile, task: GameTask): Profile 
   return changeTaskState(
     profile,
     task,
-    profile.tasks[task.id] === 'complete' ? 'unstarted' : 'complete',
+    profile.tasks[task.id] === 'complete' ? 'active' : 'complete',
   );
 }
 
 /** Apply only state transitions, undoing the exact original amounts, even after API updates. */
 export function changeTaskState(profile: Profile, task: GameTask, state: TaskState): Profile {
-  if ((profile.tasks[task.id] ?? 'unstarted') === state) return profile;
+  if ((profile.tasks[task.id] ?? 'unstarted') === state)
+    return state === 'complete' && profile.favorites.includes(task.id)
+      ? { ...profile, favorites: profile.favorites.filter((id) => id !== task.id) }
+      : profile;
   const previous = profile.taskReputation?.[task.id] ?? {};
   const next = reputationRewards(task, state);
   const traders = { ...profile.traders };
@@ -43,6 +46,10 @@ export function changeTaskState(profile: Profile, task: GameTask, state: TaskSta
   return {
     ...profile,
     tasks: { ...profile.tasks, [task.id]: state },
+    favorites:
+      state === 'complete' || profile.tasks[task.id] === 'complete'
+        ? profile.favorites.filter((id) => id !== task.id)
+        : profile.favorites,
     traders,
     completedAt,
     taskReputation: { ...profile.taskReputation, [task.id]: next },

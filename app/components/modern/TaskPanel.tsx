@@ -9,6 +9,7 @@ import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation
 import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
+import { taskGraphStatus } from '@/src/domain/task-presentation';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -68,8 +69,9 @@ export function ObjectiveProgress({ taskId, objective }: { taskId: string; objec
 export default function TaskPanel({ task }: { task: GameTask }) {
   const { profile, snapshot, edit, availability, storageError } = useGame();
   const result = availability(task);
-  const favorite = profile.favorites.includes(task.id);
+  const favorite = profile.tasks[task.id] !== 'complete' && profile.favorites.includes(task.id);
   const taskState = profile.tasks[task.id] ?? 'unstarted';
+  const presentation = taskGraphStatus(taskState, result.state);
   const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? []);
   const resolveName = (reference?: string) =>
     snapshot?.tasks.find((t) => t.id === reference)?.name ??
@@ -78,7 +80,8 @@ export default function TaskPanel({ task }: { task: GameTask }) {
   return (
     <article
       id={`task-${task.id}`}
-      className={`scroll-mt-4 rounded-xl border p-4 ${task.id === COLLECTOR_ID ? 'ring-2 ring-amber-400/60' : ''} ${result.state === 'eligible' || taskState === 'complete' ? 'border-emerald-500 bg-emerald-950/40' : 'border-slate-700 bg-slate-800'}`}
+      className={`scroll-mt-4 rounded-xl border p-4 ${task.id === COLLECTOR_ID ? 'ring-2 ring-amber-400/60' : ''}`}
+      style={{ background: presentation.background, borderColor: presentation.borderColor }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -106,7 +109,7 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             aria-label={`${task.name} お気に入り`}
             aria-pressed={favorite}
             className={`${control} ${favorite ? 'text-amber-300' : ''}`}
-            disabled={!!storageError}
+            disabled={!!storageError || taskState === 'complete'}
             onClick={() =>
               edit((p) => ({
                 ...p,
@@ -118,19 +121,27 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           >
             {favorite ? '★' : '☆'}
           </button>
-          <select
-            aria-label={`${task.name} 状態`}
-            className={control}
-            value={taskState}
-            disabled={!!storageError}
-            onChange={(e) => edit((p) => changeTaskState(p, task, e.target.value as TaskState))}
-          >
-            {Object.entries(stateNames).map(([state, name]) => (
-              <option key={state} value={state}>
-                {name}
-              </option>
-            ))}
-          </select>
+          {taskState === 'unstarted' && result.state !== 'eligible' ? (
+            <span className="text-sm text-slate-400">
+              {result.state === 'blocked' ? '受けられない' : '条件未確認'}
+            </span>
+          ) : (
+            <select
+              aria-label={`${task.name} 状態`}
+              className={control}
+              value={taskState === 'unstarted' ? 'active' : taskState}
+              disabled={!!storageError}
+              onChange={(e) => edit((p) => changeTaskState(p, task, e.target.value as TaskState))}
+            >
+              {Object.entries(stateNames)
+                .filter(([state]) => state !== 'unstarted')
+                .map(([state, name]) => (
+                  <option key={state} value={state}>
+                    {name}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
       </div>
       {!!placement.inheritedFrom.length && (

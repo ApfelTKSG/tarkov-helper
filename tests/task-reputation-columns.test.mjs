@@ -28,7 +28,7 @@ test('quick completion toggles progress and reverses rewards while preserving ma
   assert.equal(completed.traders.a.reputation, 0.3);
   completed.traders.a.reputation = 0.5;
   const undone = toggleTaskCompletion(completed, task());
-  assert.equal(undone.tasks.task, 'unstarted');
+  assert.equal(undone.tasks.task, 'active');
   assert.equal(undone.completedAt.task, undefined);
   assert.equal(undone.traders.a.reputation, 0.4);
   assert.equal(original.tasks.task, 'active');

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import type { GameTask } from '@/src/domain/game';
-import { interactingTaskIds, matchesTask, targetTasks } from '@/src/domain/task-view';
+import { interactingTaskIds, matchesTask } from '@/src/domain/task-view';
 import ProfileControls from './ProfileControls';
 import { matchesPrestige, newBeginningStage, prestigeCoverage } from '@/src/domain/prestige';
 import TaskDialog from './TaskDialog';
@@ -31,8 +31,7 @@ export default function GameWorkspace({
   const { snapshot, profile, ready, loading, error, availability, refresh, edit, storageError } =
     useGame();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [target, setTarget] = useState('all');
+  const filter = profile.taskFilter ?? 'all';
   const [view, setView] = useState('graph');
   const [selected, setSelected] = useState<GameTask | null>(null);
   const [limit, setLimit] = useState(40);
@@ -65,10 +64,6 @@ export default function GameWorkspace({
             ? 'FiRアイテム管理'
             : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
   const traderDefinition = snapshot?.traders.find((t) => t.englishName === trader);
-  const targetIds =
-    snapshot && target !== 'all'
-      ? new Set(targetTasks(snapshot, target as 'kappa' | 'lightkeeper').map((t) => t.id))
-      : null;
   const scoped =
     snapshot?.tasks.filter(
       (task) =>
@@ -84,15 +79,14 @@ export default function GameWorkspace({
     ) ?? [];
   const tasks = scoped.filter(
     (task) =>
-      (!targetIds || targetIds.has(task.id)) &&
       matchesTask(task, query, snapshot!) &&
       (filter === 'all' ||
-        (filter === 'favorites' && profile.favorites.includes(task.id)) ||
-        (filter === 'remaining' &&
-          !['complete', 'failed'].includes(profile.tasks[task.id] ?? 'unstarted')) ||
-        (filter === 'active' && profile.tasks[task.id] === 'active') ||
-        (filter === 'eligible' && availability(task).state === 'eligible') ||
-        (filter === 'unknown' && availability(task).state === 'unknown')),
+        (filter === 'favorites' &&
+          profile.tasks[task.id] !== 'complete' &&
+          profile.favorites.includes(task.id)) ||
+        (filter === 'active' &&
+          !['complete', 'failed'].includes(profile.tasks[task.id] ?? 'unstarted') &&
+          (profile.tasks[task.id] === 'active' || availability(task).state === 'eligible'))),
   );
   const completed = scoped.filter((task) => profile.tasks[task.id] === 'complete').length;
   const currentSelected = selected
@@ -181,7 +175,13 @@ export default function GameWorkspace({
           {snapshot && !section.startsWith('hideout') && section !== 'raid' && (
             <p className="text-sm text-slate-300">
               完了 {completed} / {scoped.length} · 受注中{' '}
-              {scoped.filter((t) => profile.tasks[t.id] === 'active').length}
+              {
+                scoped.filter(
+                  (t) =>
+                    !['complete', 'failed'].includes(profile.tasks[t.id] ?? 'unstarted') &&
+                    (profile.tasks[t.id] === 'active' || availability(t).state === 'eligible'),
+                ).length
+              }
             </p>
           )}
         </div>
@@ -213,24 +213,17 @@ export default function GameWorkspace({
                   aria-label="表示対象"
                   className={control}
                   value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
+                  disabled={!ready || !!storageError}
+                  onChange={(e) =>
+                    edit((p) => ({
+                      ...p,
+                      taskFilter: e.target.value as 'all' | 'active' | 'favorites',
+                    }))
+                  }
                 >
                   <option value="all">すべて</option>
-                  <option value="remaining">未完了</option>
                   <option value="active">受注中</option>
-                  <option value="eligible">条件を満たす</option>
-                  <option value="unknown">要確認</option>
                   <option value="favorites">お気に入り</option>
-                </select>
-                <select
-                  aria-label="目標"
-                  className={control}
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                >
-                  <option value="all">すべての目標</option>
-                  <option value="kappa">Kappa関連 (API)</option>
-                  <option value="lightkeeper">Lightkeeper関連 (API)</option>
                 </select>
                 {section === 'tasks' && (
                   <button
@@ -245,8 +238,6 @@ export default function GameWorkspace({
                 {crossTraderGraph && '他トレーダーと前提・後続でつながるラインのみ表示。'}
                 表示 {tasks.length}
                 件。条件予測とゲーム内で記録した状態は別に保持します。同名タスクもIDごとに表示します。
-                {target !== 'all' &&
-                  '関連タスクはAPIのフラグに基づきます。現在の解放経路の全条件を保証するものではありません。'}
               </p>
               {profile.prestige === undefined ? (
                 <p className="text-sm text-amber-300">
@@ -280,6 +271,10 @@ export default function GameWorkspace({
                   <details className="text-sm text-slate-400">
                     <summary className="cursor-pointer">表示の説明</summary>
                     <p className="mt-2">
+                      灰色半透明：受けられない・条件未確認 · 灰色：受注中 · 緑色：完了 ·
+                      赤色：失敗。受注条件を満たしたタスクは受注中として表示します。★と金色の枠はお気に入りです。
+                    </p>
+                    <p className="mt-2">
                       {crossTraderGraph
                         ? '前提なしが深さ1、前提の最大深さ＋1が次の列です。複数トレーダーの前提も含めて計算し、同じ深さのタスクを縦に並べます。検索・絞り込みでも元の深さを保持します。統合グラフではフォルダにまとめず個別ノードを表示し、右下にLLを残します。'
                         : '同じトレーダー内で前提・後続がつながるタスクは、左側に深さ順で個別表示します。つながりのないタスクは右側のLL列へ置きます。ラインはフォルダにまとめず、LLは各ノード右下に表示します。深さ・ラインへの分類は検索前の全タスクから判定します。左上は必要レベル、右上は報酬、左下は前提の充足数です。ドラッグで移動、ホイールで拡大縮小できます。'}
@@ -295,7 +290,7 @@ export default function GameWorkspace({
                   {tasks.slice(0, limit).map((task) => (
                     <div
                       key={task.id}
-                      className={`flex items-center gap-3 rounded border bg-slate-800 p-3 ${task.id === COLLECTOR_ID ? 'border-amber-400/70 ring-1 ring-amber-400/30' : 'border-slate-700'}`}
+                      className={`flex items-center gap-3 rounded border bg-slate-800 p-3 ${task.id === COLLECTOR_ID || (profile.tasks[task.id] !== 'complete' && profile.favorites.includes(task.id)) ? 'border-amber-400/70 ring-1 ring-amber-400/30' : 'border-slate-700'}`}
                     >
                       <button
                         className={`flex-1 text-left ${profile.tasks[task.id] === 'complete' ? 'text-emerald-300' : ''}`}
@@ -307,6 +302,10 @@ export default function GameWorkspace({
                         }
                       >
                         {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
+                        {profile.tasks[task.id] !== 'complete' &&
+                          profile.favorites.includes(task.id) && (
+                            <span className="mr-1 text-amber-300">★</span>
+                          )}
                         {task.name}
                         {taskVariantLabel(task, snapshot.tasks) && (
                           <span className="ml-2 text-xs font-normal text-sky-200">

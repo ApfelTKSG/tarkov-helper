@@ -18,6 +18,7 @@ export interface Profile extends ProgressProfile {
   pinnedRevision?: string;
   seenRevision?: string;
   dataRevision?: string;
+  taskFilter?: 'all' | 'active' | 'favorites';
 }
 export interface ProfileDatabase {
   schemaVersion: 1;
@@ -80,6 +81,21 @@ export function createDatabase(): ProfileDatabase {
     migratedLegacy: false,
   };
 }
+
+/** Reset the current character's progress; permanent prestige and display choices survive. */
+export function resetProfileProgress(profile: Profile): Profile {
+  return {
+    ...createProfile(profile.mode, profile.seasonId),
+    name: profile.name,
+    level: 1,
+    faction: profile.faction,
+    prestige: profile.prestige,
+    taskFilter: profile.taskFilter,
+    pinnedRevision: profile.pinnedRevision,
+    dataRevision: profile.dataRevision,
+    seenRevision: profile.seenRevision,
+  };
+}
 export function parseDatabase(text: string): ProfileDatabase {
   assert(text.length <= 10_000_000, 'バックアップが大きすぎます');
   const value: unknown = JSON.parse(text);
@@ -123,6 +139,11 @@ export function parseDatabase(text: string): ProfileDatabase {
     assert(
       profile.faction === undefined || profile.faction === 'USEC' || profile.faction === 'BEAR',
       '陣営が不正です',
+    );
+    assert(
+      profile.taskFilter === undefined ||
+        ['all', 'active', 'favorites'].includes(String(profile.taskFilter)),
+      '表示フィルターが不正です',
     );
     assert(
       record(profile.tasks) &&
