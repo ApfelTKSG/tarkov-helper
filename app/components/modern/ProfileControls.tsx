@@ -27,7 +27,9 @@ export default function ProfileControls() {
   const [preview, setPreview] = useState<ProfileDatabase | null>(null);
   const [importError, setImportError] = useState('');
   const [importText, setImportText] = useState('');
-  const prestigeIcon = snapshot?.prestige.find((p) => p.prestigeLevel === profile.prestige)?.imageLink;
+  const prestigeIcon = snapshot?.prestige.find(
+    (p) => p.prestigeLevel === profile.prestige,
+  )?.imageLink;
   const maximumPrestige = Math.max(
     6,
     profile.prestige ?? 0,
@@ -169,7 +171,8 @@ export default function ProfileControls() {
         </p>
       ))}
       <details>
-        <summary className="cursor-pointer text-amber-300">トレーダーの信頼度・LLを設定</summary>
+        <summary className="cursor-pointer text-amber-300">設定</summary>
+        <h3 className="mt-4 font-medium">トレーダーの信頼度・LL</h3>
         <p className="my-3 text-sm text-slate-300">
           実際のゲームの値を入力してください。LLを「自動」にすると、PMCレベルと信頼度から計算します。JaegerはIntroduction、RefはEasy
           Money - Part 1の完了で自動解放します。
@@ -249,9 +252,9 @@ export default function ProfileControls() {
               );
             })}
         </div>
-      </details>
-      <details>
-        <summary className="cursor-pointer text-amber-300">バックアップ・復元・データ更新</summary>
+        <h3 className="mt-5 border-t border-slate-700 pt-4 font-medium">
+          バックアップ・復元・データ更新
+        </h3>
         <div className="mt-3 flex flex-wrap gap-3">
           <button className={field} onClick={exportBackup}>
             全プロフィールを書き出す
