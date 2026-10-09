@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDatabase, parseDatabase } from '../src/domain/profiles.ts';
-import { changeTaskState } from '../src/domain/task-reputation.ts';
+import { changeTaskState, toggleTaskCompletion } from '../src/domain/task-reputation.ts';
 import { taskLoyaltyColumn } from '../src/domain/task-columns.ts';
 
 const task = () => ({
@@ -16,6 +16,22 @@ const task = () => ({
     ],
   },
   failureOutcome: { traderStanding: [{ trader: 'a', standing: -0.03 }] },
+});
+
+test('quick completion toggles progress and reverses rewards while preserving manual reputation edits', () => {
+  const original = createDatabase().profiles.regular;
+  original.tasks.task = 'active';
+  original.traders.a = { reputation: 0.2 };
+  const completed = toggleTaskCompletion(original, task());
+  assert.equal(completed.tasks.task, 'complete');
+  assert.ok(completed.completedAt.task);
+  assert.equal(completed.traders.a.reputation, 0.3);
+  completed.traders.a.reputation = 0.5;
+  const undone = toggleTaskCompletion(completed, task());
+  assert.equal(undone.tasks.task, 'unstarted');
+  assert.equal(undone.completedAt.task, undefined);
+  assert.equal(undone.traders.a.reputation, 0.4);
+  assert.equal(original.tasks.task, 'active');
 });
 test('completion applies all signed rewards once and undo preserves manual adjustments', () => {
   let p = createDatabase().profiles.regular;

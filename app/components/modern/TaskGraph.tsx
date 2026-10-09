@@ -19,6 +19,7 @@ import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns'
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
 import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentation';
+import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
@@ -104,7 +105,7 @@ export default function TaskGraph({
   revealMatches?: boolean;
   selectedId?: string;
 }) {
-  const { profile, availability, snapshot } = useGame();
+  const { profile, availability, snapshot, edit, storageError, ready } = useGame();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const folders = useMemo(() => taskFolders(snapshot?.tasks ?? tasks), [snapshot?.tasks, tasks]);
@@ -297,11 +298,41 @@ export default function TaskGraph({
     );
     return edges;
   }, [tasks, representative]);
+  const activateNode = (id: string, details: boolean) => {
+    const folder = visibleFolders.find((folder) => folder.id === id);
+    if (folder) {
+      if (revealMatches || folder.tasks.some((t) => t.id === selectedId)) return;
+      setExpanded((current) => {
+        const next = new Set(current);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setHovered(null);
+      return;
+    }
+    const task = tasks.find((task) => task.id === id);
+    if (!task) return;
+    if (details) {
+      setHovered(null);
+      onSelect(task);
+    } else if (ready && !storageError) edit((p) => toggleTaskCompletion(p, task));
+  };
   return (
     <HoverContext.Provider value={hover}>
       <div
         className="h-[550px] rounded-xl border border-slate-700 bg-slate-950"
         aria-label="LL別タスクグラフ"
+        onKeyDownCapture={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          const id = (event.target as HTMLElement)
+            .closest('.react-flow__node-task')
+            ?.getAttribute('data-id');
+          if (!id) return;
+          event.preventDefault();
+          event.stopPropagation();
+          activateNode(id, event.shiftKey);
+        }}
       >
         <ReactFlow
           key={`${profile.id}:${tasks.map((t) => t.id).join(',')}`}
@@ -315,22 +346,15 @@ export default function TaskGraph({
           nodesConnectable={false}
           onNodeMouseEnter={onMouseEnter}
           onNodeMouseLeave={onMouseLeave}
-          onNodeClick={(_, node) => {
-            const folder = visibleFolders.find((folder) => folder.id === node.id);
-            if (folder) {
-              if (revealMatches || folder.tasks.some((t) => t.id === selectedId)) return;
-              setExpanded((current) => {
-                const next = new Set(current);
-                if (next.has(node.id)) next.delete(node.id);
-                else next.add(node.id);
-                return next;
-              });
-              setHovered(null);
-              return;
-            }
+          onNodeContextMenu={(event, node) => {
             const task = tasks.find((task) => task.id === node.id);
-            if (task) onSelect(task);
+            if (task) {
+              event.preventDefault();
+              setHovered(null);
+              onSelect(task);
+            }
           }}
+          onNodeClick={(event, node) => activateNode(node.id, event.shiftKey)}
         >
           <Background color="#334155" />
           <Controls />

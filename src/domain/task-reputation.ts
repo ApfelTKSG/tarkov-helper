@@ -18,6 +18,14 @@ export function reputationRewards(task: GameTask, state: TaskState): Record<stri
 }
 const round = (value: number) => Math.round(value * 1e8) / 1e8;
 
+export function toggleTaskCompletion(profile: Profile, task: GameTask): Profile {
+  return changeTaskState(
+    profile,
+    task,
+    profile.tasks[task.id] === 'complete' ? 'unstarted' : 'complete',
+  );
+}
+
 /** Apply only state transitions, undoing the exact original amounts, even after API updates. */
 export function changeTaskState(profile: Profile, task: GameTask, state: TaskState): Profile {
   if ((profile.tasks[task.id] ?? 'unstarted') === state) return profile;

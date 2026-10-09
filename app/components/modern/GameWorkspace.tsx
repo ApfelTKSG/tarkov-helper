@@ -8,6 +8,8 @@ import type { GameTask } from '@/src/domain/game';
 import { matchesTask, targetTasks } from '@/src/domain/task-view';
 import ProfileControls from './ProfileControls';
 import TaskPanel from './TaskPanel';
+import TaskDialog from './TaskDialog';
+import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
 import RaidView from './RaidView';
@@ -22,17 +24,26 @@ export default function GameWorkspace({
   trader?: string;
   section?: WorkspaceSection;
 }) {
-  const { snapshot, profile, ready, loading, error, availability, refresh } = useGame();
+  const { snapshot, profile, ready, loading, error, availability, refresh, edit, storageError } =
+    useGame();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [target, setTarget] = useState('all');
-  const [view, setView] = useState(trader ? 'graph' : 'list');
+  const [view, setView] = useState('graph');
   const [selected, setSelected] = useState<GameTask | null>(null);
   const [limit, setLimit] = useState(40);
   useEffect(() => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
-    const task = snapshot?.tasks.find((task) => `task-${task.id}` === id);
-    if (task) requestAnimationFrame(() => setSelected(task));
+    let frame = 0;
+    const openLinkedTask = () => {
+      const task = snapshot?.tasks.find((task) => `#task-${task.id}` === window.location.hash);
+      if (task) frame = requestAnimationFrame(() => setSelected(task));
+    };
+    openLinkedTask();
+    window.addEventListener('hashchange', openLinkedTask);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('hashchange', openLinkedTask);
+    };
   }, [snapshot]);
   const title =
     section === 'raid'
@@ -194,44 +205,58 @@ export default function GameWorkspace({
                     tasks={tasks}
                     revealMatches={!!query.trim()}
                     selectedId={currentSelected?.id}
-                    onSelect={(task) => {
-                      setSelected(task);
-                      requestAnimationFrame(() =>
-                        document
-                          .getElementById('selected-task')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-                      );
-                    }}
+                    onSelect={setSelected}
                   />
-                  <p className="text-sm text-slate-400">
-                    他トレーダーのタスクを前提とせず、2件以上続く一本道をフォルダ化します。分岐点はフォルダの末尾に含め、そこから後続へ枝を出します。他トレーダーへの後続はまとめ方に影響しません。各列はPMCの必要レベル、同レベルなら前提数の少ない順です。展開したライン内は前提順です。左下の「完了
-                    n/m」はフォルダ内の完了数／格納数、「前提
-                    n/m」はそのタスクが必要とする前提の充足数／全前提数です。前提が0件なら非表示にします。左上の「レベル
-                    n～」はPMCの必要レベル、右上は完了報酬の経験値・お金、右下はLLです。検索中・選択中のラインは自動展開します。絞り込みで一部だけ表示する場合は個別表示します。
-                    左からLL1〜LL4で表示します。本人のLL条件・補足分類に加え、前提タスクをたどったLLも列分けに反映します。「前提経由」の根拠は詳細で確認できます。受注可否は実際の完了状態と解放条件で別に判定します。内部条件があり分類も不明なタスクは「LL要確認」に表示します。ノードを押すと詳細、ホバーで前提の経路を表示します。ドラッグで移動、ホイールで拡大縮小できます。
+                  <p className="text-sm text-sky-200">
+                    クリックで完了・取り消し · Shift＋クリック（または右クリック）で詳細 ·
+                    フォルダはクリックで展開
                   </p>
+                  <details className="text-sm text-slate-400">
+                    <summary className="cursor-pointer">表示の説明</summary>
+                    <p className="mt-2">
+                      他トレーダーのタスクを前提とせず、2件以上続く一本道をフォルダ化します。分岐点はフォルダの末尾に含め、そこから後続へ枝を出します。他トレーダーへの後続はまとめ方に影響しません。各列はPMCの必要レベル、同レベルなら前提数の少ない順です。展開したライン内は前提順です。左下の「完了
+                      n/m」はフォルダ内の完了数／格納数、「前提
+                      n/m」はそのタスクが必要とする前提の充足数／全前提数です。前提が0件なら非表示にします。左上の「レベル
+                      n～」はPMCの必要レベル、右上は完了報酬の経験値・お金、右下はLLです。検索中・選択中のラインは自動展開します。絞り込みで一部だけ表示する場合は個別表示します。
+                      左からLL1〜LL4で表示します。本人のLL条件・補足分類に加え、前提タスクをたどったLLも列分けに反映します。「前提経由」の根拠は詳細で確認できます。受注可否は実際の完了状態と解放条件で別に判定します。内部条件があり分類も不明なタスクは「LL要確認」に表示します。Shift＋クリックで詳細、ホバーで前提の経路を表示します。ドラッグで移動、ホイールで拡大縮小できます。
+                    </p>
+                  </details>
                 </>
               )}
               {currentSelected && (
-                <section id="selected-task" className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-amber-300">選択したタスク</h2>
-                    <button className={control} onClick={() => setSelected(null)}>
-                      閉じる
-                    </button>
-                  </div>
-                  <TaskPanel task={currentSelected} />
-                </section>
+                <TaskDialog task={currentSelected} onClose={() => setSelected(null)} />
               )}
-              <div className="space-y-3">
-                {tasks
-                  .slice(0, limit)
-                  .filter((t) => t.id !== currentSelected?.id)
-                  .map((task) => (
-                    <TaskPanel key={task.id} task={task} />
-                  ))}
-              </div>
-              {tasks.length > limit && (
+              {(section !== 'tasks' || view === 'list') && (
+                <div className="space-y-3">
+                  {tasks.slice(0, limit).map((task) =>
+                    section === 'tasks' ? (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800 p-3"
+                      >
+                        <button
+                          className={`flex-1 text-left ${profile.tasks[task.id] === 'complete' ? 'text-emerald-300' : ''}`}
+                          disabled={!ready || !!storageError}
+                          onClick={(event) =>
+                            event.shiftKey
+                              ? setSelected(task)
+                              : edit((p) => toggleTaskCompletion(p, task))
+                          }
+                        >
+                          {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
+                          {task.name}
+                        </button>
+                        <button className={control} onClick={() => setSelected(task)}>
+                          詳細
+                        </button>
+                      </div>
+                    ) : (
+                      <TaskPanel key={task.id} task={task} />
+                    ),
+                  )}
+                </div>
+              )}
+              {(section !== 'tasks' || view === 'list') && tasks.length > limit && (
                 <button className={control} onClick={() => setLimit((value) => value + 40)}>
                   さらに40件表示 ({tasks.length - limit}件)
                 </button>
