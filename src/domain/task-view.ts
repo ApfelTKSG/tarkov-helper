@@ -102,6 +102,22 @@ export function ancestorIds(tasks: GameTask[], taskId: string): Set<string> {
   }
   return ids;
 }
+
+export function descendantIds(tasks: GameTask[], taskId: string): Set<string> {
+  const outgoing = new Map<string, string[]>();
+  for (const task of tasks)
+    for (const req of task.taskRequirements)
+      outgoing.set(req.task, [...(outgoing.get(req.task) ?? []), task.id]);
+  const ids = new Set<string>();
+  const pending = [taskId];
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    pending.push(...(outgoing.get(id) ?? []));
+  }
+  return ids;
+}
 export function objectiveRemaining(task: GameTask, objectiveId: string, profile: Profile): number {
   if (profile.tasks[task.id] === 'complete' || profile.tasks[task.id] === 'failed') return 0;
   const obj = task.objectives.find((o) => o.id === objectiveId);

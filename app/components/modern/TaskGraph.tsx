@@ -14,7 +14,8 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
-import { ancestorIds, taskDepths, traderTaskLines } from '@/src/domain/task-view';
+import { ancestorIds, descendantIds, taskDepths, traderTaskLines } from '@/src/domain/task-view';
+import { layeredTaskRows } from '@/src/domain/task-layout';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
@@ -157,6 +158,19 @@ export default function TaskGraph({
     () => visibleTaskFolders(folders, tasks, expanded, revealMatches, selectedId),
     [folders, tasks, expanded, revealMatches, selectedId],
   );
+  const lineRows = useMemo(() => {
+    const lineTasks =
+      layout === 'depth' ? tasks : tasks.filter((task) => lines.connected.has(task.id));
+    return layeredTaskRows(
+      lineTasks,
+      new Map(
+        lineTasks.map((task) => [
+          task.id,
+          graphColumns.findIndex((column) => column.key === columnForTask(task)),
+        ]),
+      ),
+    );
+  }, [layout, tasks, lines, graphColumns, columnForTask]);
   const folderByTask = useMemo(
     () =>
       new Map(visibleFolders.flatMap((folder) => folder.tasks.map((t) => [t.id, folder] as const))),
@@ -173,7 +187,11 @@ export default function TaskGraph({
     if (!hovered) return { hovered, ancestors: null };
     const folder = visibleFolders.find((f) => f.id === hovered);
     const ids = folder ? folder.tasks.map((t) => t.id) : [hovered];
-    const ancestors = new Set(ids.flatMap((id) => [...ancestorIds(tasks, id)]).map(representative));
+    const ancestors = new Set(
+      ids
+        .flatMap((id) => [...ancestorIds(tasks, id), ...descendantIds(tasks, id)])
+        .map(representative),
+    );
     for (const f of visibleFolders)
       if (f.tasks.some((t) => ancestors.has(t.id))) ancestors.add(f.id);
     return { hovered, ancestors };
@@ -194,7 +212,10 @@ export default function TaskGraph({
       const column = placement.level;
       const displayColumn = folderColumn ?? columnForTask(task);
       const index = graphColumns.findIndex((c) => c.key === displayColumn);
-      const row = columns.get(displayColumn) ?? 0;
+      const row =
+        layout !== 'loyalty' && lineRows.has(task.id)
+          ? lineRows.get(task.id)!
+          : (columns.get(displayColumn) ?? 0);
       columns.set(displayColumn, row + 1);
       const result = availability(task);
       const state = profile.tasks[task.id] ?? 'unstarted';
@@ -203,7 +224,10 @@ export default function TaskGraph({
       nodes.push({
         id: task.id,
         type: 'task',
-        position: { x: index * 300, y: 70 + row * 120 },
+        position: {
+          x: index * 300,
+          y: (layout === 'depth' || displayColumn < 0 ? 20 : 70) + row * 120,
+        },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         data: {
@@ -294,23 +318,29 @@ export default function TaskGraph({
       if (folder.expanded) folder.tasks.forEach((task) => addTask(task, folder.level));
     }
     nodes.unshift(
-      ...graphColumns.map((column, index) => ({
-        id: `${layout}-heading-${column.key}`,
-        position: { x: index * 300, y: 0 },
-        data: {
-          label: `${column.label} (${tasks.filter((t) => columnForTask(t) === column.key).length}件)`,
-        },
-        type: 'default',
-        selectable: false,
-        style: {
-          width: 240,
-          background: '#0f172a',
-          color: '#fbbf24',
-          fontWeight: 700,
-          border: '1px solid #475569',
-          pointerEvents: 'none' as const,
-        },
-      })),
+      ...graphColumns.flatMap((column, index) =>
+        layout === 'depth' || column.key <= 0
+          ? []
+          : [
+              {
+                id: `${layout}-heading-${column.key}`,
+                position: { x: index * 300, y: 0 },
+                data: {
+                  label: `LL${column.key} (${tasks.filter((t) => columnForTask(t) === column.key).length}件)`,
+                },
+                type: 'default',
+                selectable: false,
+                style: {
+                  width: 240,
+                  background: '#0f172a',
+                  color: '#fbbf24',
+                  fontWeight: 700,
+                  border: '1px solid #475569',
+                  pointerEvents: 'none' as const,
+                },
+              },
+            ],
+      ),
     );
     return nodes;
   }, [
@@ -324,6 +354,7 @@ export default function TaskGraph({
     layout,
     graphColumns,
     columnForTask,
+    lineRows,
   ]);
   const edges = useMemo(() => {
     const ids = new Set(tasks.map((task) => task.id));
@@ -343,8 +374,17 @@ export default function TaskGraph({
           markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' },
         })),
     );
-    return edges;
-  }, [tasks, representative]);
+    return edges.map((edge) => ({
+      ...edge,
+      style: {
+        ...edge.style,
+        opacity:
+          !hover.ancestors || (hover.ancestors.has(edge.source) && hover.ancestors.has(edge.target))
+            ? 1
+            : 0.15,
+      },
+    }));
+  }, [tasks, representative, hover.ancestors]);
   const activateNode = (id: string, details: boolean) => {
     const folder = visibleFolders.find((folder) => folder.id === id);
     if (folder) {
