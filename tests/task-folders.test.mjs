@@ -94,7 +94,11 @@ test('Higher They Fly and Choose Your Friends Wisely remain outside due to exter
     const members = taskFolders(snapshot.tasks).flatMap((f) => f.tasks);
     assert.ok(!members.some((t) => t.englishName === 'The Higher They Fly'));
     assert.ok(!members.some((t) => t.englishName === 'Choose Your Friends Wisely'));
-    assert.ok(members.some((t) => t.englishName === 'Route Deviation'));
+    // Seasonal API data no longer includes this line; regular and PvE still do.
+    assert.equal(
+      members.some((t) => t.englishName === 'Route Deviation'),
+      snapshot.tasks.some((t) => t.englishName === 'Route Deviation'),
+    );
   }
 });
 test('LL changes and unknown tiers do not split lines, trader changes do', () => {

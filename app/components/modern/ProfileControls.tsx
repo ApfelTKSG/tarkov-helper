@@ -105,8 +105,9 @@ export default function ProfileControls() {
           </select>
         </label>
         <label className="grid gap-1 text-sm">
-          プレステージ
+          現在のプレステージ
           <input
+            title="達成済みのプレステージ回数。初回前は0。New Beginningは次の段階を表示します。"
             className={`${field} w-24`}
             type="number"
             min="0"

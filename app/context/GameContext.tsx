@@ -1,5 +1,7 @@
 'use client';
 
+import { newBeginningStage } from '@/src/domain/prestige';
+
 import {
   createContext,
   useCallback,
@@ -138,12 +140,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }),
   );
   const availability = (task: GameSnapshot['tasks'][number]) => {
+    const stage = newBeginningStage(task);
     const prestige =
       typeof task.requiredPrestige === 'string'
         ? snapshot?.prestige.find((p) => p.id === task.requiredPrestige)?.prestigeLevel
         : task.requiredPrestige;
     return evaluateAvailability(
-      { ...task, requiredPrestige: prestige ?? task.requiredPrestige },
+      {
+        ...task,
+        requiredPrestige: prestige ?? task.requiredPrestige,
+        exactPrestige: stage === undefined ? undefined : stage - 1,
+      },
       {
         ...profile,
         traders: effectiveTraders,

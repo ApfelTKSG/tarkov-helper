@@ -22,6 +22,7 @@ export interface TaskDefinition {
   minPlayerLevel?: number;
   factionName?: string;
   requiredPrestige?: number | { prestigeLevel?: number } | string;
+  exactPrestige?: number;
   taskRequirements: { task: string; status: string[] }[];
   traderRequirements: {
     id?: string;
@@ -135,7 +136,13 @@ export function evaluateAvailability(
       profile.faction === undefined ? undefined : profile.faction === task.factionName,
       `陣営 ${task.factionName}`,
     );
-  if (task.requiredPrestige !== undefined) {
+  if (task.exactPrestige !== undefined) {
+    add(
+      'prestige',
+      profile.prestige === undefined ? undefined : profile.prestige === task.exactPrestige,
+      `現在のプレステージ ${task.exactPrestige}`,
+    );
+  } else if (task.requiredPrestige !== undefined) {
     const required =
       typeof task.requiredPrestige === 'number'
         ? task.requiredPrestige

@@ -7,7 +7,7 @@ import { traderNameToSlug } from '@/app/lib/traderSlug';
 import type { GameTask } from '@/src/domain/game';
 import { interactingTaskIds, matchesTask, targetTasks } from '@/src/domain/task-view';
 import ProfileControls from './ProfileControls';
-import TaskPanel from './TaskPanel';
+import { matchesPrestige, newBeginningStage, prestigeCoverage } from '@/src/domain/prestige';
 import TaskDialog from './TaskDialog';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import TaskGraph from './TaskGraph';
@@ -69,6 +69,10 @@ export default function GameWorkspace({
   const scoped =
     snapshot?.tasks.filter(
       (task) =>
+        matchesPrestige(task, profile.prestige) &&
+        (!(section === 'items' || section === 'collector') ||
+          profile.prestige !== undefined ||
+          newBeginningStage(task) === undefined) &&
         (!trader || task.trader === traderDefinition?.id) &&
         (!interactingIds || interactingIds.has(task.id)) &&
         (section !== 'collector' || task.englishName === 'Collector') &&
@@ -237,6 +241,19 @@ export default function GameWorkspace({
                 {target !== 'all' &&
                   '関連タスクはAPIのフラグに基づきます。現在の解放経路の全条件を保証するものではありません。'}
               </p>
+              {profile.prestige === undefined ? (
+                <p className="text-sm text-amber-300">
+                  現在のプレステージを入力すると、その段階のNew
+                  Beginningを表示します。FiR必要数には入力後に反映します。
+                </p>
+              ) : (
+                !prestigeCoverage(snapshot, profile.prestige) && (
+                  <p className="text-sm text-amber-300">
+                    このモードのプレステージ {profile.prestige + 1} 向けNew
+                    Beginningはデータ未収録です。FiR必要数には含めていません。
+                  </p>
+                )
+              )}
               {(section === 'items' || section === 'collector') && <ItemOverview tasks={tasks} />}
               {view === 'graph' && section === 'tasks' && !!tasks.length && (
                 <>
@@ -266,37 +283,33 @@ export default function GameWorkspace({
               {currentSelected && (
                 <TaskDialog task={currentSelected} onClose={() => setSelected(null)} />
               )}
-              {(section !== 'tasks' || view === 'list') && (
+              {section === 'tasks' && view === 'list' && (
                 <div className="space-y-3">
-                  {tasks.slice(0, limit).map((task) =>
-                    section === 'tasks' ? (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800 p-3"
+                  {tasks.slice(0, limit).map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800 p-3"
+                    >
+                      <button
+                        className={`flex-1 text-left ${profile.tasks[task.id] === 'complete' ? 'text-emerald-300' : ''}`}
+                        disabled={!ready || !!storageError}
+                        onClick={(event) =>
+                          event.shiftKey
+                            ? setSelected(task)
+                            : edit((p) => toggleTaskCompletion(p, task))
+                        }
                       >
-                        <button
-                          className={`flex-1 text-left ${profile.tasks[task.id] === 'complete' ? 'text-emerald-300' : ''}`}
-                          disabled={!ready || !!storageError}
-                          onClick={(event) =>
-                            event.shiftKey
-                              ? setSelected(task)
-                              : edit((p) => toggleTaskCompletion(p, task))
-                          }
-                        >
-                          {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
-                          {task.name}
-                        </button>
-                        <button className={control} onClick={() => setSelected(task)}>
-                          詳細
-                        </button>
-                      </div>
-                    ) : (
-                      <TaskPanel key={task.id} task={task} />
-                    ),
-                  )}
+                        {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
+                        {task.name}
+                      </button>
+                      <button className={control} onClick={() => setSelected(task)}>
+                        詳細
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
-              {(section !== 'tasks' || view === 'list') && tasks.length > limit && (
+              {section === 'tasks' && view === 'list' && tasks.length > limit && (
                 <button className={control} onClick={() => setLimit((value) => value + 40)}>
                   さらに40件表示 ({tasks.length - limit}件)
                 </button>

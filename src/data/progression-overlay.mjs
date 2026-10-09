@@ -77,11 +77,82 @@ export async function fetchProgressionOverlay({ cacheDirectory, fetcher = fetch 
   throw new Error(`Progression overlay update failed: ${last?.message}`, { cause: last });
 }
 
-/** Import only tier metadata and counters. Other overlay changes do not affect our snapshots. */
+/** Import tier metadata, counters, and regular-mode New Beginning additions. */
 export function supplementProgression(snapshot, overlay) {
   verifyOverlay(overlay);
   const next = structuredClone(snapshot);
+  // These missing quests are documented only for regular mode; never copy them to PvE.
+  if (next.mode === 'regular') {
+    const reference = (value) => (typeof value === 'string' ? value : value?.id);
+    for (const id of ['new_beginning_prestige_5', 'new_beginning_prestige_6']) {
+      if (
+        next.tasks.some(
+          (task) => task.id === id || task.wikiLink === overlay.tasksAdd?.[id]?.wikiLink,
+        )
+      )
+        continue;
+      const source = overlay.tasksAdd?.[id];
+      if (!source) continue;
+      if (
+        !Array.isArray(source.objectives) ||
+        !next.traders.some((trader) => trader.id === reference(source.trader))
+      )
+        throw new Error(`Invalid prestige addition: ${id}`);
+      const objectives = source.objectives.map((objective) => {
+        if (
+          !safeId(objective.id) ||
+          !Number.isInteger(objective.count) ||
+          objective.count < 1 ||
+          typeof objective.description !== 'string'
+        )
+          throw new Error(`Invalid prestige objective: ${id}`);
+        const items = objective.items?.map(reference);
+        if (items?.some((item) => !next.items[item]))
+          throw new Error(`Missing prestige item: ${id}`);
+        return {
+          ...objective,
+          ...(items ? { items } : {}),
+          maps: (objective.maps ?? []).map(reference),
+        };
+      });
+      next.tasks.push({
+        ...source,
+        id,
+        englishName: source.name,
+        trader: reference(source.trader),
+        objectives,
+        taskRequirements: [],
+        traderRequirements: [],
+        // The supplement does not specify all unlock gates, so don't claim eligibility.
+        otherRequirements: [
+          {
+            id: 'supplement-unlock',
+            type: 'unknown',
+            description: '補足データの解放条件をゲーム内で確認',
+          },
+        ],
+        finishRewards: {
+          traderStanding: (source.finishRewards?.traderStanding ?? []).map((reward) => ({
+            ...reward,
+            trader: reference(reward.trader),
+          })),
+          items: (source.finishRewards?.items ?? []).map((reward) => ({
+            ...reward,
+            item: reference(reward.item),
+          })),
+        },
+      });
+    }
+  }
   const tasks = new Map(next.tasks.map((t) => [t.id, t]));
+  for (const task of next.tasks) {
+    const stage = /New_Beginning_\(Prestige_(\d+)\)/.exec(task.wikiLink ?? '')?.[1];
+    if (stage) {
+      // Some upstream locale bundles give all stages the same or a wrong-language name.
+      task.name = `New Beginning · プレステージ ${stage}`;
+      task.englishName = 'New Beginning';
+    }
+  }
   next.progressionCounters = {};
   next.progressionRuleRevision = RULE_REVISION;
   for (const [variableId, entry] of Object.entries(overlay.progressionCounters[next.mode])) {
