@@ -14,7 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
-import { ancestorIds } from '@/src/domain/task-view';
+import { ancestorIds, taskDepths } from '@/src/domain/task-view';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
@@ -99,16 +99,34 @@ export default function TaskGraph({
   onSelect,
   revealMatches = false,
   selectedId,
+  layout = 'loyalty',
 }: {
   tasks: GameTask[];
   onSelect: (task: GameTask) => void;
   revealMatches?: boolean;
   selectedId?: string;
+  layout?: 'loyalty' | 'depth';
 }) {
   const { profile, availability, snapshot, edit, storageError, ready } = useGame();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const folders = useMemo(() => taskFolders(snapshot?.tasks ?? tasks), [snapshot?.tasks, tasks]);
+  const folders = useMemo(
+    () => (layout === 'depth' ? [] : taskFolders(snapshot?.tasks ?? tasks)),
+    [layout, snapshot?.tasks, tasks],
+  );
+  const depths = useMemo(
+    () => (layout === 'depth' ? taskDepths(snapshot?.tasks ?? tasks) : new Map<string, number>()),
+    [layout, snapshot?.tasks, tasks],
+  );
+  const graphColumns = useMemo(
+    () =>
+      layout === 'depth'
+        ? [...new Set(tasks.map((task) => depths.get(task.id) ?? 0))]
+            .sort((a, b) => a - b)
+            .map((key) => ({ key, label: `深さ${key + 1}` }))
+        : loyaltyColumns,
+    [layout, tasks, depths],
+  );
   const visibleFolders = useMemo(
     () => visibleTaskFolders(folders, tasks, expanded, revealMatches, selectedId),
     [folders, tasks, expanded, revealMatches, selectedId],
@@ -148,8 +166,9 @@ export default function TaskGraph({
     const addTask = (task: GameTask, folderColumn?: number) => {
       const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? tasks);
       const column = placement.level;
-      const displayColumn = folderColumn ?? column;
-      const index = loyaltyColumns.findIndex((c) => c.key === displayColumn);
+      const displayColumn =
+        layout === 'depth' ? (depths.get(task.id) ?? 0) : (folderColumn ?? column);
+      const index = graphColumns.findIndex((c) => c.key === displayColumn);
       const row = columns.get(displayColumn) ?? 0;
       columns.set(displayColumn, row + 1);
       const result = availability(task);
@@ -250,11 +269,11 @@ export default function TaskGraph({
       if (folder.expanded) folder.tasks.forEach((task) => addTask(task, folder.level));
     }
     nodes.unshift(
-      ...loyaltyColumns.map((column, index) => ({
-        id: `ll-heading-${column.key}`,
+      ...graphColumns.map((column, index) => ({
+        id: `${layout}-heading-${column.key}`,
         position: { x: index * 300, y: 0 },
         data: {
-          label: `${column.label} (${tasks.filter((t) => taskLoyaltyPlacement(t, snapshot?.tasks ?? tasks).level === column.key).length}件)`,
+          label: `${column.label} (${tasks.filter((t) => (layout === 'depth' ? (depths.get(t.id) ?? 0) : taskLoyaltyPlacement(t, snapshot?.tasks ?? tasks).level) === column.key).length}件)`,
         },
         type: 'default',
         selectable: false,
@@ -277,6 +296,9 @@ export default function TaskGraph({
     folderByTask,
     revealMatches,
     selectedId,
+    layout,
+    depths,
+    graphColumns,
   ]);
   const edges = useMemo(() => {
     const ids = new Set(tasks.map((task) => task.id));
@@ -322,7 +344,7 @@ export default function TaskGraph({
     <HoverContext.Provider value={hover}>
       <div
         className="min-h-[320px] flex-1 rounded-xl border border-slate-700 bg-slate-950"
-        aria-label="LL別タスクグラフ"
+        aria-label={layout === 'depth' ? '深さ別タスクグラフ' : 'LL別タスクグラフ'}
         onKeyDownCapture={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           const id = (event.target as HTMLElement)

@@ -1,6 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { interactingTaskIds } from '../src/domain/task-view.ts';
+import { interactingTaskIds, taskDepths } from '../src/domain/task-view.ts';
+
+test('depth follows the longest prerequisite route across traders and merges', () => {
+  const tasks = [
+    task('root', 'one'),
+    task('second', 'two', ['root']),
+    task('third', 'one', ['second']),
+    task('other-root', 'three'),
+    task('merge', 'two', ['third', 'other-root']),
+  ];
+  for (const catalogue of [tasks, [...tasks].reverse()]) {
+    const depths = taskDepths(catalogue);
+    assert.equal(depths.get('root'), 0);
+    assert.equal(depths.get('other-root'), 0);
+    assert.equal(depths.get('second'), 1);
+    assert.equal(depths.get('third'), 2);
+    assert.equal(depths.get('merge'), 3);
+  }
+});
 
 const task = (id, trader, previous = []) => ({
   id,
