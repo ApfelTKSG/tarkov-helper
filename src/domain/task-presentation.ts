@@ -21,6 +21,13 @@ export function taskRewardLabels(task: GameTask) {
   };
 }
 
+export function canToggleTaskCompletion(
+  state: TaskState,
+  availability: Availability['state'],
+): boolean {
+  return taskGraphStatus(state, availability).opacity === 1;
+}
+
 export function taskGraphStatus(state: TaskState, availability: Availability['state']) {
   if (state === 'complete')
     return { label: '完了', background: '#064e3b', borderColor: '#34d399', opacity: 1 };

@@ -14,6 +14,7 @@ export interface ProgressProfile {
   traders: Record<string, TraderProgress>;
   confirmedRequirements?: Record<string, boolean>;
   confirmedAvailable?: Record<string, boolean>;
+  taskAvailabilityOverrides?: Record<string, 'available' | 'unavailable'>;
   completedAt?: Record<string, number>;
   delayStartedAt?: Record<string, number>;
 }
@@ -220,11 +221,16 @@ export function evaluateAvailability(
   return {
     confirmedInGame,
     conditions,
-    state: conditions.some((c) => c.state === 'unmet')
-      ? 'blocked'
-      : conditions.some((c) => c.state === 'unknown')
-        ? 'unknown'
-        : 'eligible',
+    state:
+      profile.taskAvailabilityOverrides?.[task.id] === 'available'
+        ? 'eligible'
+        : profile.taskAvailabilityOverrides?.[task.id] === 'unavailable'
+          ? 'blocked'
+          : conditions.some((c) => c.state === 'unmet')
+            ? 'blocked'
+            : conditions.some((c) => c.state === 'unknown')
+              ? 'unknown'
+              : 'eligible',
   };
 }
 

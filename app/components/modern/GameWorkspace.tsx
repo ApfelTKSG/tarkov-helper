@@ -10,6 +10,7 @@ import ProfileControls from './ProfileControls';
 import { matchesPrestige, newBeginningStage, prestigeCoverage } from '@/src/domain/prestige';
 import TaskDialog from './TaskDialog';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
+import { canToggleTaskCompletion } from '@/src/domain/task-presentation';
 import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
 import RaidView from './RaidView';
@@ -263,7 +264,8 @@ export default function GameWorkspace({
                     onSelect={setSelected}
                   />
                   <p className="text-sm text-sky-200">
-                    クリックで完了・取り消し · Shift＋クリック（または右クリック）で詳細 ·
+                    クリックで完了・取り消し（半透明は操作不可） ·
+                    Shift＋クリック（または右クリック）で詳細 ·
                     {crossTraderGraph
                       ? '左から前提の深さ順'
                       : '左：タスクライン（深さ順） · 右：単独タスク（LL別）'}
@@ -299,7 +301,10 @@ export default function GameWorkspace({
                         onClick={(event) =>
                           event.shiftKey
                             ? setSelected(task)
-                            : edit((p) => toggleTaskCompletion(p, task))
+                            : canToggleTaskCompletion(
+                                profile.tasks[task.id] ?? 'unstarted',
+                                availability(task).state,
+                              ) && edit((p) => toggleTaskCompletion(p, task))
                         }
                       >
                         {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}

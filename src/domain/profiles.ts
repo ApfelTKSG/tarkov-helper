@@ -155,6 +155,15 @@ export function parseDatabase(text: string): ProfileDatabase {
       'タスク状態が不正です',
     );
     assert(record(profile.traders), 'トレーダー設定が不正です');
+    if (profile.taskAvailabilityOverrides !== undefined) {
+      assert(
+        record(profile.taskAvailabilityOverrides) &&
+          Object.entries(profile.taskAvailabilityOverrides).every(
+            ([id, state]) => safeKey(id) && ['available', 'unavailable'].includes(String(state)),
+          ),
+        '受注条件の上書きが不正です',
+      );
+    }
     if (profile.taskStateBeforeCompletion !== undefined) {
       assert(
         record(profile.taskStateBeforeCompletion) &&

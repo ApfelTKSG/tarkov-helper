@@ -10,6 +10,7 @@ import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import { taskGraphStatus } from '@/src/domain/task-presentation';
+import { setTaskAvailability, type TaskAvailabilityChoice } from '@/src/domain/task-availability';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -171,20 +172,25 @@ export default function TaskPanel({ task }: { task: GameTask }) {
             {availabilityNames[result.state]}
           </span>
         )}
-        <label>
-          <input
-            type="checkbox"
-            checked={result.confirmedInGame}
+        <label className="flex flex-wrap items-center gap-2">
+          受注条件
+          <select
+            aria-label={`${task.name} 受注条件`}
+            className={control}
+            value={profile.taskAvailabilityOverrides?.[task.id] ?? 'automatic'}
             disabled={!!storageError}
             onChange={(e) =>
-              edit((p) => ({
-                ...p,
-                confirmedAvailable: { ...p.confirmedAvailable, [task.id]: e.target.checked },
-              }))
+              edit((p) => setTaskAvailability(p, task, e.target.value as TaskAvailabilityChoice))
             }
-          />{' '}
-          ゲーム内で受注可能と確認
+          >
+            <option value="automatic">条件判定に戻す</option>
+            <option value="available">条件を無視して受注可能にする</option>
+            <option value="unavailable">受けられない状態にする（半透明）</option>
+          </select>
         </label>
+        <p className="w-full text-xs text-slate-300">
+          切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。条件判定に戻すと、元の条件から再判定します。
+        </p>
         {task.wikiLink && (
           <a
             className="text-sky-300 hover:underline"

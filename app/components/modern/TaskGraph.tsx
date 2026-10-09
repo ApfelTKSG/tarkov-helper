@@ -19,7 +19,11 @@ import { layeredTaskRows } from '@/src/domain/task-layout';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
-import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentation';
+import {
+  canToggleTaskCompletion,
+  taskGraphStatus,
+  taskRewardLabels,
+} from '@/src/domain/task-presentation';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
@@ -435,7 +439,12 @@ export default function TaskGraph({
     if (details) {
       setHovered(null);
       onSelect(task);
-    } else if (ready && !storageError) edit((p) => toggleTaskCompletion(p, task));
+    } else if (
+      ready &&
+      !storageError &&
+      canToggleTaskCompletion(profile.tasks[task.id] ?? 'unstarted', availability(task).state)
+    )
+      edit((p) => toggleTaskCompletion(p, task));
   };
   return (
     <HoverContext.Provider value={hover}>
