@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import type { GameTask } from '@/src/domain/game';
-import { matchesTask, targetTasks } from '@/src/domain/task-view';
+import { interactingTaskIds, matchesTask, targetTasks } from '@/src/domain/task-view';
 import ProfileControls from './ProfileControls';
 import TaskPanel from './TaskPanel';
 import TaskDialog from './TaskDialog';
@@ -32,6 +32,11 @@ export default function GameWorkspace({
   const [view, setView] = useState('graph');
   const [selected, setSelected] = useState<GameTask | null>(null);
   const [limit, setLimit] = useState(40);
+  const crossTraderGraph = !trader && section === 'tasks' && view === 'graph';
+  const interactingIds = useMemo(
+    () => (crossTraderGraph ? interactingTaskIds(snapshot?.tasks ?? []) : null),
+    [crossTraderGraph, snapshot?.tasks],
+  );
   useEffect(() => {
     let frame = 0;
     const openLinkedTask = () => {
@@ -54,7 +59,7 @@ export default function GameWorkspace({
           ? 'Collectorのアイテム'
           : section === 'items'
             ? 'FiRアイテム管理'
-            : (trader ?? 'タスク一覧');
+            : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
   const traderDefinition = snapshot?.traders.find((t) => t.englishName === trader);
   const targetIds =
     snapshot && target !== 'all'
@@ -64,6 +69,7 @@ export default function GameWorkspace({
     snapshot?.tasks.filter(
       (task) =>
         (!trader || task.trader === traderDefinition?.id) &&
+        (!interactingIds || interactingIds.has(task.id)) &&
         (section !== 'collector' || task.englishName === 'Collector') &&
         (section !== 'items' ||
           task.objectives.some((o) => o.type === 'giveItem' && o.foundInRaid)),
@@ -203,6 +209,7 @@ export default function GameWorkspace({
                 )}
               </div>
               <p className="text-sm text-slate-400">
+                {crossTraderGraph && '他トレーダーと前提・後続でつながるラインのみ表示。'}
                 表示 {tasks.length}
                 件。条件予測とゲーム内で記録した状態は別に保持します。同名タスクもIDごとに表示します。
                 {target !== 'all' &&

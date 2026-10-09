@@ -1,6 +1,36 @@
 import type { GameSnapshot, GameTask } from './game';
 import type { Profile } from './profiles';
 
+/** Whole prerequisite-connected lines that contain at least one cross-trader link. */
+export function interactingTaskIds(tasks: GameTask[]): Set<string> {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const neighbours = new Map<string, Set<string>>();
+  const pending: string[] = [];
+  for (const task of tasks) {
+    for (const req of task.taskRequirements) {
+      const previous = byId.get(req.task);
+      if (!previous) continue;
+      for (const [from, to] of [
+        [task.id, previous.id],
+        [previous.id, task.id],
+      ]) {
+        const adjacent = neighbours.get(from) ?? new Set<string>();
+        adjacent.add(to);
+        neighbours.set(from, adjacent);
+      }
+      if (previous.trader !== task.trader) pending.push(previous.id, task.id);
+    }
+  }
+  const ids = new Set<string>();
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    for (const next of neighbours.get(id) ?? []) if (!ids.has(next)) pending.push(next);
+  }
+  return ids;
+}
+
 export function matchesTask(task: GameTask, query: string, snapshot: GameSnapshot): boolean {
   const needle = query.normalize('NFKC').toLocaleLowerCase().trim();
   if (!needle) return true;
