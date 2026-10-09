@@ -22,7 +22,9 @@ export function toggleTaskCompletion(profile: Profile, task: GameTask): Profile 
   return changeTaskState(
     profile,
     task,
-    profile.tasks[task.id] === 'complete' ? 'active' : 'complete',
+    profile.tasks[task.id] === 'complete'
+      ? (profile.taskStateBeforeCompletion?.[task.id] ?? 'unstarted')
+      : 'complete',
   );
 }
 
@@ -41,6 +43,11 @@ export function changeTaskState(profile: Profile, task: GameTask, state: TaskSta
       traders[id] = { ...traders[id], reputation: round((traders[id]?.reputation ?? 0) + delta) };
   }
   const completedAt = { ...profile.completedAt };
+  const taskStateBeforeCompletion = { ...profile.taskStateBeforeCompletion };
+  if (state === 'complete')
+    taskStateBeforeCompletion[task.id] = (profile.tasks[task.id] ?? 'unstarted') as
+      'unstarted' | 'active' | 'failed';
+  else delete taskStateBeforeCompletion[task.id];
   if (state === 'complete') completedAt[task.id] = Date.now();
   else delete completedAt[task.id];
   return {
@@ -52,6 +59,7 @@ export function changeTaskState(profile: Profile, task: GameTask, state: TaskSta
         : profile.favorites,
     traders,
     completedAt,
+    taskStateBeforeCompletion,
     taskReputation: { ...profile.taskReputation, [task.id]: next },
   };
 }

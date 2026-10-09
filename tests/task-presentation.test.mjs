@@ -34,6 +34,8 @@ test('accepted and automatically available tasks are opaque gray; unavailable ta
   assert.equal(taskGraphStatus('active', 'blocked').label, '受注中');
   assert.equal(taskGraphStatus('unstarted', 'blocked').opacity, 0.4);
   assert.equal(taskGraphStatus('unstarted', 'unknown').opacity, 0.4);
+  assert.equal(taskGraphStatus('unstarted', 'unknown').borderColor, '#fbbf24');
+  assert.equal(taskGraphStatus('unstarted', 'blocked').borderColor, '#9ca3af');
   assert.equal(taskGraphStatus('unstarted', 'blocked').label, '条件未達');
   assert.equal(taskGraphStatus('unstarted', 'unknown').label, '要確認');
 });

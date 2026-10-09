@@ -271,7 +271,8 @@ export default function GameWorkspace({
                   <details className="text-sm text-slate-400">
                     <summary className="cursor-pointer">表示の説明</summary>
                     <p className="mt-2">
-                      灰色半透明：受けられない・条件未確認 · 灰色：受注中 · 緑色：完了 ·
+                      灰色半透明：受けられない · 黄色縁半透明：条件未確認 · 灰色：受注中 ·
+                      緑色：完了 ·
                       赤色：失敗。受注条件を満たしたタスクは受注中として表示します。★と金色の枠はお気に入りです。
                     </p>
                     <p className="mt-2">

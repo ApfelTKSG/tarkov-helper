@@ -47,6 +47,32 @@ test('completion applies all signed rewards once and undo preserves manual adjus
   assert.equal(p.traders.a.level, 2);
   assert.equal(p.completedAt.task, undefined);
 });
+
+test('completion undo restores unavailable, accepted and failed states after backup reload', () => {
+  for (const state of ['unstarted', 'active', 'failed']) {
+    const db = createDatabase();
+    let original = db.profiles.regular;
+    original.traders.a = { reputation: 0.2 };
+    if (state !== 'unstarted') original = changeTaskState(original, task(), state);
+    db.profiles.regular = toggleTaskCompletion(original, task());
+    const reloaded = parseDatabase(JSON.stringify(db)).profiles.regular;
+    assert.equal(reloaded.taskStateBeforeCompletion.task, state);
+    const undone = toggleTaskCompletion(reloaded, task());
+    assert.equal(undone.tasks.task, state);
+    assert.equal(undone.taskStateBeforeCompletion.task, undefined);
+    assert.equal(undone.traders.a.reputation, original.traders.a.reputation);
+    assert.equal(undone.completedAt.task, undefined);
+    assert.equal(
+      toggleTaskCompletion(toggleTaskCompletion(undone, task()), task()).tasks.task,
+      state,
+    );
+  }
+  const db = createDatabase();
+  db.profiles.regular.tasks.task = 'complete';
+  assert.equal(toggleTaskCompletion(db.profiles.regular, task()).tasks.task, 'unstarted');
+  db.profiles.regular.taskStateBeforeCompletion = { task: 'complete' };
+  assert.throws(() => parseDatabase(JSON.stringify(db)));
+});
 test('failure replaces completion, reversing recorded rewards despite API changes', () => {
   let p = changeTaskState(createDatabase().profiles.regular, task(), 'complete');
   const updated = task();

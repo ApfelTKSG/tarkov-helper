@@ -23,6 +23,7 @@ test('self wipe clears all current progress while preserving prestige, identity,
     legacyCollected: { old: 2 },
     traders: { trader: { reputation: 0.7, level: 4 } },
     taskReputation: { task: { trader: 0.1 } },
+    taskStateBeforeCompletion: { task: 'active' },
     completedAt: { task: 123 },
     delayStartedAt: { task: 111 },
     confirmedAvailable: { task: true },
@@ -51,6 +52,7 @@ test('self wipe clears all current progress while preserving prestige, identity,
     'confirmedAvailable',
     'confirmedRequirements',
     'taskReputation',
+    'taskStateBeforeCompletion',
   ])
     assert.equal(reset[field], undefined);
   assert.deepEqual(reset.favorites, []);

@@ -31,7 +31,7 @@ export function taskGraphStatus(state: TaskState, availability: Availability['st
   return {
     label: availability === 'blocked' ? '条件未達' : '要確認',
     background: '#374151',
-    borderColor: '#9ca3af',
+    borderColor: availability === 'unknown' ? '#fbbf24' : '#9ca3af',
     opacity: 0.4,
   };
 }
