@@ -115,9 +115,14 @@ export default function GameWorkspace({
               <Link className={tabControl} href="/fir/collector">
                 Collector
               </Link>
-              <Link className={tabControl} href="/traders/Hideout">
+              <button
+                type="button"
+                disabled
+                className={`${tabControl} cursor-not-allowed text-slate-500 opacity-50`}
+                title="今シーズンは利用できません"
+              >
                 ハイドアウト
-              </Link>
+              </button>
               <Link className={tabControl} href="/raid">
                 レイド準備
               </Link>

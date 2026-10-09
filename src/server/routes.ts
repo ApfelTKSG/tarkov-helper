@@ -8,7 +8,7 @@ export function traderRoutes() {
   const manifest = JSON.parse(
     readFileSync(join(directory, 'manifest.json'), 'utf8'),
   ) as GameManifest;
-  const names = new Set<string>(['Hideout']);
+  const names = new Set<string>();
   for (const entry of Object.values(manifest.modes)) {
     const snapshot = JSON.parse(readFileSync(join(directory, entry.file), 'utf8')) as GameSnapshot;
     for (const trader of snapshot.traders) names.add(trader.englishName);
