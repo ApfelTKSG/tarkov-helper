@@ -23,6 +23,7 @@ import { taskGraphStatus, taskRewardLabels } from '@/src/domain/task-presentatio
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
+import styles from './TaskGraph.module.css';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
   hovered: null,
@@ -375,6 +376,9 @@ export default function TaskGraph({
           id: `${req.task}:${task.id}`,
           source: representative(req.task),
           target: representative(task.id),
+          focusable: false,
+          reconnectable: false,
+          interactionWidth: 0,
           label: req.status
             .map((status) => stateNames[status as keyof typeof stateNames] ?? status)
             .join(' / '),
@@ -418,7 +422,7 @@ export default function TaskGraph({
   return (
     <HoverContext.Provider value={hover}>
       <div
-        className="min-h-[320px] flex-1 rounded-xl border border-slate-700 bg-slate-950"
+        className={`${styles.visualEdges} min-h-[320px] flex-1 rounded-xl border border-slate-700 bg-slate-950`}
         aria-label={
           layout === 'depth'
             ? '深さ別タスクグラフ'
@@ -447,6 +451,7 @@ export default function TaskGraph({
           minZoom={0.08}
           nodesDraggable={false}
           nodesConnectable={false}
+          edgesFocusable={false}
           onNodeMouseEnter={onMouseEnter}
           onNodeMouseLeave={onMouseLeave}
           onNodeContextMenu={(event, node) => {

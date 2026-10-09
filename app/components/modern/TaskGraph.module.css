@@ -1,0 +1,5 @@
+/* Include labels and transparent SVG wrappers so drags reach the graph pane. */
+.visualEdges :global(.react-flow__edge),
+.visualEdges :global(.react-flow__edge) * {
+  pointer-events: none !important;
+}
