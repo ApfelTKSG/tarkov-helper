@@ -14,6 +14,7 @@ import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
 import RaidView from './RaidView';
 import ItemOverview from './ItemOverview';
+import ApiImage from './ApiImage';
 
 export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
@@ -122,15 +123,36 @@ export default function GameWorkspace({
           </div>
           <ProfileControls />
           <nav aria-label="トレーダー" className="flex flex-wrap gap-2 text-base md:text-lg">
+            <Link
+              href="/"
+              aria-label="全トレーダー"
+              aria-current={!trader && section === 'tasks' ? 'page' : undefined}
+              className={`flex w-20 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
+            >
+              <span
+                className="flex h-14 w-14 items-center justify-center text-3xl"
+                aria-hidden="true"
+              >
+                ▦
+              </span>
+              <span>全トレーダー</span>
+            </Link>
             {snapshot?.traders
               .filter((t) => snapshot.tasks.some((task) => task.trader === t.id))
               .map((t) => (
                 <Link
                   key={t.id}
                   href={`/traders/${traderNameToSlug(t.englishName)}`}
-                  className={`rounded px-4 py-2 font-medium ${trader === t.englishName ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700'}`}
+                  aria-label={t.name}
+                  aria-current={trader === t.englishName ? 'page' : undefined}
+                  className={`flex w-20 flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
                 >
-                  {t.name}
+                  <ApiImage
+                    src={t.imageLink}
+                    name={t.name}
+                    className="h-14 w-14 rounded object-cover"
+                  />
+                  <span>{t.name}</span>
                 </Link>
               ))}
           </nav>

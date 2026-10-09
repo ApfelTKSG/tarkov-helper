@@ -2,6 +2,7 @@
 
 import { useGame } from '@/app/context/GameContext';
 import { evaluateAvailability } from '@/src/domain/progression';
+import ItemCounter from './ItemCounter';
 
 const control = 'rounded border border-slate-600 bg-slate-900 px-2 py-1';
 export default function HideoutView({ firOnly = false }: { firOnly?: boolean }) {
@@ -116,38 +117,27 @@ export default function HideoutView({ firOnly = false }: { firOnly?: boolean }) 
                     .map((req) => {
                       const key = `hideout:${next.id}:${req.id}`;
                       return (
-                        <label
-                          key={req.id}
-                          className="flex items-center justify-between gap-3 rounded bg-slate-950/40 p-2 text-sm"
-                        >
+                        <div key={req.id} className="space-y-2 rounded bg-slate-950/40 p-3 text-sm">
                           <span>
                             {snapshot.items[req.item]?.name ?? req.item}{' '}
                             {req.attributes?.foundInRaid && (
                               <strong className="text-amber-300">FiR</strong>
                             )}
                           </span>
-                          <span className="flex shrink-0 items-center gap-1">
-                            <input
-                              aria-label={`${station.name} ${snapshot.items[req.item]?.name ?? req.item} 確保数`}
-                              className={`${control} w-24`}
-                              type="number"
-                              min="0"
-                              max={req.count}
-                              step="1"
-                              value={Math.min(profile.objectiveCounts[key] ?? 0, req.count)}
-                              disabled={!!storageError}
-                              onChange={(e) => {
-                                const value = Number(e.target.value);
-                                if (Number.isInteger(value) && value >= 0 && value <= req.count)
-                                  edit((p) => ({
-                                    ...p,
-                                    objectiveCounts: { ...p.objectiveCounts, [key]: value },
-                                  }));
-                              }}
-                            />{' '}
-                            / {req.count}
-                          </span>
-                        </label>
+                          <ItemCounter
+                            items={[req.item]}
+                            label={`${station.name} ${snapshot.items[req.item]?.name ?? req.item}`}
+                            value={Math.min(profile.objectiveCounts[key] ?? 0, req.count)}
+                            maximum={req.count}
+                            disabled={!!storageError}
+                            onChange={(value) =>
+                              edit((p) => ({
+                                ...p,
+                                objectiveCounts: { ...p.objectiveCounts, [key]: value },
+                              }))
+                            }
+                          />
+                        </div>
                       );
                     })}
                 </div>

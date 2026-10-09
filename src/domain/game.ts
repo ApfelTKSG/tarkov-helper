@@ -44,6 +44,7 @@ export interface GameTask extends TaskDefinition {
 }
 export interface GameTrader {
   id: string;
+  imageLink?: string;
   name: string;
   englishName: string;
   levels: { level: number; requiredPlayerLevel: number; requiredReputation: number }[];

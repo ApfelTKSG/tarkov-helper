@@ -8,6 +8,35 @@ export interface ItemDemand {
   objectiveId: string;
   count: number;
 }
+
+/** Change the shared total without reallocating counts already entered for other tasks. */
+export function setFirGroupCount(profile: Profile, demands: ItemDemand[], total: number): Profile {
+  const active = demands.filter(
+    (demand) => !['complete', 'failed'].includes(profile.tasks[demand.taskId] ?? 'unstarted'),
+  );
+  const current = active.reduce(
+    (sum, demand) =>
+      sum +
+      Math.min(
+        profile.objectiveCounts[`${demand.taskId}:${demand.objectiveId}`] ?? 0,
+        demand.count,
+      ),
+    0,
+  );
+  const maximum = active.reduce((sum, demand) => sum + demand.count, 0);
+  if (!Number.isInteger(total) || total < 0 || total > maximum || total === current) return profile;
+  let delta = total - current;
+  const objectiveCounts = { ...profile.objectiveCounts };
+  for (const demand of delta > 0 ? active : [...active].reverse()) {
+    const key = `${demand.taskId}:${demand.objectiveId}`;
+    const count = Math.min(objectiveCounts[key] ?? 0, demand.count);
+    const change = delta > 0 ? Math.min(delta, demand.count - count) : Math.max(delta, -count);
+    if (change) objectiveCounts[key] = count + change;
+    delta -= change;
+    if (!delta) break;
+  }
+  return { ...profile, objectiveCounts };
+}
 export function remainingFirItems(tasks: GameTask[], profile: Profile) {
   const singles = new Map<string, { itemId: string; count: number; demands: ItemDemand[] }>();
   const alternatives: { candidates: string[]; demand: ItemDemand }[] = [];
