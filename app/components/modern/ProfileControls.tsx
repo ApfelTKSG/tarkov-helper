@@ -7,6 +7,7 @@ import { updateDatabase } from '@/src/client/profile-store';
 import { deriveLoyaltyLevel } from '@/src/domain/progression';
 import type { GameMode } from '@/src/domain/game';
 import { traderUnlocked, visibleTrader } from '@/src/domain/traders';
+import ApiImage from './ApiImage';
 
 const field = 'rounded border border-slate-600 bg-slate-900 px-2 py-1 text-white';
 const modeNames = { regular: '通常', pve: 'PvE', 'pvp-season': 'PvPシーズン' };
@@ -26,6 +27,14 @@ export default function ProfileControls() {
   const [preview, setPreview] = useState<ProfileDatabase | null>(null);
   const [importError, setImportError] = useState('');
   const [importText, setImportText] = useState('');
+  const prestigeIcon = snapshot?.prestige
+    .find((p) => p.prestigeLevel === profile.prestige)
+    ?.rewards?.customization?.find((c) => c.customizationType === 'Stub')?.imageLink;
+  const maximumPrestige = Math.max(
+    6,
+    profile.prestige ?? 0,
+    ...(snapshot?.prestige.map((p) => p.prestigeLevel) ?? []),
+  );
   const exportBackup = () => {
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(database, null, 2)], { type: 'application/json' }),
@@ -38,7 +47,7 @@ export default function ProfileControls() {
   };
   return (
     <section className="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-4">
-      <div className="flex flex-wrap items-end gap-4">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 [&>label]:w-36 [&>label]:gap-1 [&>label]:text-sm [&>label]:leading-5 [&>label>input]:h-10 [&>label>select]:h-10 [&>label>input]:w-full [&>label>select]:w-full [&>label>input]:text-sm [&>label>select]:text-sm [&>label>input]:leading-normal [&>label>select]:leading-normal">
         <label className="grid gap-1 text-sm">
           ゲームモード
           <select
@@ -105,24 +114,51 @@ export default function ProfileControls() {
             <option>BEAR</option>
           </select>
         </label>
-        <label className="grid gap-1 text-sm">
-          現在のプレステージ
-          <input
-            title="達成済みのプレステージ回数。初回前は0。New Beginningは次の段階を表示します。"
-            className={`${field} w-24`}
-            type="number"
-            min="0"
-            step="1"
-            placeholder="未入力"
-            value={profile.prestige ?? ''}
-            disabled={!!storageError}
-            onChange={(e) => {
-              const prestige = e.target.value === '' ? undefined : Number(e.target.value);
-              if (prestige === undefined || (Number.isInteger(prestige) && prestige >= 0))
-                edit((p) => ({ ...p, prestige }));
-            }}
-          />
-        </label>
+        <div className="grid w-36 gap-1 text-sm leading-5">
+          <span id="prestige-label">プレステージ</span>
+          <div
+            role="group"
+            aria-labelledby="prestige-label"
+            className="flex h-10 items-center justify-between rounded border border-slate-600 bg-slate-900"
+            title="達成済みのプレステージ。初回前は未達成。New Beginningは次の段階を表示します。"
+          >
+            <button
+              type="button"
+              aria-label="プレステージを下げる"
+              disabled={!!storageError || profile.prestige === 0}
+              className="h-full w-8 shrink-0 rounded-l hover:bg-slate-700 disabled:opacity-30"
+              onClick={() => edit((p) => ({ ...p, prestige: Math.max(0, (p.prestige ?? 1) - 1) }))}
+            >
+              ←
+            </button>
+            <span aria-live="polite" className="flex min-w-0 items-center justify-center">
+              {prestigeIcon ? (
+                <ApiImage
+                  src={prestigeIcon}
+                  name={`プレステージ ${profile.prestige}`}
+                  className="h-9 w-12 object-contain"
+                />
+              ) : (
+                <span className="text-xs text-slate-300">
+                  {profile.prestige === undefined
+                    ? '未入力'
+                    : profile.prestige === 0
+                      ? '未達成'
+                      : `段階 ${profile.prestige}`}
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              aria-label="プレステージを上げる"
+              disabled={!!storageError || (profile.prestige ?? -1) >= maximumPrestige}
+              className="h-full w-8 shrink-0 rounded-r hover:bg-slate-700 disabled:opacity-30"
+              onClick={() => edit((p) => ({ ...p, prestige: (p.prestige ?? -1) + 1 }))}
+            >
+              →
+            </button>
+          </div>
+        </div>
       </div>
       {storageError && (
         <p role="alert" className="text-red-300">

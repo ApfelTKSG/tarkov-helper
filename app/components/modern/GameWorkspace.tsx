@@ -17,6 +17,7 @@ import ItemOverview from './ItemOverview';
 import ApiImage from './ApiImage';
 import { visibleTrader } from '@/src/domain/traders';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
+import { taskVariantLabel } from '@/src/domain/task-variant';
 
 export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
@@ -141,7 +142,7 @@ export default function GameWorkspace({
               >
                 ▦
               </span>
-              <span>全トレーダー</span>
+              <span className="whitespace-nowrap text-[11px] leading-4">全トレーダー</span>
             </Link>
             {snapshot?.traders
               .filter(
@@ -160,7 +161,9 @@ export default function GameWorkspace({
                     name={t.name}
                     className="h-14 w-14 rounded object-cover"
                   />
-                  <span>{t.name}</span>
+                  <span className="max-w-full truncate text-[11px] leading-4" title={t.name}>
+                    {t.name}
+                  </span>
                 </Link>
               ))}
           </nav>
@@ -305,6 +308,11 @@ export default function GameWorkspace({
                       >
                         {profile.tasks[task.id] === 'complete' ? '✓ ' : ''}
                         {task.name}
+                        {taskVariantLabel(task, snapshot.tasks) && (
+                          <span className="ml-2 text-xs font-normal text-sky-200">
+                            {taskVariantLabel(task, snapshot.tasks)}
+                          </span>
+                        )}
                         {task.id === COLLECTOR_ID && (
                           <span className="ml-2">
                             <CollectorBadge />

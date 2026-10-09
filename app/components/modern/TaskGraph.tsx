@@ -24,6 +24,7 @@ import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { stateNames } from './TaskPanel';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import styles from './TaskGraph.module.css';
+import { taskVariantLabel } from '@/src/domain/task-variant';
 
 const HoverContext = createContext<{ hovered: string | null; ancestors: Set<string> | null }>({
   hovered: null,
@@ -248,6 +249,11 @@ export default function TaskGraph({
               <strong className={task.id === COLLECTOR_ID ? 'text-amber-200' : undefined}>
                 {task.name}
               </strong>
+              {taskVariantLabel(task, snapshot?.tasks ?? tasks) && (
+                <div className="mt-1 text-[10px] leading-3 text-sky-200">
+                  {taskVariantLabel(task, snapshot?.tasks ?? tasks)}
+                </div>
+              )}
               {task.id === COLLECTOR_ID && (
                 <span className="ml-2">
                   <CollectorBadge />

@@ -77,7 +77,11 @@ export interface GameSnapshot {
   items: Record<string, GameItem>;
   stations: { id: string; name: string; normalizedName: string; levels: StationLevel[] }[];
   maps: { id: string; name: string; englishName: string }[];
-  prestige: { id: string; prestigeLevel: number }[];
+  prestige: {
+    id: string;
+    prestigeLevel: number;
+    rewards?: { customization?: { customizationType: string; imageLink?: string }[] };
+  }[];
 }
 export interface ManifestEntry {
   revision: string;

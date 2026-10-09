@@ -8,6 +8,7 @@ import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { changeTaskState, reputationRewards } from '@/src/domain/task-reputation';
 import { taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
+import { taskVariantLabel } from '@/src/domain/task-variant';
 
 export const stateNames: Record<TaskState, string> = {
   unstarted: '未受注',
@@ -84,6 +85,9 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           <h3 className="text-lg font-semibold">
             {task.name} {task.id === COLLECTOR_ID && <CollectorBadge />}
           </h3>
+          {taskVariantLabel(task, snapshot?.tasks ?? []) && (
+            <p className="text-sm text-sky-200">{taskVariantLabel(task, snapshot?.tasks ?? [])}</p>
+          )}
           {task.name !== task.englishName && (
             <p className="text-sm text-slate-400">{task.englishName}</p>
           )}
