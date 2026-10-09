@@ -119,6 +119,8 @@ npm run data:update -- --mode=regular
 
 ## トレーダー画像とFiRの確保操作
 
+トレーダー設定・選択ではMr. Kerman、Voevoda、Taran、Radio station、Survivorを表示しない。手動の解放状態入力は廃止し、JaegerはIntroduction（5d2495a886f77425cd51e403）、RefはEasy Money - Part 1（66058cb22cee99303f1ba067）の完了状態から解放を判定する。完了を取り消したら再び未解放。保存済みの旧unlockedフラグは判定に使わない。他トレーダーのLL計算はPMCレベル・信頼度の入力で行う。
+
 FiR・Collectorページはアイテムカードのみを表示し、下部のタスク詳細一覧は表示しない。必要タスクのリンクからトレーダー画面の詳細を開ける。
 
 New BeginningはwikiLinkの到達先プレステージ番号で区別する。「現在のプレステージ」は達成済みの回数（初回前は0）で、次の番号のタスクだけをグラフ・一覧・FiRに表示する。未入力ではFiR集計から除外し、入力を促す。通常のrequiredPrestigeは従来どおり下限として扱うが、New Beginningは現在値の一致を要求する。進捗はタスク・目標IDごとに保持し、入力変更で他段階の記録を消さない。

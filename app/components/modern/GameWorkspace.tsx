@@ -15,6 +15,7 @@ import HideoutView from './HideoutView';
 import RaidView from './RaidView';
 import ItemOverview from './ItemOverview';
 import ApiImage from './ApiImage';
+import { visibleTrader } from '@/src/domain/traders';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 
 export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
@@ -143,7 +144,9 @@ export default function GameWorkspace({
               <span>全トレーダー</span>
             </Link>
             {snapshot?.traders
-              .filter((t) => snapshot.tasks.some((task) => task.trader === t.id))
+              .filter(
+                (t) => visibleTrader(t) && snapshot.tasks.some((task) => task.trader === t.id),
+              )
               .map((t) => (
                 <Link
                   key={t.id}

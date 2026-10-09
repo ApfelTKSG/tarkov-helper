@@ -6,6 +6,7 @@ import { parseDatabase, type ProfileDatabase } from '@/src/domain/profiles';
 import { updateDatabase } from '@/src/client/profile-store';
 import { deriveLoyaltyLevel } from '@/src/domain/progression';
 import type { GameMode } from '@/src/domain/game';
+import { traderUnlocked, visibleTrader } from '@/src/domain/traders';
 
 const field = 'rounded border border-slate-600 bg-slate-900 px-2 py-1 text-white';
 const modeNames = { regular: '通常', pve: 'PvE', 'pvp-season': 'PvPシーズン' };
@@ -136,49 +137,25 @@ export default function ProfileControls() {
       <details>
         <summary className="cursor-pointer text-amber-300">トレーダーの信頼度・LLを設定</summary>
         <p className="my-3 text-sm text-slate-300">
-          実際のゲームの値を入力してください。LLを「自動」にすると、解放済み・PMCレベル・信頼度が入力されている場合に計算します。
+          実際のゲームの値を入力してください。LLを「自動」にすると、PMCレベルと信頼度から計算します。JaegerはIntroduction、RefはEasy
+          Money - Part 1の完了で自動解放します。
           タスク完了・失敗の信頼度は自動反映します。未入力の場合は0から加算します。デイリーなどの変動はここで現在値に修正できます。既存の完了済みタスクには遡って加算しません。
         </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {snapshot?.traders
-            .filter((t) => t.levels.length)
+            .filter((t) => t.levels.length && visibleTrader(t))
             .map((trader) => {
               const progress = profile.traders[trader.id] ?? {};
               const calculated = deriveLoyaltyLevel(
                 profile.level,
                 progress.reputation,
                 trader.levels,
-                progress.unlocked,
+                traderUnlocked(trader.id, profile),
               );
               return (
                 <fieldset key={trader.id} className="rounded border border-slate-600 p-3">
                   <legend className="px-1">{trader.name}</legend>
                   <div className="flex flex-wrap gap-2">
-                    <label className="grid gap-1 text-xs">
-                      解放状態
-                      <select
-                        className={field}
-                        value={progress.unlocked === undefined ? '' : String(progress.unlocked)}
-                        disabled={!!storageError}
-                        onChange={(e) =>
-                          edit((p) => ({
-                            ...p,
-                            traders: {
-                              ...p.traders,
-                              [trader.id]: {
-                                ...p.traders[trader.id],
-                                unlocked:
-                                  e.target.value === '' ? undefined : e.target.value === 'true',
-                              },
-                            },
-                          }))
-                        }
-                      >
-                        <option value="">不明</option>
-                        <option value="true">解放済み</option>
-                        <option value="false">未解放</option>
-                      </select>
-                    </label>
                     <label className="grid gap-1 text-xs">
                       信頼度
                       <input

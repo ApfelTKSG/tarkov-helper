@@ -19,7 +19,8 @@ import {
   type ProfileDatabase,
 } from '@/src/domain/profiles';
 import { parseManifest, verifySnapshot } from '@/src/domain/snapshot';
-import { deriveLoyaltyLevel, evaluateAvailability } from '@/src/domain/progression';
+import { evaluateAvailability } from '@/src/domain/progression';
+import { effectiveTraderProgress } from '@/src/domain/traders';
 import {
   getSnapshot,
   getServerSnapshot,
@@ -119,25 +120,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
   const snapshot = data.profileId === id ? data.snapshot : null;
   const effectiveTraders = Object.fromEntries(
-    Object.entries(profile.traders).map(([traderId, progress]) => {
-      const definition = snapshot?.traders.find((trader) => trader.id === traderId);
-      return [
-        traderId,
-        {
-          ...progress,
-          level:
-            progress.level ??
-            (definition
-              ? deriveLoyaltyLevel(
-                  profile.level,
-                  progress.reputation,
-                  definition.levels,
-                  progress.unlocked,
-                )
-              : undefined),
-        },
-      ];
-    }),
+    (snapshot?.traders ?? []).map((trader) => [
+      trader.id,
+      effectiveTraderProgress(trader, profile),
+    ]),
   );
   const availability = (task: GameSnapshot['tasks'][number]) => {
     const stage = newBeginningStage(task);
