@@ -1,7 +1,7 @@
 'use client';
 
 import { useGame } from '@/app/context/GameContext';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import ApiImage from './ApiImage';
 
 export default function ItemCounter({
@@ -11,6 +11,8 @@ export default function ItemCounter({
   maximum,
   onChange,
   disabled = false,
+  heading,
+  compact = false,
 }: {
   items: string[];
   label: string;
@@ -18,13 +20,32 @@ export default function ItemCounter({
   maximum: number;
   onChange: (value: number) => void;
   disabled?: boolean;
+  heading?: ReactNode;
+  compact?: boolean;
 }) {
   const { snapshot } = useGame();
   const [showAll, setShowAll] = useState(false);
   const complete = value >= maximum;
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div
+      className={
+        compact && items.length === 1
+          ? 'grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-1'
+          : 'space-y-2'
+      }
+    >
+      {heading && (
+        <div className={items.length === 1 && compact ? 'col-start-2 row-start-1 min-w-0' : ''}>
+          {heading}
+        </div>
+      )}
+      <div
+        className={
+          compact && items.length === 1
+            ? 'col-start-1 row-start-1 row-span-2'
+            : 'flex flex-wrap gap-2'
+        }
+      >
         {(showAll ? items : items.slice(0, 8)).map((id) => {
           const item = snapshot?.items[id];
           const name = item?.name ?? id;
@@ -39,7 +60,11 @@ export default function ItemCounter({
               className={`rounded border-2 bg-slate-950/40 p-1 disabled:opacity-50 ${complete ? 'border-emerald-400 ring-2 ring-emerald-500/40' : 'border-slate-600 hover:border-sky-400'}`}
               onClick={() => onChange(maximum === 1 && complete ? 0 : Math.min(maximum, value + 1))}
             >
-              <ApiImage src={item?.iconLink} name={name} className="h-20 w-20 object-contain" />
+              <ApiImage
+                src={item?.iconLink}
+                name={name}
+                className={compact ? 'h-12 w-12 object-contain' : 'h-20 w-20 object-contain'}
+              />
             </button>
           );
         })}
@@ -53,7 +78,9 @@ export default function ItemCounter({
           {showAll ? '候補を折りたたむ' : `残り${items.length - 8}個の候補画像を表示`}
         </button>
       )}
-      <div className="flex items-center gap-2 text-sm">
+      <div
+        className={`flex items-center gap-2 text-sm ${compact && items.length === 1 ? 'col-start-2 row-start-2' : ''}`}
+      >
         <button
           type="button"
           className="rounded border border-slate-600 px-3 py-1 disabled:opacity-40"
@@ -65,7 +92,7 @@ export default function ItemCounter({
         </button>
         <input
           aria-label={`${label} 確保数`}
-          className="w-20 rounded border border-slate-600 bg-slate-900 px-2 py-1"
+          className={`${compact ? 'w-14' : 'w-20'} rounded border border-slate-600 bg-slate-900 px-2 py-1`}
           type="number"
           min="0"
           max={maximum}

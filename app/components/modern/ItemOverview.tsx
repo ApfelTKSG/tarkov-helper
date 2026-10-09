@@ -33,36 +33,53 @@ export default function ItemOverview({ tasks }: { tasks: GameTask[] }) {
       <p className="my-2 text-sm text-slate-300">
         画像を押すと1個追加。必要数に達すると緑枠になります。1個だけ必要な場合は、もう一度押すと取り消せます。「−」や個数入力でも調整できます。候補が複数ある目標は、いずれかの合計数で記録します。
       </p>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid items-start gap-2 md:grid-cols-2 lg:grid-cols-3">
         {groups.singles.map((group) => (
           <article
             key={group.itemId}
             className={`rounded border p-3 ${countFor(group.demands) >= group.count ? 'border-emerald-400 bg-emerald-950/30' : 'border-slate-600'}`}
           >
-            <h3 className="font-semibold">
-              {snapshot.items[group.itemId]?.name ?? group.itemId}{' '}
-              <span className="text-amber-300">残り {group.count - countFor(group.demands)}</span>
-            </h3>
-            <div className="mt-3">
-              <ItemCounter
-                items={[group.itemId]}
-                label={snapshot.items[group.itemId]?.name ?? group.itemId}
-                value={countFor(group.demands)}
-                maximum={group.count}
-                disabled={!ready || !!storageError}
-                onChange={(total) => edit((p) => setFirGroupCount(p, group.demands, total))}
-              />
-            </div>
-            <ul className="mt-2 space-y-1 text-sm">
-              {group.demands.map((demand) => (
-                <li key={`${demand.taskId}:${demand.objectiveId}`}>
-                  <Link className="text-sky-300 hover:underline" href={taskLink(demand.taskId)}>
-                    {demand.taskName}
-                  </Link>{' '}
-                  × {demand.count}
-                </li>
-              ))}
-            </ul>
+            <ItemCounter
+              compact
+              heading={
+                <div className="flex items-start justify-between gap-2">
+                  <h3
+                    className="line-clamp-2 text-sm font-semibold"
+                    title={snapshot.items[group.itemId]?.name ?? group.itemId}
+                  >
+                    {snapshot.items[group.itemId]?.name ?? group.itemId}
+                  </h3>
+                  <span
+                    className={`shrink-0 text-xs ${countFor(group.demands) >= group.count ? 'text-emerald-300' : 'text-amber-300'}`}
+                  >
+                    {countFor(group.demands) >= group.count
+                      ? '確保済'
+                      : `残り ${group.count - countFor(group.demands)}`}
+                  </span>
+                </div>
+              }
+              items={[group.itemId]}
+              label={snapshot.items[group.itemId]?.name ?? group.itemId}
+              value={countFor(group.demands)}
+              maximum={group.count}
+              disabled={!ready || !!storageError}
+              onChange={(total) => edit((p) => setFirGroupCount(p, group.demands, total))}
+            />
+            <details className="mt-2 border-t border-slate-700 pt-2 text-xs">
+              <summary className="cursor-pointer text-slate-400 hover:text-sky-300">
+                必要タスク {group.demands.length}件
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {group.demands.map((demand) => (
+                  <li key={`${demand.taskId}:${demand.objectiveId}`}>
+                    <Link className="text-sky-300 hover:underline" href={taskLink(demand.taskId)}>
+                      {demand.taskName}
+                    </Link>{' '}
+                    × {demand.count}
+                  </li>
+                ))}
+              </ul>
+            </details>
           </article>
         ))}
         {groups.alternatives.map((group) => (
@@ -70,31 +87,30 @@ export default function ItemOverview({ tasks }: { tasks: GameTask[] }) {
             key={`${group.demand.taskId}:${group.demand.objectiveId}`}
             className={`rounded border p-3 ${countFor([group.demand]) >= group.demand.count ? 'border-emerald-400 bg-emerald-950/30' : 'border-slate-600'}`}
           >
-            <h3 className="font-semibold">
-              いずれか合計{' '}
-              <span className="text-amber-300">
-                残り {group.demand.count - countFor([group.demand])}
-              </span>
-            </h3>
-            <p className="mt-1 text-sm">
-              {group.candidates
-                .slice(0, 8)
-                .map((id) => snapshot.items[id]?.name ?? id)
-                .join(' / ')}
-              {group.candidates.length > 8 && ` ほか${group.candidates.length - 8}候補`}
-            </p>
-            <div className="mt-3">
-              <ItemCounter
-                items={group.candidates}
-                label={`${group.demand.taskName} ${group.demand.objectiveId}`}
-                value={countFor([group.demand])}
-                maximum={group.demand.count}
-                disabled={!ready || !!storageError}
-                onChange={(total) => edit((p) => setFirGroupCount(p, [group.demand], total))}
-              />
-            </div>
+            <ItemCounter
+              compact
+              heading={
+                <div className="flex items-start justify-between gap-2 text-sm">
+                  <h3 className="font-semibold">
+                    いずれか合計{' '}
+                    <span className="text-xs font-normal text-slate-400">
+                      {group.candidates.length}候補
+                    </span>
+                  </h3>
+                  <span className="shrink-0 text-xs text-amber-300">
+                    残り {group.demand.count - countFor([group.demand])}
+                  </span>
+                </div>
+              }
+              items={group.candidates}
+              label={`${group.demand.taskName} ${group.demand.objectiveId}`}
+              value={countFor([group.demand])}
+              maximum={group.demand.count}
+              disabled={!ready || !!storageError}
+              onChange={(total) => edit((p) => setFirGroupCount(p, [group.demand], total))}
+            />
             <Link
-              className="mt-2 block text-sm text-sky-300 hover:underline"
+              className="mt-2 block truncate border-t border-slate-700 pt-2 text-xs text-sky-300 hover:underline"
               href={taskLink(group.demand.taskId)}
             >
               {group.demand.taskName}
