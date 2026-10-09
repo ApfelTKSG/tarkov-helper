@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
 import { remainingFirItems, setFirGroupCount, type ItemDemand } from '@/src/domain/items';
-import ItemCounter from './ItemCounter';
+import ItemCard from './ItemCard';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 
 export default function ItemOverview({ tasks }: { tasks: GameTask[] }) {
@@ -35,36 +35,16 @@ export default function ItemOverview({ tasks }: { tasks: GameTask[] }) {
       </p>
       <div className="grid items-start gap-2 md:grid-cols-2 lg:grid-cols-3">
         {groups.singles.map((group) => (
-          <article
+          <ItemCard
             key={group.itemId}
-            className={`rounded border p-3 ${countFor(group.demands) >= group.count ? 'border-emerald-400 bg-emerald-950/30' : 'border-slate-600'}`}
+            title={snapshot.items[group.itemId]?.name ?? group.itemId}
+            items={[group.itemId]}
+            label={snapshot.items[group.itemId]?.name ?? group.itemId}
+            value={countFor(group.demands)}
+            maximum={group.count}
+            disabled={!ready || !!storageError}
+            onChange={(total) => edit((p) => setFirGroupCount(p, group.demands, total))}
           >
-            <ItemCounter
-              compact
-              heading={
-                <div className="flex items-start justify-between gap-2">
-                  <h3
-                    className="line-clamp-2 text-sm font-semibold"
-                    title={snapshot.items[group.itemId]?.name ?? group.itemId}
-                  >
-                    {snapshot.items[group.itemId]?.name ?? group.itemId}
-                  </h3>
-                  <span
-                    className={`shrink-0 text-xs ${countFor(group.demands) >= group.count ? 'text-emerald-300' : 'text-amber-300'}`}
-                  >
-                    {countFor(group.demands) >= group.count
-                      ? '確保済'
-                      : `残り ${group.count - countFor(group.demands)}`}
-                  </span>
-                </div>
-              }
-              items={[group.itemId]}
-              label={snapshot.items[group.itemId]?.name ?? group.itemId}
-              value={countFor(group.demands)}
-              maximum={group.count}
-              disabled={!ready || !!storageError}
-              onChange={(total) => edit((p) => setFirGroupCount(p, group.demands, total))}
-            />
             <details className="mt-2 border-t border-slate-700 pt-2 text-xs">
               <summary className="cursor-pointer text-slate-400 hover:text-sky-300">
                 必要タスク {group.demands.length}件
@@ -80,42 +60,26 @@ export default function ItemOverview({ tasks }: { tasks: GameTask[] }) {
                 ))}
               </ul>
             </details>
-          </article>
+          </ItemCard>
         ))}
         {groups.alternatives.map((group) => (
-          <article
+          <ItemCard
             key={`${group.demand.taskId}:${group.demand.objectiveId}`}
-            className={`rounded border p-3 ${countFor([group.demand]) >= group.demand.count ? 'border-emerald-400 bg-emerald-950/30' : 'border-slate-600'}`}
+            title="いずれか合計"
+            items={group.candidates}
+            label={`${group.demand.taskName} ${group.demand.objectiveId}`}
+            value={countFor([group.demand])}
+            maximum={group.demand.count}
+            disabled={!ready || !!storageError}
+            onChange={(total) => edit((p) => setFirGroupCount(p, [group.demand], total))}
           >
-            <ItemCounter
-              compact
-              heading={
-                <div className="flex items-start justify-between gap-2 text-sm">
-                  <h3 className="font-semibold">
-                    いずれか合計{' '}
-                    <span className="text-xs font-normal text-slate-400">
-                      {group.candidates.length}候補
-                    </span>
-                  </h3>
-                  <span className="shrink-0 text-xs text-amber-300">
-                    残り {group.demand.count - countFor([group.demand])}
-                  </span>
-                </div>
-              }
-              items={group.candidates}
-              label={`${group.demand.taskName} ${group.demand.objectiveId}`}
-              value={countFor([group.demand])}
-              maximum={group.demand.count}
-              disabled={!ready || !!storageError}
-              onChange={(total) => edit((p) => setFirGroupCount(p, [group.demand], total))}
-            />
             <Link
               className="mt-2 block truncate border-t border-slate-700 pt-2 text-xs text-sky-300 hover:underline"
               href={taskLink(group.demand.taskId)}
             >
               {group.demand.taskName}
             </Link>
-          </article>
+          </ItemCard>
         ))}
       </div>
       {!groups.singles.length && !groups.alternatives.length && (

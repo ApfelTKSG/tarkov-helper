@@ -2,11 +2,11 @@
 
 import { useGame } from '@/app/context/GameContext';
 import { evaluateAvailability } from '@/src/domain/progression';
-import ItemCounter from './ItemCounter';
+import ItemCard from './ItemCard';
 
 const control = 'rounded border border-slate-600 bg-slate-900 px-2 py-1';
 export default function HideoutView({ firOnly = false }: { firOnly?: boolean }) {
-  const { snapshot, profile, edit, storageError, availability } = useGame();
+  const { snapshot, profile, edit, storageError, availability, ready } = useGame();
   if (!snapshot) return null;
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -117,27 +117,22 @@ export default function HideoutView({ firOnly = false }: { firOnly?: boolean }) 
                     .map((req) => {
                       const key = `hideout:${next.id}:${req.id}`;
                       return (
-                        <div key={req.id} className="space-y-2 rounded bg-slate-950/40 p-3 text-sm">
-                          <span>
-                            {snapshot.items[req.item]?.name ?? req.item}{' '}
-                            {req.attributes?.foundInRaid && (
-                              <strong className="text-amber-300">FiR</strong>
-                            )}
-                          </span>
-                          <ItemCounter
-                            items={[req.item]}
-                            label={`${station.name} ${snapshot.items[req.item]?.name ?? req.item}`}
-                            value={Math.min(profile.objectiveCounts[key] ?? 0, req.count)}
-                            maximum={req.count}
-                            disabled={!!storageError}
-                            onChange={(value) =>
-                              edit((p) => ({
-                                ...p,
-                                objectiveCounts: { ...p.objectiveCounts, [key]: value },
-                              }))
-                            }
-                          />
-                        </div>
+                        <ItemCard
+                          key={req.id}
+                          title={snapshot.items[req.item]?.name ?? req.item}
+                          foundInRaid={req.attributes?.foundInRaid}
+                          items={[req.item]}
+                          label={`${station.name} ${snapshot.items[req.item]?.name ?? req.item}`}
+                          value={Math.min(profile.objectiveCounts[key] ?? 0, req.count)}
+                          maximum={req.count}
+                          disabled={!ready || !!storageError}
+                          onChange={(value) =>
+                            edit((p) => ({
+                              ...p,
+                              objectiveCounts: { ...p.objectiveCounts, [key]: value },
+                            }))
+                          }
+                        />
                       );
                     })}
                 </div>
