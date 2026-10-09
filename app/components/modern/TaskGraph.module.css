@@ -3,3 +3,20 @@
 .visualEdges :global(.react-flow__edge) * {
   pointer-events: none !important;
 }
+
+/* Transform and a transparent hit margin keep layout measurements unchanged.
+   Expand immediately so entering the old boundary cannot trigger a leave. */
+.taskNode[data-hovered='true'] {
+  transform: scale(1.05);
+}
+
+.taskNode[data-hovered='true']::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+}
+
+.visualEdges :global(.react-flow__node-task):has(.taskNode[data-hovered='true']) {
+  z-index: 10 !important;
+}

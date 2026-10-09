@@ -29,7 +29,7 @@ test('translucent tasks cannot quick-complete, while accepted and terminal recor
   assert.equal(canToggleTaskCompletion('unstarted', 'eligible'), true);
 });
 
-test('manual unlock bypasses known and unknown gates without completion or reputation; automatic and force-lock undo it', () => {
+test('manual unlock bypasses gates without completion rewards; automatic follows current conditions', () => {
   const original = createProfile('regular', null);
   original.level = 1;
   original.traders.trader = { reputation: 0.2 };
@@ -51,14 +51,22 @@ test('manual unlock bypasses known and unknown gates without completion or reput
   profile.level = 30;
   profile.confirmedRequirements = { 'task:opaque': true };
   assert.equal(evaluateAvailability(task, profile).state, 'eligible');
-  profile = setTaskAvailability(profile, task, 'unavailable');
-  assert.equal(evaluateAvailability(task, profile).state, 'blocked');
-  assert.equal(canToggleTaskCompletion(profile.tasks.task, 'blocked'), false);
+  profile = setTaskAvailability(profile, task, 'automatic');
+  assert.equal(evaluateAvailability(task, profile).state, 'eligible');
+  assert.equal(canToggleTaskCompletion(profile.tasks.task, 'eligible'), true);
+  delete profile.confirmedRequirements['task:opaque'];
+  assert.equal(evaluateAvailability(task, profile).state, 'unknown');
+  assert.equal(canToggleTaskCompletion(profile.tasks.task, 'unknown'), false);
+  // Old force-lock backups remain readable, but now follow automatic gates.
+  profile.taskAvailabilityOverrides.task = 'unavailable';
+  profile.confirmedRequirements['task:opaque'] = true;
+  assert.equal(evaluateAvailability(task, profile).state, 'eligible');
+  profile = setTaskAvailability(profile, task, 'available');
   const db = createDatabase();
   db.profiles.regular = profile;
   assert.equal(
     parseDatabase(JSON.stringify(db)).profiles.regular.taskAvailabilityOverrides.task,
-    'unavailable',
+    'available',
   );
   assert.equal(resetProfileProgress(profile).taskAvailabilityOverrides, undefined);
   db.profiles.regular.taskAvailabilityOverrides.task = 'invalid';

@@ -224,13 +224,11 @@ export function evaluateAvailability(
     state:
       profile.taskAvailabilityOverrides?.[task.id] === 'available'
         ? 'eligible'
-        : profile.taskAvailabilityOverrides?.[task.id] === 'unavailable'
+        : conditions.some((c) => c.state === 'unmet')
           ? 'blocked'
-          : conditions.some((c) => c.state === 'unmet')
-            ? 'blocked'
-            : conditions.some((c) => c.state === 'unknown')
-              ? 'unknown'
-              : 'eligible',
+          : conditions.some((c) => c.state === 'unknown')
+            ? 'unknown'
+            : 'eligible',
   };
 }
 

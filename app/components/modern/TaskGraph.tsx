@@ -52,7 +52,8 @@ function TaskNode({ id, data }: NodeProps<TaskNodeData>) {
   const { hovered, ancestors } = useContext(HoverContext);
   return (
     <div
-      className={`relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.collector || data.favorite ? 'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.25)]' : ''} ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
+      data-hovered={hovered === id}
+      className={`${styles.taskNode} relative rounded-[10px] border-2 p-[10px] pb-6 text-center text-xs text-slate-100 ${data.collector || data.favorite ? 'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.25)]' : ''} ${data.rewards ? 'pt-10' : data.requiredLevel ? 'pt-7' : ''}`}
       style={{
         opacity: (data.opacity ?? 1) * (ancestors && !ancestors.has(id) ? 0.25 : 1),
         background: data.background,

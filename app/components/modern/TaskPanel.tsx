@@ -177,19 +177,22 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           <select
             aria-label={`${task.name} 受注条件`}
             className={control}
-            value={profile.taskAvailabilityOverrides?.[task.id] ?? 'automatic'}
+            value={
+              profile.taskAvailabilityOverrides?.[task.id] === 'available'
+                ? 'available'
+                : 'automatic'
+            }
             disabled={!!storageError}
             onChange={(e) =>
               edit((p) => setTaskAvailability(p, task, e.target.value as TaskAvailabilityChoice))
             }
           >
-            <option value="automatic">条件判定に戻す</option>
+            <option value="automatic">条件自動判定</option>
             <option value="available">条件を無視して受注可能にする</option>
-            <option value="unavailable">受けられない状態にする（半透明）</option>
           </select>
         </label>
         <p className="w-full text-xs text-slate-300">
-          切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。条件判定に戻すと、元の条件から再判定します。
+          条件自動判定では、条件未達・未確認のタスクを半透明にします。条件を無視すると受注可能になります。切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。
         </p>
         {task.wikiLink && (
           <a

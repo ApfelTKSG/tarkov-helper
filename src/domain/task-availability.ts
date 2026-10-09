@@ -2,7 +2,7 @@ import type { GameTask } from './game';
 import type { Profile } from './profiles';
 import { changeTaskState } from './task-reputation.ts';
 
-export type TaskAvailabilityChoice = 'automatic' | 'available' | 'unavailable';
+export type TaskAvailabilityChoice = 'automatic' | 'available';
 
 /** Unlocking is an acceptance action, never a completion or reputation reward. */
 export function setTaskAvailability(
