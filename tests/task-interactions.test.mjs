@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { interactingTaskIds, taskDepths } from '../src/domain/task-view.ts';
+import { interactingTaskIds, taskDepths, traderTaskLines } from '../src/domain/task-view.ts';
+
+test('trader lines include local branches while foreign-only and independent tasks stay in LL columns', () => {
+  const tasks = [
+    task('root', 'one'),
+    task('child', 'one', ['root']),
+    task('branch', 'one', ['root']),
+    task('end', 'one', ['child']),
+    task('alone', 'one'),
+    task('foreign', 'two'),
+    task('foreign-only', 'one', ['foreign']),
+  ];
+  const lines = traderTaskLines(tasks, 'one');
+  assert.deepEqual([...lines.connected].sort(), ['branch', 'child', 'end', 'root']);
+  assert.equal(lines.depths.get('root'), 0);
+  assert.equal(lines.depths.get('child'), 1);
+  assert.equal(lines.depths.get('branch'), 1);
+  assert.equal(lines.depths.get('end'), 2);
+  assert.equal(lines.depths.get('foreign-only'), 0);
+  assert.ok(!lines.depths.has('foreign'));
+});
 
 test('depth follows the longest prerequisite route across traders and merges', () => {
   const tasks = [

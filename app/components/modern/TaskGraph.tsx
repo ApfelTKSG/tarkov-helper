@@ -14,7 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useGame } from '@/app/context/GameContext';
 import type { GameTask } from '@/src/domain/game';
-import { ancestorIds, taskDepths } from '@/src/domain/task-view';
+import { ancestorIds, taskDepths, traderTaskLines } from '@/src/domain/task-view';
 import { loyaltyColumns, taskLoyaltyPlacement } from '@/src/domain/task-columns';
 import { taskFolders, visibleTaskFolders } from '@/src/domain/task-folders';
 import { compareGraphTasks, prerequisiteProgress } from '@/src/domain/task-order';
@@ -99,24 +99,37 @@ export default function TaskGraph({
   onSelect,
   revealMatches = false,
   selectedId,
-  layout = 'loyalty',
+  layout = 'split',
 }: {
   tasks: GameTask[];
   onSelect: (task: GameTask) => void;
   revealMatches?: boolean;
   selectedId?: string;
-  layout?: 'loyalty' | 'depth';
+  layout?: 'loyalty' | 'depth' | 'split';
 }) {
   const { profile, availability, snapshot, edit, storageError, ready } = useGame();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const folders = useMemo(
-    () => (layout === 'depth' ? [] : taskFolders(snapshot?.tasks ?? tasks)),
+    () => (layout !== 'loyalty' ? [] : taskFolders(snapshot?.tasks ?? tasks)),
     [layout, snapshot?.tasks, tasks],
   );
   const depths = useMemo(
     () => (layout === 'depth' ? taskDepths(snapshot?.tasks ?? tasks) : new Map<string, number>()),
     [layout, snapshot?.tasks, tasks],
+  );
+  const lines = useMemo(
+    () => traderTaskLines(snapshot?.tasks ?? tasks, tasks[0]?.trader ?? ''),
+    [snapshot?.tasks, tasks],
+  );
+  const columnForTask = useCallback(
+    (task: GameTask) => {
+      if (layout === 'depth') return depths.get(task.id) ?? 0;
+      if (layout === 'split' && lines.connected.has(task.id))
+        return -(lines.depths.get(task.id) ?? 0) - 1;
+      return taskLoyaltyPlacement(task, snapshot?.tasks ?? tasks).level;
+    },
+    [layout, depths, lines, snapshot?.tasks, tasks],
   );
   const graphColumns = useMemo(
     () =>
@@ -124,8 +137,21 @@ export default function TaskGraph({
         ? [...new Set(tasks.map((task) => depths.get(task.id) ?? 0))]
             .sort((a, b) => a - b)
             .map((key) => ({ key, label: `深さ${key + 1}` }))
-        : loyaltyColumns,
-    [layout, tasks, depths],
+        : layout === 'split'
+          ? [
+              ...[
+                ...new Set(
+                  tasks
+                    .filter((task) => lines.connected.has(task.id))
+                    .map((task) => lines.depths.get(task.id) ?? 0),
+                ),
+              ]
+                .sort((a, b) => a - b)
+                .map((depth) => ({ key: -depth - 1, label: `ライン · 深さ${depth + 1}` })),
+              ...loyaltyColumns.map((column) => ({ ...column, label: `単独 · ${column.label}` })),
+            ]
+          : loyaltyColumns,
+    [layout, tasks, depths, lines],
   );
   const visibleFolders = useMemo(
     () => visibleTaskFolders(folders, tasks, expanded, revealMatches, selectedId),
@@ -166,8 +192,7 @@ export default function TaskGraph({
     const addTask = (task: GameTask, folderColumn?: number) => {
       const placement = taskLoyaltyPlacement(task, snapshot?.tasks ?? tasks);
       const column = placement.level;
-      const displayColumn =
-        layout === 'depth' ? (depths.get(task.id) ?? 0) : (folderColumn ?? column);
+      const displayColumn = folderColumn ?? columnForTask(task);
       const index = graphColumns.findIndex((c) => c.key === displayColumn);
       const row = columns.get(displayColumn) ?? 0;
       columns.set(displayColumn, row + 1);
@@ -273,7 +298,7 @@ export default function TaskGraph({
         id: `${layout}-heading-${column.key}`,
         position: { x: index * 300, y: 0 },
         data: {
-          label: `${column.label} (${tasks.filter((t) => (layout === 'depth' ? (depths.get(t.id) ?? 0) : taskLoyaltyPlacement(t, snapshot?.tasks ?? tasks).level) === column.key).length}件)`,
+          label: `${column.label} (${tasks.filter((t) => columnForTask(t) === column.key).length}件)`,
         },
         type: 'default',
         selectable: false,
@@ -297,8 +322,8 @@ export default function TaskGraph({
     revealMatches,
     selectedId,
     layout,
-    depths,
     graphColumns,
+    columnForTask,
   ]);
   const edges = useMemo(() => {
     const ids = new Set(tasks.map((task) => task.id));
@@ -344,7 +369,13 @@ export default function TaskGraph({
     <HoverContext.Provider value={hover}>
       <div
         className="min-h-[320px] flex-1 rounded-xl border border-slate-700 bg-slate-950"
-        aria-label={layout === 'depth' ? '深さ別タスクグラフ' : 'LL別タスクグラフ'}
+        aria-label={
+          layout === 'depth'
+            ? '深さ別タスクグラフ'
+            : layout === 'split'
+              ? 'タスクラインとLL別タスクグラフ'
+              : 'LL別タスクグラフ'
+        }
         onKeyDownCapture={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           const id = (event.target as HTMLElement)

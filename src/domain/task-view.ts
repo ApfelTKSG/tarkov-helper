@@ -1,6 +1,19 @@
 import type { GameSnapshot, GameTask } from './game';
 import type { Profile } from './profiles';
 
+export function traderTaskLines(allTasks: GameTask[], trader: string) {
+  const tasks = allTasks.filter((task) => task.trader === trader);
+  const ids = new Set(tasks.map((task) => task.id));
+  const connected = new Set<string>();
+  for (const task of tasks)
+    for (const req of task.taskRequirements)
+      if (ids.has(req.task)) {
+        connected.add(task.id);
+        connected.add(req.task);
+      }
+  return { connected, depths: taskDepths(tasks) };
+}
+
 /** Whole prerequisite-connected lines that contain at least one cross-trader link. */
 export function interactingTaskIds(tasks: GameTask[]): Set<string> {
   const byId = new Map(tasks.map((task) => [task.id, task]));
