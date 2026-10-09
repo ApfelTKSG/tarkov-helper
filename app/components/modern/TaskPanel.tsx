@@ -70,6 +70,9 @@ export function ObjectiveProgress({ taskId, objective }: { taskId: string; objec
 export default function TaskPanel({ task }: { task: GameTask }) {
   const { profile, snapshot, edit, availability, storageError } = useGame();
   const result = availability(task);
+  const needsManualConfirmation =
+    result.conditions.some((condition) => condition.state === 'unknown') &&
+    !result.conditions.some((condition) => condition.state === 'unmet');
   const favorite = profile.tasks[task.id] !== 'complete' && profile.favorites.includes(task.id);
   const taskState = profile.tasks[task.id] ?? 'unstarted';
   const presentation = taskGraphStatus(taskState, result.state);
@@ -173,9 +176,9 @@ export default function TaskPanel({ task }: { task: GameTask }) {
           </span>
         )}
         <label className="flex flex-wrap items-center gap-2">
-          受注条件
+          {needsManualConfirmation ? 'ゲーム内の表示' : '受注条件'}
           <select
-            aria-label={`${task.name} 受注条件`}
+            aria-label={`${task.name} ${needsManualConfirmation ? 'ゲーム内の表示' : '受注条件'}`}
             className={control}
             value={
               profile.taskAvailabilityOverrides?.[task.id] === 'available'
@@ -187,12 +190,19 @@ export default function TaskPanel({ task }: { task: GameTask }) {
               edit((p) => setTaskAvailability(p, task, e.target.value as TaskAvailabilityChoice))
             }
           >
-            <option value="automatic">条件自動判定</option>
-            <option value="available">条件を無視して受注可能にする</option>
+            <option value="automatic">
+              {needsManualConfirmation ? '出ていない' : '条件自動判定'}
+            </option>
+            <option value="available">
+              {needsManualConfirmation ? '出ている' : '条件を無視して受注可能にする'}
+            </option>
           </select>
         </label>
         <p className="w-full text-xs text-slate-300">
-          条件自動判定では、条件未達・未確認のタスクを半透明にします。条件を無視すると受注可能になります。切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。
+          {needsManualConfirmation
+            ? 'ゲーム内にタスクが出ているかを選んでください。「出ている」で受注可能、「出ていない」で半透明になります。'
+            : '条件自動判定では、条件未達・未確認のタスクを半透明にします。条件を無視すると受注可能になります。'}
+          切り替えると現在の完了・失敗・受注記録を解除します。受注可能にしても完了にはなりません。
         </p>
         {task.wikiLink && (
           <a
