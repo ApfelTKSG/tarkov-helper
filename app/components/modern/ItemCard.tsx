@@ -10,6 +10,7 @@ export default function ItemCard({
   onChange,
   disabled,
   foundInRaid,
+  foundInRaidRequired = true,
   children,
 }: {
   title: string;
@@ -20,6 +21,7 @@ export default function ItemCard({
   onChange: (value: number) => void;
   disabled?: boolean;
   foundInRaid?: boolean;
+  foundInRaidRequired?: boolean;
   children?: ReactNode;
 }) {
   const complete = value >= maximum;
@@ -38,7 +40,15 @@ export default function ItemCard({
         heading={
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-semibold" title={title}>
-              {title} {foundInRaid && <span className="text-[10px] text-amber-300">FiR</span>}
+              {title}{' '}
+              {foundInRaid && (
+                <span
+                  className={`text-[10px] ${foundInRaidRequired ? 'text-amber-300' : 'text-slate-500 line-through'}`}
+                  title={foundInRaidRequired ? 'FiR必須' : '今シーズンはFiR不要'}
+                >
+                  FiR
+                </span>
+              )}
               {items.length > 1 && (
                 <span className="text-xs font-normal text-slate-400">{items.length}候補</span>
               )}
