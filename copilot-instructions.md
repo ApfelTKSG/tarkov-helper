@@ -1,5 +1,11 @@
 # Tarkov Helper - Copilot Instructions
 
+## 2026年10月の改修後の構成
+
+現在の画面は`app/components/modern`、保存とデータ取得は`app/context/GameContext.tsx`と`src/client/profile-store.ts`、条件判定とプロフィール移行は`src/domain`を使います。以下の旧構成の説明は過去の設計メモです。旧コンポーネントは削除済みで、画面から旧localStorageキーへ書き戻さないでください。旧キーは初回移行の読み取りだけに使い、削除しません。
+
+データ元はtarkov.dev JSON API、配信データは`public/game-data`、更新コマンドは`npm run data:update`です。Node.js 24、Next.js 16.3.8を使用します。`npm test`、`npm run lint -- --max-warnings 0`、`npm run typecheck`、`npm run build`で検証します。詳細は`docs/DATA_PIPELINE.md`を参照してください。下記のdevelop起点のブランチ方針は引き続き適用します。
+
 ## プロジェクト概要
 Escape from Tarkovのタスク管理支援アプリケーション。プレイヤーがKappaコンテナを目指すために必要なタスクの進行状況を視覚的に管理できます。
 

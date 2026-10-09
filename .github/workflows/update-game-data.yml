@@ -1,0 +1,79 @@
+name: Update Tarkov game data
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tarkov-data-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+      revision: ${{ steps.commit.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Restore API bodies and HTTP validators
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/tarkov-api
+          key: ${{ runner.os }}-tarkov-api-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ runner.os }}-tarkov-api-v1-
+      - name: Fetch and validate all modes
+        id: update
+        run: npm run data:update
+      - name: Save refreshed API cache
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/tarkov-api
+          key: ${{ runner.os }}-tarkov-api-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Validate application with candidate snapshots
+        run: |
+          npm run lint -- --max-warnings 0
+          npm run typecheck
+          npm run build
+      - name: Commit only semantic changes
+        id: commit
+        shell: bash
+        run: |
+          git add public/game-data
+          if git diff --cached --quiet; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(data): update validated Tarkov snapshots'
+          git push origin HEAD:main
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      revision: ${{ needs.update.outputs.revision }}
