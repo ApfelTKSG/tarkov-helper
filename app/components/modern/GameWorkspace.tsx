@@ -84,41 +84,45 @@ export default function GameWorkspace({
   const currentSelected = selected
     ? snapshot?.tasks.find((task) => task.id === selected.id)
     : undefined;
+  const graphView = section === 'tasks' && view === 'graph';
+  const tabControl = 'rounded border border-slate-600 bg-slate-800 px-4 py-2.5 font-medium';
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
-      <header className="border-b border-slate-700 bg-slate-950">
-        <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
+    <div
+      className={`min-h-dvh bg-slate-900 text-slate-100 ${graphView ? 'flex h-dvh flex-col' : ''}`}
+    >
+      <header className="shrink-0 border-b border-slate-700 bg-slate-950">
+        <div className={`space-y-3 px-3 py-3 sm:px-5 ${graphView ? '' : 'mx-auto max-w-7xl'}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link href="/" className="text-2xl font-bold tracking-wide">
               Tarkov Helper
             </Link>
-            <nav className="flex flex-wrap gap-2 text-sm">
-              <Link className={control} href="/">
+            <nav className="flex flex-wrap gap-2 text-base md:text-lg">
+              <Link className={tabControl} href="/">
                 タスク
               </Link>
-              <Link className={control} href="/fir">
+              <Link className={tabControl} href="/fir">
                 FiR
               </Link>
-              <Link className={control} href="/fir/collector">
+              <Link className={tabControl} href="/fir/collector">
                 Collector
               </Link>
-              <Link className={control} href="/traders/Hideout">
+              <Link className={tabControl} href="/traders/Hideout">
                 ハイドアウト
               </Link>
-              <Link className={control} href="/raid">
+              <Link className={tabControl} href="/raid">
                 レイド準備
               </Link>
             </nav>
           </div>
           <ProfileControls />
-          <nav aria-label="トレーダー" className="flex flex-wrap gap-2 text-sm">
+          <nav aria-label="トレーダー" className="flex flex-wrap gap-2 text-base md:text-lg">
             {snapshot?.traders
               .filter((t) => snapshot.tasks.some((task) => task.trader === t.id))
               .map((t) => (
                 <Link
                   key={t.id}
                   href={`/traders/${traderNameToSlug(t.englishName)}`}
-                  className={`rounded px-3 py-1 ${trader === t.englishName ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700'}`}
+                  className={`rounded px-4 py-2 font-medium ${trader === t.englishName ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700'}`}
                 >
                   {t.name}
                 </Link>
@@ -126,7 +130,13 @@ export default function GameWorkspace({
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6">
+      <main
+        className={
+          graphView
+            ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
+            : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
+        }
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{title}</h1>
           {snapshot && !section.startsWith('hideout') && section !== 'raid' && (

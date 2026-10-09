@@ -321,7 +321,7 @@ export default function TaskGraph({
   return (
     <HoverContext.Provider value={hover}>
       <div
-        className="h-[550px] rounded-xl border border-slate-700 bg-slate-950"
+        className="min-h-[320px] flex-1 rounded-xl border border-slate-700 bg-slate-950"
         aria-label="LL別タスクグラフ"
         onKeyDownCapture={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
