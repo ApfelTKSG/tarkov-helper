@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { contentHash } from './normalize.mjs';
 
 export const OVERLAY_URL =
-  'https://raw.githubusercontent.com/tarkovtracker-org/tarkov-data-overlay/main/dist/overlay.json';
+  'https://cdn.jsdelivr.net/gh/tarkovtracker-org/tarkov-data-overlay@main/dist/overlay.json';
 export const RULE_REVISION = '1.1.0';
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const safeId = (id) =>

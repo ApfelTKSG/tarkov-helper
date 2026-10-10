@@ -92,7 +92,7 @@ npm run data:update -- --mode=regular
 
 ## 配布グループの補足JSON
 
-`src/data/progression-overlay.mjs` が [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay) の公開JSONをデータ更新ごとに1回取得する。既存の6時間cronでも同じ処理が走る。ETagが同じなら304の検証済みキャッシュを使い、変更時は上流のSHA-256方式（`$meta.sha256` を除いて `JSON.stringify(value, null, 2)`）を検証する。固定した配信元のmainを追跡し、採用した版・digestをスナップショットのsourcesへ記録する。digestは内容の整合性であり、署名ではない。取得・検証失敗は更新を止め、既存manifestを維持する。
+`src/data/progression-overlay.mjs` が [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay) の公開JSONを、上流が案内するjsDelivr CDNからデータ更新ごとに1回取得する。既存の6時間cronでも同じ処理が走る。ETagが同じなら304の検証済みキャッシュを使い、変更時は上流のSHA-256方式（`$meta.sha256` を除いて `JSON.stringify(value, null, 2)`）を検証する。固定した配信元のmainを追跡し、採用した版・digestをスナップショットのsourcesへ記録する。digestは内容の整合性であり、署名ではない。配信先の変更時は旧URLのキャッシュを再利用しない。CDNも取得・検証に失敗した場合は更新を止め、既存manifestを維持する。
 
 取り込むのはモード別の `progressionCounters` と本人トレーダーのLL分類のみ。その他の補正、陣営、ストーリー条件、報酬、前提の削除はこの実装では取り込まない。これらを勝手に混ぜると独立した条件を上書きするため。LLの分類だけで新たなLLゲートやLL到達によるOR経路を推論しない。
 
