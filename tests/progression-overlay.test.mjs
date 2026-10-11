@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { signedOverlay } from './overlay-fixture.mjs';
@@ -72,6 +72,63 @@ test('supplement imports mode counters and tier classification without replacing
   const duplicate = entry();
   duplicate.derivation.taskIds.push('taskA');
   assert.throws(() => supplementProgression(base, overlay(duplicate)), /Invalid progression/);
+});
+
+test('HTTP outages reuse verified cache, while corrupt successful responses stop updates', async () => {
+  const cacheDirectory = await mkdtemp(join(tmpdir(), 'overlay-outage-'));
+  const body = overlay();
+  await fetchProgressionOverlay({
+    cacheDirectory,
+    fetcher: async () => new Response(JSON.stringify(body)),
+  });
+  const warnings = [];
+  assert.deepEqual(
+    await fetchProgressionOverlay({
+      cacheDirectory,
+      fetcher: async () => new Response('', { status: 404 }),
+      onWarning: (message) => warnings.push(message),
+    }),
+    body,
+  );
+  assert.match(warnings[0], /verified cache/);
+  await assert.rejects(
+    fetchProgressionOverlay({ cacheDirectory, fetcher: async () => new Response('{}') }),
+    /metadata/,
+  );
+});
+
+test('cold-cache outage uses bundled verified data; invalid fallback and invalid caches are rejected', async () => {
+  const cacheDirectory = await mkdtemp(join(tmpdir(), 'overlay-bundled-'));
+  const fallbackFile = join(cacheDirectory, 'fallback.json');
+  const body = overlay();
+  await writeFile(fallbackFile, JSON.stringify(body));
+  const options = {
+    cacheDirectory,
+    fallbackFile,
+    fetcher: async () => new Response('', { status: 404 }),
+    onWarning: () => {},
+  };
+  assert.deepEqual(await fetchProgressionOverlay(options), body);
+  await writeFile(fallbackFile, '{}');
+  await assert.rejects(fetchProgressionOverlay(options), /metadata/);
+  await writeFile(
+    join(cacheDirectory, 'progression-overlay.json'),
+    JSON.stringify({ url: 'wrong-origin', body }),
+  );
+  await assert.rejects(
+    fetchProgressionOverlay({ ...options, fallbackFile: undefined }),
+    /HTTP 404/,
+  );
+});
+
+test('repository fallback passes publisher digest verification', async () => {
+  const body = JSON.parse(
+    await readFile(
+      new URL('../src/data/progression-overlay-fallback.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.equal(verifyOverlay(body).$meta.version, '1.133');
 });
 test('verified counts cross a threshold, undo and failure lower it, manual override remains available', () => {
   const snapshot = supplementProgression(normalizeMode('regular', makeFeeds()), overlay());

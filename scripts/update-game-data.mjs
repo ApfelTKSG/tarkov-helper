@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, rename, appendFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fetchEnvelope } from '../src/data/http-cache.mjs';
@@ -27,13 +27,18 @@ export async function updateGameData({
   root = process.cwd(),
   fetcher,
   overlayFetcher,
+  overlayFallbackFile,
   modes = MODES,
 } = {}) {
   if (modes.some((mode) => !MODES.includes(mode))) throw new Error('Unsupported mode');
   const cacheDirectory = join(root, '.cache', 'tarkov-api');
   const output = join(root, 'public', 'game-data');
   const prior = await loadJson(join(output, 'manifest.json'));
-  const overlay = await fetchProgressionOverlay({ cacheDirectory, fetcher: overlayFetcher });
+  const overlay = await fetchProgressionOverlay({
+    cacheDirectory,
+    fetcher: overlayFetcher,
+    fallbackFile: overlayFallbackFile,
+  });
   if (prior && prior.schemaVersion !== 1) throw new Error('Unsupported manifest schema');
   const catalog = await fetchEnvelope('endpoints', { cacheDirectory, fetcher });
   if (modes.some((mode) => !catalog.body.data.gameModes?.includes(mode)))
@@ -138,8 +143,13 @@ export async function updateGameData({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const mode = process.argv.find((arg) => arg.startsWith('--mode='))?.slice(7);
-  updateGameData({ modes: mode ? [mode] : MODES })
-    .then((result) =>
+  updateGameData({
+    modes: mode ? [mode] : MODES,
+    overlayFallbackFile: new URL('../src/data/progression-overlay-fallback.json', import.meta.url),
+  })
+    .then(async (result) => {
+      if (process.env.GITHUB_OUTPUT)
+        await appendFile(process.env.GITHUB_OUTPUT, `changed=${result.changed}\n`);
       console.log(
         JSON.stringify(
           {
@@ -162,8 +172,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
           null,
           2,
         ),
-      ),
-    )
+      );
+    })
     .catch((error) => {
       console.error(error.message);
       process.exitCode = 1;

@@ -32,7 +32,12 @@ export function verifyOverlay(value) {
 }
 
 /** A conditional request each update; only verified responses replace the last good cache. */
-export async function fetchProgressionOverlay({ cacheDirectory, fetcher = fetch } = {}) {
+export async function fetchProgressionOverlay({
+  cacheDirectory,
+  fetcher = fetch,
+  fallbackFile,
+  onWarning = console.warn,
+} = {}) {
   const file = join(cacheDirectory, 'progression-overlay.json');
   let cached;
   try {
@@ -45,6 +50,7 @@ export async function fetchProgressionOverlay({ cacheDirectory, fetcher = fetch 
     /* An invalid cache is not eligible for a 304. */
   }
   let last;
+  let mayFallback = true;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await fetcher(OVERLAY_URL, {
@@ -55,7 +61,13 @@ export async function fetchProgressionOverlay({ cacheDirectory, fetcher = fetch 
         signal: AbortSignal.timeout(20_000),
       });
       if (response.status === 304 && cached) return cached.body;
-      if (!response.ok) throw new Error(`Overlay HTTP ${response.status}`);
+      if (!response.ok) {
+        last = new Error(`Overlay HTTP ${response.status}`);
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+        throw last;
+      }
+      // A corrupt successful response or a cache write failure is not an outage.
+      mayFallback = false;
       if (Number(response.headers.get('content-length')) > 5_000_000)
         throw new Error('Overlay too large');
       const text = await response.text();
@@ -72,6 +84,17 @@ export async function fetchProgressionOverlay({ cacheDirectory, fetcher = fetch 
     } catch (error) {
       last = error;
       if (['EPERM', 'EACCES', 'ENOSPC'].includes(error.code)) break;
+    }
+  }
+  if (mayFallback) {
+    const body =
+      cached?.body ??
+      (fallbackFile ? verifyOverlay(JSON.parse(await readFile(fallbackFile, 'utf8'))) : undefined);
+    if (body) {
+      onWarning(
+        `Overlay unavailable (${last?.message}); using verified ${cached ? 'cache' : 'bundled data'} version ${body.$meta.version}.`,
+      );
+      return body;
     }
   }
   throw new Error(`Progression overlay update failed: ${last?.message}`, { cause: last });
