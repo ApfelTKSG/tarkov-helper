@@ -41,9 +41,9 @@ npm run data:update -- --mode=regular
 
 `.github/workflows/update-game-data.yml`がUTCの0:17、6:17、12:17、18:17（日本時間9:17、15:17、21:17、3:17）に確認する。GitHub側の混雑で実行時刻が遅れる場合がある。API本文とHTTP検証子はActions cacheに保存し、次回復元する。
 
-意味のある変更がある場合だけ、テスト・型チェック・ビルドを通したデータを専用ブランチへ保存し、main向けのPRを作成する。mainへの直接pushや保護ルールの回避は行わない。全モードの意味的な版からブランチ名を決め、同じデータのPRを次の実行で重複作成しない。閉じられたPRも再作成せず、実行サマリーに既存PRへのリンクを表示する。変更がなければコミット・PR作成を省略する。人がPRをマージすると、通常のmainへのpushでPages配信が実行される。未マージの候補は公開しない。
+定期更新は共有のPagesワークフローを呼び出し、最新データを取得して全モードの整合性検証・テスト・Lint・型チェック・ビルドを通した成果物を直接公開する。データ更新のためにGitへのコミット・PR・手動マージを行わない。変更がなければ定期公開を省略する。アプリ本体のコード変更は通常どおりmainへのマージ後に公開し、その際も最新データを取得する。mainへの書き込みや保護ルールの回避は行わない。更新CLIはGITHUB_OUTPUTにchangedを出力する。
 
-有効化には、ワークフローをmainにマージし、Settings → Actions → General → Workflow permissionsの「Allow GitHub Actions to create and approve pull requests」を許可する必要がある。更新ジョブに限りcontents/writeとpull-requests/writeを要求する。このワークフローはPRの承認・マージを実行しない。GitHubが用意する設定は作成と承認を一括で許可するため、リポジトリ全体への影響を理解して管理者が有効化する。GITHUB_TOKENが作成するPRでは通常のPR検証が起動しないため、更新ジョブ内で事前に全検証を完了させる。mainのレビュー要件・保護ルールは保持する。
+コード配信と定期配信は同じgithub-pages concurrencyで直列化する。成功した公開の後だけスナップショットをActions cacheへ保存し、次回の更新・コード配信で復元する。キャッシュはリポジトリのmanifestのハッシュで分離するため、リポジトリで基準データを意図的に変えた場合は旧キャッシュで上書きしない。キャッシュが失効した場合も最新APIから再生成する。失敗した候補を正常版のキャッシュとして保存しない。権限はcontents/readとPages公開に必要なpages/write・id-token/writeだけで、PR作成権限は不要。Pages環境に承認ルールがあれば、そのルールは引き続き適用される。
 
 仕様の出典: [scheduleの制約](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)、[GITHUB_TOKENによる再帰実行の抑止](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)、[再利用可能ワークフロー](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)。
 
@@ -93,7 +93,7 @@ npm run data:update -- --mode=regular
 
 ## 配布グループの補足JSON
 
-`src/data/progression-overlay.mjs` が [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay) の公開JSONを、上流が案内するjsDelivr CDNからデータ更新ごとに1回取得する。既存の6時間cronでも同じ処理が走る。ETagが同じなら304の検証済みキャッシュを使い、変更時は上流のSHA-256方式（`$meta.sha256` を除いて `JSON.stringify(value, null, 2)`）を検証する。固定した配信元のmainを追跡し、採用した版・digestをスナップショットのsourcesへ記録する。digestは内容の整合性であり、署名ではない。配信先の変更時は旧URLのキャッシュを再利用しない。CDNも取得・検証に失敗した場合は更新を止め、既存manifestを維持する。
+`src/data/progression-overlay.mjs` が [tarkov-data-overlay](https://github.com/tarkovtracker-org/tarkov-data-overlay) の公開JSONをjsDelivr CDNから取得する。ETagが同じなら304の検証済みキャッシュを使い、変更時は上流のSHA-256方式（`$meta.sha256` を除いて `JSON.stringify(value, null, 2)`）を検証する。HTTP 404・通信障害時は、同じ配信元の検証済みキャッシュ、次に同梱した正常版1.133（`src/data/progression-overlay-fallback.json`）を使い、警告と使用版をログへ残す。同梱版も毎回digest・スキーマを検証する。成功応答のデータ破損やキャッシュ書き込みエラーでは代用せず更新を停止する。採用した版・digestはスナップショットのsourcesへ記録する。digestは整合性であり署名ではない。補足版が古い場合、未解明の条件は引き続き「要確認」となる。同梱データにもMITライセンス通知を適用する。
 
 取り込むのはモード別の `progressionCounters` と本人トレーダーのLL分類のみ。その他の補正、陣営、ストーリー条件、報酬、前提の削除はこの実装では取り込まない。これらを勝手に混ぜると独立した条件を上書きするため。LLの分類だけで新たなLLゲートやLL到達によるOR経路を推論しない。
 
