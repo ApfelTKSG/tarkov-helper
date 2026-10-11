@@ -41,9 +41,9 @@ npm run data:update -- --mode=regular
 
 `.github/workflows/update-game-data.yml`がUTCの0:17、6:17、12:17、18:17（日本時間9:17、15:17、21:17、3:17）に確認する。GitHub側の混雑で実行時刻が遅れる場合がある。API本文とHTTP検証子はActions cacheに保存し、次回復元する。
 
-意味のある変更がある場合だけ、テスト・型チェック・ビルドを通したデータをmainへ通常のpushで保存し、再利用可能なPagesワークフローを呼び出す。GITHUB_TOKENのpushから通常のpushワークフローは発火しないため、明示的な呼び出しで同じデータコミットを配信する。変更がなければコミット・配信を省略する。
+意味のある変更がある場合だけ、テスト・型チェック・ビルドを通したデータを専用ブランチへ保存し、main向けのPRを作成する。mainへの直接pushや保護ルールの回避は行わない。全モードの意味的な版からブランチ名を決め、同じデータのPRを次の実行で重複作成しない。閉じられたPRも再作成せず、実行サマリーに既存PRへのリンクを表示する。変更がなければコミット・PR作成を省略する。人がPRをマージすると、通常のmainへのpushでPages配信が実行される。未マージの候補は公開しない。
 
-有効化には、ワークフローをデフォルトブランチのmainにマージし、Actionsを有効にする。mainへのActionsの書き込みがブランチ保護で禁止されている場合は更新コミットが失敗するため、リポジトリの運用設定を確認する。現在はローカルでコミットした段階で、リモートへのpush・定期実行・公開は行っていない。
+有効化には、ワークフローをmainにマージし、Settings → Actions → General → Workflow permissionsの「Allow GitHub Actions to create and approve pull requests」を許可する必要がある。更新ジョブに限りcontents/writeとpull-requests/writeを要求する。このワークフローはPRの承認・マージを実行しない。GitHubが用意する設定は作成と承認を一括で許可するため、リポジトリ全体への影響を理解して管理者が有効化する。GITHUB_TOKENが作成するPRでは通常のPR検証が起動しないため、更新ジョブ内で事前に全検証を完了させる。mainのレビュー要件・保護ルールは保持する。
 
 仕様の出典: [scheduleの制約](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)、[GITHUB_TOKENによる再帰実行の抑止](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)、[再利用可能ワークフロー](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)。
 
@@ -70,6 +70,7 @@ npm run data:update -- --mode=regular
 残る検証・拡張: 配布グループのOR条件とLightkeeper入口の補正、更新差分の名前付き履歴と既読管理、レイドの任意目標選択・複雑な装備指定、複数タブの同時書き込みの競合解決、端末内の最終正常スナップショットの永続キャッシュ。現在の再取得失敗では同じページで最後に読み込めたデータを残すが、ブラウザ終了後の完全オフライン動作は保証しない。
 
 依存関係はNext.jsと対応するESLint設定を16.3.8へ更新し、互換性を保てるロックファイルの修正を適用した。本番依存のnpm監査は0件。開発依存には、ESLintの間接依存bracesに修正版がない問題が残る（監査では5パッケージに伝播して表示）。Next.js用のESLint設定を14系へ戻す強制修正は行わない。出典: [Next.jsのWindowsサーバーに関する修正](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36)。
+
 # タスク状態による信頼度の記録とLL列
 
 完了時は `finishRewards.traderStanding`、失敗時は `failureOutcome.traderStanding` の全トレーダー分を符号付きで反映する。参照形式は [tarkov.dev APIのスキーマ](https://github.com/the-hideout/tarkov-api/blob/main/schema-static.mjs) と保存済みJSONで確認した。受注時報酬はこの処理の対象外。未入力の信頼度は0から加算するので、実際の現在値はトレーダー設定から調整する。
@@ -99,7 +100,6 @@ npm run data:update -- --mode=regular
 対象版は1.1.0。`verified` / `complete`、対応revision一致、全対象タスクが現在モードに存在する場合のみ、記録された完了タスクをID単位で数える。未受注・受注中・失敗は0、完了は1、取消時も再計算する。未記録はこのアプリの未受注として数えるため、ゲーム内進捗は利用者が入力する必要がある。手動確認を指定するとその判定を優先し、「自動判定を使用」で戻せる。APIの条件の比較演算子は保持する。
 
 実測した補足版1.128は各モード27グループ中23が検証済み、Mechanic LL3/LL4、Prapor LL4、Ragman LL1の4グループが未解決。将来の版変更、対象タスク欠落、未解決は自動判定を行わない。対象タスクの一覧と不足数、検証資料のリンクを詳細に表示し、人数条件をすべての前提タスクのANDに変換しない。コミュニティの実測に基づくモデルでありゲームの完全再現とはしない。[根拠と制約](https://github.com/tarkovtracker-org/tarkov-data-overlay/blob/main/docs/GLOBAL_VARIABLES.md)。MITライセンスの通知は `docs/TARKOV_DATA_OVERLAY_LICENSE.txt` に保存している。
-
 
 ## グラフ上の完了操作と詳細
 

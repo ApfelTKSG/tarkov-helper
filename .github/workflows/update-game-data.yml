@@ -19,9 +19,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
-    outputs:
-      changed: ${{ steps.commit.outputs.changed }}
-      revision: ${{ steps.commit.outputs.revision }}
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,29 +49,35 @@ jobs:
           npm run lint -- --max-warnings 0
           npm run typecheck
           npm run build
-      - name: Commit only semantic changes
+      - name: Propose only semantic changes
         id: commit
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git add public/game-data
           if git diff --cached --quiet; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo 'No semantic changes.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          revision=$(node --input-type=module -e 'import {readFileSync} from "node:fs"; import {createHash} from "node:crypto"; const {modes}=JSON.parse(readFileSync("public/game-data/manifest.json", "utf8")); console.log(createHash("sha256").update(JSON.stringify(Object.entries(modes).sort().map(([mode, entry]) => [mode, entry.revision]))).digest("hex"));')
+          branch="codex/tarkov-data-${revision}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore(data): update validated Tarkov snapshots'
-          git push origin HEAD:main
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
-          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-  publish:
-    needs: update
-    if: needs.update.outputs.changed == 'true'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
-    with:
-      revision: ${{ needs.update.outputs.revision }}
+          remote_branch=$(git ls-remote --heads origin "refs/heads/$branch")
+          if [ -z "$remote_branch" ]; then
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          pr=$(gh pr list --base main --head "$branch" --state all --json url --jq '.[0].url // empty')
+          if [ -z "$pr" ]; then
+            printf '%s\n' \
+              'Automated game-data update. All three modes were fetched and validated.' \
+              '' \
+              'Validation: tests, lint, typecheck, and production build passed before this PR was created.' \
+              'Merge this PR to publish through the normal main deployment. No branch protections are bypassed.' > "$RUNNER_TEMP/tarkov-data-pr.md"
+            pr=$(gh pr create --base main --head "$branch" \
+              --title 'chore(data): update validated Tarkov snapshots' \
+              --body-file "$RUNNER_TEMP/tarkov-data-pr.md")
+          fi
+          echo "Validated data update: $pr" >> "$GITHUB_STEP_SUMMARY"
