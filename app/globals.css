@@ -122,4 +122,9 @@ body {
     background: var(--ui-complete);
     color: #9dc1a7;
   }
+  .ui-task-row[data-highlighted='true'],
+  .ui-task-group[data-highlighted='true'] {
+    background-image: linear-gradient(#ccba8d20, #ccba8d20);
+    box-shadow: inset 3px 0 var(--ui-accent);
+  }
 }

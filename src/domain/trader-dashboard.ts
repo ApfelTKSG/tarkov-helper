@@ -1,6 +1,7 @@
 import type { GameTask, GameTrader } from './game';
 import type { Availability, ProgressProfile } from './progression';
 import { effectiveTraderProgress, traderUnlocked } from './traders.ts';
+import { taskLoyaltyColumn } from './task-columns.ts';
 
 const rounded = (value: number) => Math.round(value * 1e8) / 1e8;
 export function standingReward(task: GameTask, traderId: string): number {
@@ -79,6 +80,17 @@ export interface UnlockMilestone {
   remaining: number;
   taskIds: string[];
   targets: { task: GameTask; otherConditions: boolean }[];
+}
+
+/** Label the counted cohort, never the LL of the quest it unlocks. */
+export function countCohortLabel(taskIds: string[], allTasks: GameTask[]): string {
+  const byId = new Map(allTasks.map((task) => [task.id, task]));
+  const cohort = taskIds.map((id) => byId.get(id));
+  if (!cohort.length || cohort.some((task) => !task)) return '対象タスク';
+  const traders = new Set(cohort.map((task) => task!.trader));
+  const levels = new Set(cohort.map((task) => taskLoyaltyColumn(task!, allTasks)));
+  const level = [...levels][0];
+  return traders.size === 1 && levels.size === 1 && level > 0 ? `LL${level}のタスク` : '対象タスク';
 }
 
 /** Group identical verified count gates; overlapping gates are never added together. */

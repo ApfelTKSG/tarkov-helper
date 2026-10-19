@@ -20,12 +20,14 @@ export default function TaskTable({
   onComplete,
   onSaved,
   showTrader = false,
+  highlightedTaskIds = [],
 }: {
   tasks: GameTask[];
   reputationTrader?: string;
   onComplete: (task: GameTask) => void;
   onSaved: (message: string) => void;
   showTrader?: boolean;
+  highlightedTaskIds?: string[];
 }) {
   const { profile, snapshot, availability, edit, ready, storageError } = useGame();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
@@ -106,6 +108,7 @@ export default function TaskTable({
           id={`task-${task.id}`}
           aria-label={`${task.name} 進捗`}
           data-state={complete ? 'complete' : !actionable ? 'locked' : 'available'}
+          data-highlighted={!complete && highlightedTaskIds.includes(task.id) ? 'true' : undefined}
           className={`ui-task-row align-middle ${task.id === COLLECTOR_ID ? 'ring-1 ring-inset ring-amber-400/40' : ''}`}
         >
           <td className="px-3 py-2.5">
@@ -314,6 +317,11 @@ export default function TaskTable({
                 <tr
                   className="ui-task-group"
                   data-state={section.id === 'complete' ? 'complete' : 'locked'}
+                  data-highlighted={
+                    section.tasks.some((task) => highlightedTaskIds.includes(task.id))
+                      ? 'true'
+                      : undefined
+                  }
                 >
                   <td colSpan={7} className="p-0">
                     <button
@@ -332,6 +340,16 @@ export default function TaskTable({
                       <span aria-hidden="true">{openGroups.includes(section.id) ? '▾' : '▸'}</span>
                       {section.label}
                       <span className="text-xs opacity-70">{section.tasks.length}件</span>
+                      {section.tasks.some((task) => highlightedTaskIds.includes(task.id)) && (
+                        <span className="ml-2 text-xs text-slate-100">
+                          強調対象{' '}
+                          {
+                            section.tasks.filter((task) => highlightedTaskIds.includes(task.id))
+                              .length
+                          }
+                          件
+                        </span>
+                      )}
                     </button>
                   </td>
                 </tr>

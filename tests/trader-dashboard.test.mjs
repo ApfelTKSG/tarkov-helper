@@ -5,6 +5,7 @@ import {
   unlockMilestones,
   taskUnlockImpact,
   isActionable,
+  countCohortLabel,
 } from '../src/domain/trader-dashboard.ts';
 import { evaluateAvailability } from '../src/domain/progression.ts';
 import { createProfile, createDatabase, parseDatabase } from '../src/domain/profiles.ts';
@@ -57,6 +58,20 @@ const gated = (id, required, operator = '>=') => ({
       value: required,
     },
   ],
+});
+
+test('count cohort labels use the counted tasks, with no guessed LL for mixed or unknown cohorts', () => {
+  const tasks = [
+    { ...task('a'), supplementLoyaltyLevel: 1 },
+    { ...task('b'), supplementLoyaltyLevel: 1 },
+    { ...task('c'), supplementLoyaltyLevel: 2 },
+    { ...task('unknown'), otherRequirements: [{ type: 'unknown' }] },
+    { ...task('other'), trader: 'other-trader', supplementLoyaltyLevel: 1 },
+  ];
+  assert.equal(countCohortLabel(['a', 'b'], tasks), 'LL1のタスク');
+  assert.equal(countCohortLabel(['c'], tasks), 'LL2のタスク');
+  for (const ids of [[], ['missing'], ['a', 'c'], ['a', 'unknown'], ['a', 'other']])
+    assert.equal(countCohortLabel(ids, tasks), '対象タスク');
 });
 
 test('LL target reports independent gaps and reward-based count without inferring future unlocks', () => {

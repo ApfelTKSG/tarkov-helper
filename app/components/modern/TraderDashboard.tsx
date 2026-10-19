@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { GameTask, GameTrader } from '@/src/domain/game';
 import { useGame } from '@/app/context/GameContext';
 import {
   isActionable,
+  countCohortLabel,
   loyaltyGoal,
   standingReward,
   taskUnlockImpact,
@@ -35,7 +36,16 @@ export default function TraderDashboard({
 }) {
   const { profile, snapshot, availability, edit, ready, storageError } = useGame();
   const [query, setQuery] = useState('');
-  const [focus, setFocus] = useState<string[] | null>(null);
+  const [highlight, setHighlight] = useState<{
+    key: string;
+    taskIds: string[];
+    label: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!highlight) return;
+    const timer = setTimeout(() => setHighlight(null), 10_000);
+    return () => clearTimeout(timer);
+  }, [highlight]);
   const [toast, setToast] = useState<{ id: number; message: string; undoTask?: GameTask } | null>(
     null,
   );
@@ -60,7 +70,8 @@ export default function TraderDashboard({
     );
   const nextUnlock =
     milestones.find((milestone) => hasAvailable(milestone.taskIds)) ?? milestones[0];
-  const focusIds = focus ?? (linkedTask ? [linkedTask.id] : null);
+  const focusIds = linkedTask ? [linkedTask.id] : null;
+  const cohortLabel = nextUnlock ? countCohortLabel(nextUnlock.taskIds, snapshot.tasks) : '';
   const needle = query.normalize('NFKC').trim().toLocaleLowerCase();
   const visibleTasks = (
     focusIds
@@ -99,10 +110,9 @@ export default function TraderDashboard({
         a.name.localeCompare(b.name)
       );
     });
-  const showCandidates = (ids: string[]) => {
+  const showCandidates = (key: string, ids: string[], label: string) => {
     onClearLinked();
-    setFocus(ids);
-    setQuery('');
+    setHighlight((current) => (current?.key === key ? null : { key, taskIds: ids, label }));
   };
   const markComplete = (task: GameTask) => {
     const wasComplete = profile.tasks[task.id] === 'complete';
@@ -184,10 +194,17 @@ export default function TraderDashboard({
               <button
                 type="button"
                 className="ui-link text-xs hover:underline"
-                title="今できるタスクを信頼度報酬順に選んだ目安。レベル・その他条件は別です。"
-                onClick={() => showCandidates(goal.plan.map((task) => task.id))}
+                aria-pressed={highlight?.key === 'reputation'}
+                title="信頼度報酬の多いタスクで必要件数を見積もっています。押すと候補を10秒間強調します。"
+                onClick={() =>
+                  showCandidates(
+                    'reputation',
+                    goal.plan.map((task) => task.id),
+                    `LL${goal.target!.level}への信頼度を稼ぐ候補`,
+                  )
+                }
               >
-                目安 {goal.minimumTasks}タスク →
+                信頼度を稼ぐ候補 {goal.minimumTasks}件
               </button>
             )}
           </div>
@@ -196,14 +213,21 @@ export default function TraderDashboard({
           <button
             type="button"
             className="border-l border-slate-700 pl-6 text-left hover:opacity-80"
-            title={`${nextUnlock.targets.map(({ task }) => task.name).join(' / ')}。完了数条件のみの残り件数です。LLなど別の条件が残る場合があります。`}
+            aria-pressed={highlight?.key === nextUnlock.key}
+            title={`${nextUnlock.targets.map(({ task }) => task.name).join(' / ')} の完了数条件。押すとカウント対象の未完了タスクを10秒間強調します。他の解放条件が残る場合があります。`}
             onClick={() =>
-              showCandidates(nextUnlock.taskIds.filter((id) => profile.tasks[id] !== 'complete'))
+              showCandidates(
+                nextUnlock.key,
+                nextUnlock.taskIds.filter((id) => profile.tasks[id] !== 'complete'),
+                `${cohortLabel}の完了数にカウント`,
+              )
             }
           >
-            <span className="block text-xs text-slate-400">完了数の条件</span>
-            <span className="text-base font-medium">あと{nextUnlock.remaining}件</span>
-            <span className="ml-3 text-xs text-slate-400">候補を見る →</span>
+            <span className="block text-xs text-slate-400">次のタスクの解放に向けて</span>
+            <span className="text-base font-medium">
+              {cohortLabel} あと{nextUnlock.remaining}件
+            </span>
+            <span className="ml-3 text-xs text-slate-400">対象を強調</span>
           </button>
         )}
         <Link
@@ -227,17 +251,25 @@ export default function TraderDashboard({
             type="button"
             className="text-xs text-sky-300 hover:underline"
             onClick={() => {
-              setFocus(null);
               onClearLinked();
             }}
           >
             絞り込み解除 ×
           </button>
         )}
+        <span role="status" className="text-xs text-slate-300">
+          {highlight && `${highlight.label} · 10秒間強調`}
+        </span>
+        {highlight && (
+          <button type="button" className="ui-link text-xs" onClick={() => setHighlight(null)}>
+            強調を解除 ×
+          </button>
+        )}
       </div>
       <TaskTable
         tasks={visibleTasks}
         reputationTrader={trader.id}
+        highlightedTaskIds={highlight?.taskIds}
         onComplete={markComplete}
         onSaved={notify}
       />
