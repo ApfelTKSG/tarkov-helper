@@ -16,7 +16,13 @@ export const lockedGroups = [
   ['failed', '失敗'],
 ] as const;
 type Group = (typeof lockedGroups)[number][0];
-type TaskLock = { group: Group; rank: number[]; hint: string };
+type TaskLock = {
+  group: Group;
+  rank: number[];
+  hint: string;
+  uncertain?: boolean;
+  shortages?: { playerLevels: number; completions: number; tasks: number; loyaltyLevels: number };
+};
 
 /** Unknown gates stay explicit; they are never inferred to be a known shortage. */
 export function taskLock(
@@ -133,6 +139,13 @@ export function taskConditionLock(
       : ([...categories][0] ?? 'unknown');
   return {
     group,
+    uncertain: unknown,
+    shortages: {
+      playerLevels: Math.max(0, playerLevel - (profile.level ?? 0)),
+      completions: countGap,
+      tasks: prerequisiteCount,
+      loyaltyLevels: loyaltyGap,
+    },
     rank: [
       tier,
       ...(group === 'playerLevel'

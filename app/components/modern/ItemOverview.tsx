@@ -9,6 +9,8 @@ import ItemCounter from './ItemCounter';
 import Toast from './Toast';
 import { COLLECTOR_ID } from './CollectorBadge';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
+import { firTaskPriority, firItemPriority } from '@/src/domain/fir-priority';
+import { compareLockRank } from '@/src/domain/task-groups';
 
 export default function ItemOverview({
   tasks,
@@ -19,12 +21,15 @@ export default function ItemOverview({
   query?: string;
   remainingOnly?: boolean;
 }) {
-  const { snapshot, profile, edit, storageError, ready } = useGame();
+  const { snapshot, profile, availability, edit, storageError, ready } = useGame();
   const [saved, setSaved] = useState<{ key: number; message: string } | null>(null);
   const closeToast = useCallback(() => setSaved(null), []);
   if (!snapshot) return null;
   // Retain secured objectives for checking and undoing; preserve existing task allocation keys.
   const groups = remainingFirItems(tasks, { ...profile, objectiveCounts: {} });
+  const priorities = new Map(
+    tasks.map((task) => [task.id, firTaskPriority(task, profile, snapshot, availability(task))]),
+  );
   const countFor = (demands: ItemDemand[]) =>
     demands.reduce(
       (sum, demand) =>
@@ -50,7 +55,20 @@ export default function ItemOverview({
       maximum: group.demand.count,
       title: `いずれか合計 · ${group.candidates.length}候補`,
     })),
-  ].map((entry) => ({ ...entry, value: countFor(entry.demands) }));
+  ].map((entry) => {
+    const value = countFor(entry.demands);
+    return {
+      ...entry,
+      value,
+      priority: firItemPriority(
+        entry.demands,
+        priorities,
+        profile,
+        value >= entry.maximum,
+        COLLECTOR_ID,
+      ),
+    };
+  });
   const needle = query.normalize('NFKC').trim().toLocaleLowerCase();
   const visible = entries
     .filter(
@@ -73,8 +91,7 @@ export default function ItemOverview({
     )
     .sort(
       (a, b) =>
-        Number(a.value >= a.maximum) - Number(b.value >= b.maximum) ||
-        a.title.localeCompare(b.title, 'ja'),
+        compareLockRank(a.priority.rank, b.priority.rank) || a.title.localeCompare(b.title, 'ja'),
     );
   const taskLink = (id: string) => {
     const task = snapshot.tasks.find((task) => task.id === id);
@@ -84,7 +101,9 @@ export default function ItemOverview({
   return (
     <>
       <div className="flex shrink-0 items-center justify-between gap-3 text-xs text-slate-400">
-        <span>{visible.length}種類</span>
+        <span title="タスクの★を優先し、今必要・解放が近い・まだ先・条件不明の順。Collector専用の品は後ろ、確保済みは末尾です。">
+          {visible.length}種類 · 必要になるのが近い順
+        </span>
         <span>
           確保済み{' '}
           <span className="tabular-nums text-slate-200">
@@ -119,6 +138,11 @@ export default function ItemOverview({
                 }}
                 heading={
                   <h2 className="truncate text-sm font-medium" title={entry.title}>
+                    {entry.priority.favorite && (
+                      <span className="mr-1 text-amber-300" title="★を付けたタスクで必要">
+                        ★
+                      </span>
+                    )}
                     {entry.title}
                   </h2>
                 }
@@ -138,8 +162,33 @@ export default function ItemOverview({
                       key={`${demand.taskId}:${demand.objectiveId}`}
                       className="flex justify-between gap-2"
                     >
+                      <button
+                        type="button"
+                        aria-label={`${demand.taskName} お気に入り`}
+                        aria-pressed={profile.favorites.includes(demand.taskId)}
+                        disabled={
+                          !ready || !!storageError || profile.tasks[demand.taskId] === 'complete'
+                        }
+                        className={`shrink-0 ${profile.favorites.includes(demand.taskId) ? 'text-amber-300' : 'text-slate-500 hover:text-slate-200'} disabled:opacity-40`}
+                        onClick={() => {
+                          if (
+                            edit((p) => ({
+                              ...p,
+                              favorites: p.favorites.includes(demand.taskId)
+                                ? p.favorites.filter((id) => id !== demand.taskId)
+                                : [...p.favorites, demand.taskId],
+                            }))
+                          )
+                            setSaved({
+                              key: Date.now(),
+                              message: 'タスクのお気に入りを保存しました',
+                            });
+                        }}
+                      >
+                        {profile.favorites.includes(demand.taskId) ? '★' : '☆'}
+                      </button>
                       <Link
-                        className="ui-link min-w-0 truncate hover:underline"
+                        className="ui-link min-w-0 flex-1 truncate hover:underline"
                         href={taskLink(demand.taskId)}
                       >
                         {demand.taskName} ↗
