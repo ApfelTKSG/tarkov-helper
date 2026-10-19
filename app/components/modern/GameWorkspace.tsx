@@ -96,18 +96,27 @@ export default function GameWorkspace({
     : undefined;
   const traderDashboard = section === 'tasks' && !!traderDefinition;
   const graphView = section === 'tasks' && !trader && view === 'graph';
-  const tabControl = 'rounded border border-slate-600 bg-slate-800 px-4 py-2.5 font-medium';
+  const fixedTraderPage = section === 'tasks' && !!trader;
+  const fixedWorkspace = graphView || fixedTraderPage;
+  const tabControl = `rounded border border-slate-600 bg-slate-800 font-medium ${fixedTraderPage ? 'px-2.5 py-1.5 text-xs sm:text-sm' : 'px-4 py-2.5'}`;
   return (
     <div
-      className={`min-h-dvh bg-slate-900 text-slate-100 ${graphView ? 'flex h-dvh flex-col' : ''}`}
+      className={`bg-slate-900 text-slate-100 ${fixedWorkspace ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-dvh'}`}
     >
       <header className="shrink-0 border-b border-slate-700 bg-slate-950">
-        <div className={`space-y-3 px-3 py-3 sm:px-5 ${graphView ? '' : 'mx-auto max-w-7xl'}`}>
+        <div
+          className={`${fixedTraderPage ? 'space-y-2 py-2' : 'space-y-3 py-3'} px-3 sm:px-5 ${fixedWorkspace ? '' : 'mx-auto max-w-7xl'}`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-2xl font-bold tracking-wide">
+            <Link
+              href="/"
+              className={`${fixedTraderPage ? 'text-lg' : 'text-2xl'} font-bold tracking-wide`}
+            >
               Tarkov Helper
             </Link>
-            <nav className="flex flex-wrap gap-2 text-base md:text-lg">
+            <nav
+              className={`flex flex-wrap gap-2 ${fixedTraderPage ? 'text-sm' : 'text-base md:text-lg'}`}
+            >
               <Link className={tabControl} href="/">
                 タスク
               </Link>
@@ -130,16 +139,32 @@ export default function GameWorkspace({
               </Link>
             </nav>
           </div>
-          <ProfileControls />
-          <nav aria-label="トレーダー" className="flex flex-wrap gap-2 text-base md:text-lg">
+          {fixedTraderPage ? (
+            <details className="relative text-xs text-slate-400">
+              <summary className="w-fit cursor-pointer">プロフィール・設定</summary>
+              <div className="absolute inset-x-0 top-full z-40 mt-2 max-h-[60dvh] overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3 shadow-2xl">
+                <ProfileControls />
+              </div>
+            </details>
+          ) : (
+            <ProfileControls />
+          )}
+          <nav
+            aria-label="トレーダー"
+            className={
+              fixedTraderPage
+                ? 'flex gap-1 overflow-x-auto pb-1 text-xs'
+                : 'flex flex-wrap gap-2 text-base md:text-lg'
+            }
+          >
             <Link
               href="/"
               aria-label="全トレーダー"
               aria-current={!trader && section === 'tasks' ? 'page' : undefined}
-              className={`flex w-20 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
+              className={`flex w-20 shrink-0 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
             >
               <span
-                className="flex h-14 w-14 items-center justify-center text-3xl"
+                className={`flex items-center justify-center ${fixedTraderPage ? 'h-9 w-9 text-2xl' : 'h-14 w-14 text-3xl'}`}
                 aria-hidden="true"
               >
                 ▦
@@ -156,12 +181,12 @@ export default function GameWorkspace({
                   href={`/traders/${traderNameToSlug(t.englishName)}`}
                   aria-label={t.name}
                   aria-current={trader === t.englishName ? 'page' : undefined}
-                  className={`flex w-20 flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
+                  className={`flex shrink-0 ${fixedTraderPage ? 'w-16' : 'w-20'} flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
                 >
                   <ApiImage
                     src={t.imageLink}
                     name={t.name}
-                    className="h-14 w-14 rounded object-cover"
+                    className={`${fixedTraderPage ? 'h-9 w-9' : 'h-14 w-14'} rounded object-cover`}
                   />
                   <span className="max-w-full truncate text-[11px] leading-4" title={t.name}>
                     {t.name}
@@ -173,26 +198,33 @@ export default function GameWorkspace({
       </header>
       <main
         className={
-          graphView
-            ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
-            : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
+          fixedTraderPage
+            ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 py-3 sm:px-5'
+            : graphView
+              ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
+              : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {snapshot && !traderDashboard && !section.startsWith('hideout') && section !== 'raid' && (
-            <p className="text-sm text-slate-300">
-              完了 {completed} / {scoped.length} · 受注中{' '}
-              {
-                scoped.filter(
-                  (t) =>
-                    !['complete', 'failed'].includes(profile.tasks[t.id] ?? 'unstarted') &&
-                    (profile.tasks[t.id] === 'active' || availability(t).state === 'eligible'),
-                ).length
-              }
-            </p>
-          )}
-        </div>
+        {!fixedTraderPage && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">{title}</h1>
+            {snapshot &&
+              !traderDashboard &&
+              !section.startsWith('hideout') &&
+              section !== 'raid' && (
+                <p className="text-sm text-slate-300">
+                  完了 {completed} / {scoped.length} · 受注中{' '}
+                  {
+                    scoped.filter(
+                      (t) =>
+                        !['complete', 'failed'].includes(profile.tasks[t.id] ?? 'unstarted') &&
+                        (profile.tasks[t.id] === 'active' || availability(t).state === 'eligible'),
+                    ).length
+                  }
+                </p>
+              )}
+          </div>
+        )}
         {error && (
           <div role="alert" className="rounded border border-red-800 bg-red-950 p-4">
             {error} {snapshot && '最後に読み込めたデータを表示しています。'}
@@ -213,11 +245,9 @@ export default function GameWorkspace({
                 key={`${profile.id}:${traderDefinition.id}`}
                 trader={traderDefinition}
                 tasks={scoped}
-                onSelect={setSelected}
+                linkedTask={currentSelected}
+                onClearLinked={() => setSelected(null)}
               />
-              {currentSelected && (
-                <TaskDialog task={currentSelected} onClose={() => setSelected(null)} />
-              )}
             </>
           ) : (
             <>
