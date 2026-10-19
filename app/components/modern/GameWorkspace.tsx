@@ -1,12 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
-import { traderNameToSlug } from '@/app/lib/traderSlug';
 import type { GameTask } from '@/src/domain/game';
 import { interactingTaskIds, matchesTask } from '@/src/domain/task-view';
-import ProfileControls from './ProfileControls';
 import { matchesPrestige, newBeginningStage, prestigeCoverage } from '@/src/domain/prestige';
 import TaskDialog from './TaskDialog';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
@@ -15,16 +12,13 @@ import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
 import RaidView from './RaidView';
 import ItemOverview from './ItemOverview';
-import ApiImage from './ApiImage';
-import { visibleTrader } from '@/src/domain/traders';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import TraderDashboard from './TraderDashboard';
 import MapTasks from './MapTasks';
-import PlayerLevelInput from './PlayerLevelInput';
 
-export type WorkspaceSection =
-  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps';
+import WorkspaceHeader, { type WorkspaceSection } from './WorkspaceHeader';
+export type { WorkspaceSection } from './WorkspaceHeader';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
 export default function GameWorkspace({
   trader,
@@ -99,122 +93,23 @@ export default function GameWorkspace({
     : undefined;
   const traderDashboard = section === 'tasks' && !!traderDefinition;
   const graphView = section === 'tasks' && !trader && view === 'graph';
-  const fixedTraderPage = (section === 'tasks' && !!trader) || section === 'maps';
-  const fixedWorkspace = graphView || fixedTraderPage;
-  const tabControl = `rounded border border-slate-600 bg-slate-800 font-medium ${fixedTraderPage ? 'px-2.5 py-1.5 text-xs sm:text-sm' : 'px-4 py-2.5'}`;
+  const tablePage = (section === 'tasks' && !!trader) || section === 'maps';
+  const fixedWorkspace = graphView || tablePage;
   return (
     <div
       className={`bg-slate-900 text-slate-100 ${fixedWorkspace ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-dvh'}`}
     >
-      <header className="shrink-0 border-b border-slate-700 bg-slate-950">
-        <div
-          className={`${fixedTraderPage ? 'space-y-2 py-2' : 'space-y-3 py-3'} px-3 sm:px-5 ${fixedWorkspace ? '' : 'mx-auto max-w-7xl'}`}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className={`${fixedTraderPage ? 'text-lg' : 'text-2xl'} font-bold tracking-wide`}
-              >
-                Tarkov Helper
-              </Link>
-              <PlayerLevelInput key={profile.id} />
-            </div>
-            <nav
-              className={`flex flex-wrap gap-2 ${fixedTraderPage ? 'text-sm' : 'text-base md:text-lg'}`}
-            >
-              <Link className={tabControl} href="/">
-                タスク
-              </Link>
-              <Link className={tabControl} href="/maps">
-                マップ別
-              </Link>
-              <Link className={tabControl} href="/fir">
-                FiR
-              </Link>
-              <Link className={tabControl} href="/fir/collector">
-                Collector
-              </Link>
-              <button
-                type="button"
-                disabled
-                className={`${tabControl} cursor-not-allowed text-slate-500 opacity-50`}
-                title="今シーズンは利用できません"
-              >
-                ハイドアウト
-              </button>
-              <Link className={tabControl} href="/raid">
-                レイド準備
-              </Link>
-            </nav>
-          </div>
-          {fixedTraderPage ? (
-            <details className="relative text-xs text-slate-400">
-              <summary className="w-fit cursor-pointer">プロフィール・設定</summary>
-              <div className="absolute inset-x-0 top-full z-40 mt-2 max-h-[60dvh] overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3 shadow-2xl">
-                <ProfileControls hidePlayerLevel />
-              </div>
-            </details>
-          ) : (
-            <ProfileControls hidePlayerLevel />
-          )}
-          <nav
-            aria-label="トレーダー"
-            className={
-              fixedTraderPage
-                ? 'flex gap-1 overflow-x-auto pb-1 text-xs'
-                : 'flex flex-wrap gap-2 text-base md:text-lg'
-            }
-          >
-            <Link
-              href="/"
-              aria-label="全トレーダー"
-              title="全トレーダー"
-              aria-current={!trader && section === 'tasks' ? 'page' : undefined}
-              className={`flex w-fit shrink-0 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
-            >
-              <span
-                className={`flex items-center justify-center ${fixedTraderPage ? 'h-9 w-9 text-2xl' : 'h-14 w-14 text-3xl'}`}
-                aria-hidden="true"
-              >
-                ▦
-              </span>
-              <span className="sr-only">全トレーダー</span>
-            </Link>
-            {snapshot?.traders
-              .filter(
-                (t) => visibleTrader(t) && snapshot.tasks.some((task) => task.trader === t.id),
-              )
-              .map((t) => (
-                <Link
-                  key={t.id}
-                  href={`/traders/${traderNameToSlug(t.englishName)}`}
-                  aria-label={t.name}
-                  title={t.name}
-                  aria-current={trader === t.englishName ? 'page' : undefined}
-                  className={`flex shrink-0 w-fit flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
-                >
-                  <ApiImage
-                    src={t.imageLink}
-                    name={t.name}
-                    className={`${fixedTraderPage ? 'h-9 w-9' : 'h-14 w-14'} rounded object-cover`}
-                  />
-                  <span className="sr-only">{t.name}</span>
-                </Link>
-              ))}
-          </nav>
-        </div>
-      </header>
+      <WorkspaceHeader trader={trader} section={section} />
       <main
         className={
-          fixedTraderPage
+          tablePage
             ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 py-3 sm:px-5'
             : graphView
               ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
               : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
         }
       >
-        {!fixedTraderPage && (
+        {!tablePage && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">{title}</h1>
             {snapshot &&
