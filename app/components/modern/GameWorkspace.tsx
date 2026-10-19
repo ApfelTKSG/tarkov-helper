@@ -19,6 +19,7 @@ import ApiImage from './ApiImage';
 import { visibleTrader } from '@/src/domain/traders';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
+import TraderDashboard from './TraderDashboard';
 
 export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
@@ -93,7 +94,8 @@ export default function GameWorkspace({
   const currentSelected = selected
     ? snapshot?.tasks.find((task) => task.id === selected.id)
     : undefined;
-  const graphView = section === 'tasks' && view === 'graph';
+  const traderDashboard = section === 'tasks' && !!traderDefinition;
+  const graphView = section === 'tasks' && !trader && view === 'graph';
   const tabControl = 'rounded border border-slate-600 bg-slate-800 px-4 py-2.5 font-medium';
   return (
     <div
@@ -178,7 +180,7 @@ export default function GameWorkspace({
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{title}</h1>
-          {snapshot && !section.startsWith('hideout') && section !== 'raid' && (
+          {snapshot && !traderDashboard && !section.startsWith('hideout') && section !== 'raid' && (
             <p className="text-sm text-slate-300">
               完了 {completed} / {scoped.length} · 受注中{' '}
               {
@@ -205,6 +207,18 @@ export default function GameWorkspace({
             <HideoutView firOnly={section === 'hideout-fir'} />
           ) : section === 'raid' ? (
             <RaidView />
+          ) : traderDashboard ? (
+            <>
+              <TraderDashboard
+                key={`${profile.id}:${traderDefinition.id}`}
+                trader={traderDefinition}
+                tasks={scoped}
+                onSelect={setSelected}
+              />
+              {currentSelected && (
+                <TaskDialog task={currentSelected} onClose={() => setSelected(null)} />
+              )}
+            </>
           ) : (
             <>
               <div className="flex flex-wrap gap-3">
@@ -259,21 +273,18 @@ export default function GameWorkspace({
                 )
               )}
               {(section === 'items' || section === 'collector') && <ItemOverview tasks={tasks} />}
-              {view === 'graph' && section === 'tasks' && !!tasks.length && (
+              {crossTraderGraph && !!tasks.length && (
                 <>
                   <TaskGraph
                     tasks={tasks}
-                    layout={crossTraderGraph ? 'depth' : 'split'}
+                    layout="depth"
                     revealMatches={!!query.trim()}
                     selectedId={currentSelected?.id}
                     onSelect={setSelected}
                   />
                   <p className="text-sm text-sky-200">
                     クリックで完了・取り消し（半透明は操作不可） ·
-                    Shift＋クリック（または右クリック）で詳細 ·
-                    {crossTraderGraph
-                      ? '左から前提の深さ順'
-                      : '左：タスクライン（深さ順） · 右：単独タスク（LL別）'}
+                    Shift＋クリック（または右クリック）で詳細 · 左から前提の深さ順
                   </p>
                   <details className="text-sm text-slate-400">
                     <summary className="cursor-pointer">表示の説明</summary>
@@ -283,9 +294,7 @@ export default function GameWorkspace({
                       赤色：失敗。受注条件を満たしたタスクは受注中として表示します。★と金色の枠はお気に入りです。
                     </p>
                     <p className="mt-2">
-                      {crossTraderGraph
-                        ? '前提なしが深さ1、前提の最大深さ＋1が次の列です。複数トレーダーの前提も含めて計算し、同じ深さのタスクを縦に並べます。検索・絞り込みでも元の深さを保持します。統合グラフではフォルダにまとめず個別ノードを表示し、右下にLLを残します。'
-                        : '同じトレーダー内で前提・後続がつながるタスクは、左側に深さ順で個別表示します。つながりのないタスクは右側のLL列へ置きます。ラインはフォルダにまとめず、LLは各ノード右下に表示します。深さ・ラインへの分類は検索前の全タスクから判定します。左上は必要レベル、右上は報酬、左下は前提の充足数です。ドラッグで移動、ホイールで拡大縮小できます。'}
+                      前提なしが深さ1、前提の最大深さ＋1が次の列です。複数トレーダーの前提も含めて計算し、同じ深さのタスクを縦に並べます。検索・絞り込みでも元の深さを保持します。右下はLL、左上は必要レベル、右上は報酬です。
                     </p>
                   </details>
                 </>
