@@ -96,7 +96,7 @@ export default function TaskTable({
       .map((id) => snapshot.maps.find((map) => map.id === id)?.name ?? id)
       .join(' / ');
     const lock = taskLock(task, profile, result, snapshot);
-    const levelLabel = task.minPlayerLevel ? `レベル ${task.minPlayerLevel}～` : '';
+    const levelLabel = lock && task.minPlayerLevel ? `レベル ${task.minPlayerLevel}～` : '';
     const metadata = [variant, levelLabel, lock?.hint !== levelLabel ? lock?.hint : '']
       .filter(Boolean)
       .join(' · ');
