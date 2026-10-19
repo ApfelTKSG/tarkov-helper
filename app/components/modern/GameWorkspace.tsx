@@ -20,8 +20,10 @@ import { visibleTrader } from '@/src/domain/traders';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import TraderDashboard from './TraderDashboard';
+import MapTasks from './MapTasks';
 
-export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
+export type WorkspaceSection =
+  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps';
 const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
 export default function GameWorkspace({
   trader,
@@ -96,7 +98,7 @@ export default function GameWorkspace({
     : undefined;
   const traderDashboard = section === 'tasks' && !!traderDefinition;
   const graphView = section === 'tasks' && !trader && view === 'graph';
-  const fixedTraderPage = section === 'tasks' && !!trader;
+  const fixedTraderPage = (section === 'tasks' && !!trader) || section === 'maps';
   const fixedWorkspace = graphView || fixedTraderPage;
   const tabControl = `rounded border border-slate-600 bg-slate-800 font-medium ${fixedTraderPage ? 'px-2.5 py-1.5 text-xs sm:text-sm' : 'px-4 py-2.5'}`;
   return (
@@ -119,6 +121,9 @@ export default function GameWorkspace({
             >
               <Link className={tabControl} href="/">
                 タスク
+              </Link>
+              <Link className={tabControl} href="/maps">
+                マップ別
               </Link>
               <Link className={tabControl} href="/fir">
                 FiR
@@ -160,8 +165,9 @@ export default function GameWorkspace({
             <Link
               href="/"
               aria-label="全トレーダー"
+              title="全トレーダー"
               aria-current={!trader && section === 'tasks' ? 'page' : undefined}
-              className={`flex w-20 shrink-0 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
+              className={`flex w-fit shrink-0 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
             >
               <span
                 className={`flex items-center justify-center ${fixedTraderPage ? 'h-9 w-9 text-2xl' : 'h-14 w-14 text-3xl'}`}
@@ -169,7 +175,7 @@ export default function GameWorkspace({
               >
                 ▦
               </span>
-              <span className="whitespace-nowrap text-[11px] leading-4">全トレーダー</span>
+              <span className="sr-only">全トレーダー</span>
             </Link>
             {snapshot?.traders
               .filter(
@@ -180,17 +186,16 @@ export default function GameWorkspace({
                   key={t.id}
                   href={`/traders/${traderNameToSlug(t.englishName)}`}
                   aria-label={t.name}
+                  title={t.name}
                   aria-current={trader === t.englishName ? 'page' : undefined}
-                  className={`flex shrink-0 ${fixedTraderPage ? 'w-16' : 'w-20'} flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
+                  className={`flex shrink-0 w-fit flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
                 >
                   <ApiImage
                     src={t.imageLink}
                     name={t.name}
                     className={`${fixedTraderPage ? 'h-9 w-9' : 'h-14 w-14'} rounded object-cover`}
                   />
-                  <span className="max-w-full truncate text-[11px] leading-4" title={t.name}>
-                    {t.name}
-                  </span>
+                  <span className="sr-only">{t.name}</span>
                 </Link>
               ))}
           </nav>
@@ -239,6 +244,8 @@ export default function GameWorkspace({
             <HideoutView firOnly={section === 'hideout-fir'} />
           ) : section === 'raid' ? (
             <RaidView />
+          ) : section === 'maps' ? (
+            <MapTasks key={profile.id} />
           ) : traderDashboard ? (
             <>
               <TraderDashboard
