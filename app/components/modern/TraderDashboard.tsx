@@ -19,8 +19,7 @@ import { matchesPrestige } from '@/src/domain/prestige';
 import Toast from './Toast';
 import TaskTable from './TaskTable';
 
-const control =
-  'rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm disabled:opacity-40';
+const control = 'ui-control';
 const number = (value: number) => value.toLocaleString('ja-JP', { maximumFractionDigits: 3 });
 
 export default function TraderDashboard({
@@ -118,11 +117,11 @@ export default function TraderDashboard({
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <section
         aria-label="トレーダーの進捗"
-        className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3"
+        className="flex shrink-0 flex-wrap items-center gap-x-8 gap-y-3 border-b border-slate-700 pb-4 pt-1"
       >
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold">{trader.name}</h1>
-          <span className="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-200">
+          <h1 className="text-2xl font-semibold tracking-tight">{trader.name}</h1>
+          <span className="text-sm font-medium text-slate-400">
             {goal.current.level === undefined
               ? 'LL 未確定'
               : goal.current.level === 0
@@ -130,7 +129,7 @@ export default function TraderDashboard({
                 : `LL ${goal.current.level}`}
           </span>
         </div>
-        <label className="flex items-center gap-2 text-xs text-slate-400">
+        <label className="grid gap-1 text-xs text-slate-400">
           信頼度
           <input
             aria-label={`${trader.name} 現在の信頼度`}
@@ -164,19 +163,19 @@ export default function TraderDashboard({
           />
         </label>
         {goal.target && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <span className="text-slate-300">
               LL {goal.target.level}まで{' '}
-              <strong className="text-sky-200">
+              <strong className="font-medium text-slate-100">
                 {goal.reputationGap === undefined
                   ? '信頼度を入力'
                   : goal.reputationGap === 0
                     ? '信頼度 達成'
-                    : `信頼度 +${number(goal.reputationGap)}`}
+                    : `信頼度 あと${number(goal.reputationGap)}`}
               </strong>
             </span>
             {goal.playerLevelGap !== undefined && goal.playerLevelGap > 0 && (
-              <span className="text-amber-200">PMC あと{goal.playerLevelGap}レベル</span>
+              <span className="text-slate-300">PMC あと{goal.playerLevelGap}レベル</span>
             )}
             {goal.playerLevelGap === undefined && (
               <span className="text-amber-200">PMCレベル未入力</span>
@@ -184,7 +183,7 @@ export default function TraderDashboard({
             {goal.minimumTasks !== undefined && goal.minimumTasks > 0 && (
               <button
                 type="button"
-                className="text-sky-300 hover:underline"
+                className="ui-link text-xs hover:underline"
                 title="今できるタスクを信頼度報酬順に選んだ目安。レベル・その他条件は別です。"
                 onClick={() => showCandidates(goal.plan.map((task) => task.id))}
               >
@@ -196,18 +195,20 @@ export default function TraderDashboard({
         {nextUnlock && (
           <button
             type="button"
-            className="text-left text-xs text-amber-200 hover:underline"
+            className="border-l border-slate-700 pl-6 text-left hover:opacity-80"
             title={`${nextUnlock.targets.map(({ task }) => task.name).join(' / ')}。完了数条件のみの残り件数です。LLなど別の条件が残る場合があります。`}
             onClick={() =>
               showCandidates(nextUnlock.taskIds.filter((id) => profile.tasks[id] !== 'complete'))
             }
           >
-            次の完了数条件 あと{nextUnlock.remaining}件 →
+            <span className="block text-xs text-slate-400">完了数の条件</span>
+            <span className="text-base font-medium">あと{nextUnlock.remaining}件</span>
+            <span className="ml-3 text-xs text-slate-400">候補を見る →</span>
           </button>
         )}
         <Link
           href={`/traders/${traderNameToSlug(trader.englishName)}/fir`}
-          className="ml-auto text-xs text-sky-300 hover:underline"
+          className="ui-link ml-auto text-xs hover:underline"
         >
           FiR一覧 ↗
         </Link>
@@ -220,7 +221,7 @@ export default function TraderDashboard({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <span className="text-xs text-slate-500">{visibleTasks.length}件</span>
+        <span className="text-xs text-slate-400">{visibleTasks.length}件</span>
         {focusIds && (
           <button
             type="button"

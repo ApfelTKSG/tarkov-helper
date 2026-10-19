@@ -12,7 +12,7 @@ import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import TaskTable from './TaskTable';
 import Toast from './Toast';
 
-const control = 'rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm';
+const control = 'ui-control';
 export default function MapTasks() {
   const { snapshot, profile, availability, edit } = useGame();
   const [map, setMap] = useState('');

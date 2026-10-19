@@ -19,7 +19,7 @@ import MapTasks from './MapTasks';
 
 import WorkspaceHeader, { type WorkspaceSection } from './WorkspaceHeader';
 export type { WorkspaceSection } from './WorkspaceHeader';
-const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
+const control = 'ui-control';
 export default function GameWorkspace({
   trader,
   section = 'tasks',
@@ -97,7 +97,7 @@ export default function GameWorkspace({
   const fixedWorkspace = graphView || tablePage;
   return (
     <div
-      className={`bg-slate-900 text-slate-100 ${fixedWorkspace ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-dvh'}`}
+      className={`workspace bg-slate-900 text-slate-100 ${fixedWorkspace ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-dvh'}`}
     >
       <WorkspaceHeader trader={trader} section={section} />
       <main
@@ -157,7 +157,7 @@ export default function GameWorkspace({
             </>
           ) : (
             <>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <input
                   aria-label="タスク・アイテム検索"
                   className={`${control} min-w-52 flex-1`}
@@ -189,12 +189,8 @@ export default function GameWorkspace({
                     {view === 'graph' ? '一覧に切り替え' : 'グラフに切り替え'}
                   </button>
                 )}
+                <span className="text-xs text-slate-400">{tasks.length}件</span>
               </div>
-              <p className="text-sm text-slate-400">
-                {crossTraderGraph && '他トレーダーと前提・後続でつながるラインのみ表示。'}
-                表示 {tasks.length}
-                件。条件予測とゲーム内で記録した状態は別に保持します。同名タスクもIDごとに表示します。
-              </p>
               {profile.prestige === undefined ? (
                 <p className="text-sm text-amber-300">
                   現在のプレステージを入力すると、その段階のNew
@@ -218,12 +214,14 @@ export default function GameWorkspace({
                     selectedId={currentSelected?.id}
                     onSelect={setSelected}
                   />
-                  <p className="text-sm text-sky-200">
-                    クリックで完了・取り消し（半透明は操作不可） ·
-                    Shift＋クリック（または右クリック）で詳細 · 左から前提の深さ順
+                  <p className="text-xs text-slate-400">
+                    クリック：完了・取り消し　／　Shift＋クリック・右クリック：詳細
                   </p>
                   <details className="text-sm text-slate-400">
                     <summary className="cursor-pointer">表示の説明</summary>
+                    <p className="mt-2">
+                      他トレーダーと前提・後続でつながるラインを表示します。半透明のタスクはクリックで完了できません。条件予測とゲーム内の記録は別に保持し、同名タスクもIDで区別します。
+                    </p>
                     <p className="mt-2">
                       灰色半透明：受けられない · 黄色縁半透明：条件未確認 · 灰色：受注中 ·
                       緑色：完了 ·

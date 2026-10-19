@@ -96,14 +96,19 @@ export default function TaskTable({
       .map((id) => snapshot.maps.find((map) => map.id === id)?.name ?? id)
       .join(' / ');
     const lock = taskLock(task, profile, result, snapshot);
+    const levelLabel = task.minPlayerLevel ? `レベル ${task.minPlayerLevel}～` : '';
+    const metadata = [variant, levelLabel, lock?.hint !== levelLabel ? lock?.hint : '']
+      .filter(Boolean)
+      .join(' · ');
     return (
       <Fragment key={task.id}>
         <tr
           id={`task-${task.id}`}
           aria-label={`${task.name} 進捗`}
-          className={`h-20 align-middle ${complete ? 'bg-emerald-950/15' : !actionable ? 'bg-red-950/25 hover:bg-red-950/35' : 'hover:bg-slate-800/40'} ${task.id === COLLECTOR_ID ? 'ring-1 ring-inset ring-amber-400/40' : ''}`}
+          data-state={complete ? 'complete' : !actionable ? 'locked' : 'available'}
+          className={`ui-task-row align-middle ${task.id === COLLECTOR_ID ? 'ring-1 ring-inset ring-amber-400/40' : ''}`}
         >
-          <td className="px-3 py-3">
+          <td className="px-3 py-2.5">
             <input
               type="checkbox"
               aria-label={`${task.name} ${complete ? '完了を取り消す' : '完了を記録'}`}
@@ -113,7 +118,7 @@ export default function TaskTable({
               onChange={() => onComplete(task)}
             />
           </td>
-          <td className="px-3 py-3">
+          <td className="px-3 py-2.5">
             <div className="flex items-start gap-2">
               {showTrader && (
                 <Link
@@ -133,7 +138,7 @@ export default function TaskTable({
                 aria-label={`${task.name} お気に入り`}
                 aria-pressed={profile.favorites.includes(task.id) && !complete}
                 disabled={disabled || complete}
-                className="shrink-0 text-amber-300 disabled:opacity-20"
+                className={`shrink-0 ${profile.favorites.includes(task.id) ? 'text-amber-300' : 'text-slate-500 hover:text-slate-200'} disabled:opacity-20`}
                 onClick={() => {
                   if (
                     edit((p) => ({
@@ -158,49 +163,40 @@ export default function TaskTable({
                     <span className="ml-2 text-[10px] text-amber-300">Kappa</span>
                   )}
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                  {variant || (task.minPlayerLevel ? `Lv.${task.minPlayerLevel}～` : '')}
-                  {!actionable && !complete && (
-                    <span className={result.state === 'unknown' ? 'text-amber-300' : ''}>
-                      {variant || task.minPlayerLevel ? ' · ' : ''}
-                      {state === 'failed'
-                        ? '失敗'
-                        : result.state === 'unknown'
-                          ? '要確認'
-                          : '条件未達'}
-                    </span>
-                  )}
-                </p>
-                {lock?.hint && <p className="mt-1 text-[11px] text-red-300">{lock.hint}</p>}
+                {metadata && (
+                  <p className="mt-1 truncate text-xs text-slate-400" title={metadata}>
+                    {metadata}
+                  </p>
+                )}
               </div>
             </div>
           </td>
-          <td className="px-3 py-3 text-xs text-slate-400">
+          <td className="px-3 py-2.5 text-[13px] text-slate-400">
             <p className="line-clamp-2" title={mapNames}>
               {mapNames || '—'}
             </p>
           </td>
-          <td className="px-3 py-3">
-            <p className="truncate text-xs text-slate-400" title={summary}>
+          <td className="px-3 py-2.5">
+            <p className="truncate text-[13px] text-slate-400" title={summary}>
               {summary || '概要はWikiで確認'}
             </p>
           </td>
-          <td className="px-3 py-3">
+          <td className="px-3 py-2.5">
             <TaskFirPopover task={task} onSaved={onSaved} />
           </td>
           <td
-            className={`px-3 py-3 text-right text-xs tabular-nums ${reward > 0 ? 'text-emerald-300' : reward < 0 ? 'text-red-300' : 'text-slate-500'}`}
+            className={`px-3 py-2.5 text-right text-[13px] tabular-nums ${reward < 0 ? 'text-red-300' : reward === 0 ? 'text-slate-500' : 'text-slate-200'}`}
           >
             {reward > 0 ? '+' : ''}
             {number(reward)}
           </td>
-          <td className="px-3 py-3 text-right">
+          <td className="px-3 py-2.5 text-right">
             {task.wikiLink && (
               <a
                 href={task.wikiLink}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-sky-300 hover:underline"
+                className="ui-link text-xs hover:underline"
                 aria-label={`${task.name} Wikiを開く`}
               >
                 Wiki ↗
@@ -214,7 +210,7 @@ export default function TaskTable({
                   title={
                     manualConfirmation ? 'ゲーム内に出ているかを記録' : '条件を自動判定するか指定'
                   }
-                  className="mt-1 block w-full rounded border border-slate-700 bg-slate-900 px-1 py-1 text-[11px] text-slate-400 disabled:opacity-40"
+                  className="mt-1 block w-full rounded border border-transparent bg-transparent px-1 py-1 text-xs hover:border-slate-700 hover:bg-slate-800 text-slate-400 disabled:opacity-40"
                   disabled={disabled}
                   value={
                     profile.taskAvailabilityOverrides?.[task.id] === 'available' ||
@@ -249,7 +245,7 @@ export default function TaskTable({
       role="region"
       aria-label="タスク行（スクロール）"
       tabIndex={0}
-      className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-lg border border-slate-700 [scrollbar-gutter:stable]"
+      className="min-h-0 flex-1 overflow-auto overscroll-contain border-t border-slate-700 [scrollbar-gutter:stable]"
     >
       <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
         <colgroup>
@@ -261,12 +257,12 @@ export default function TaskTable({
           <col className="w-20" />
           <col className="w-32" />
         </colgroup>
-        <thead className="sticky top-0 z-10 bg-slate-800 text-xs text-slate-400">
+        <thead className="sticky top-0 z-10 bg-slate-900 text-xs text-slate-400">
           <tr>
-            <th className="px-3 py-3">
+            <th className="px-3 py-2.5">
               <span className="sr-only">完了</span>
             </th>
-            <th className="px-3 py-3 font-normal">タスク</th>
+            <th className="px-3 py-2.5 font-normal">タスク</th>
             <th
               className="p-0 font-normal"
               aria-sort={
@@ -279,15 +275,15 @@ export default function TaskTable({
             >
               <button
                 type="button"
-                className="block h-full w-full px-3 py-3 text-left hover:bg-slate-700/40 hover:text-sky-200"
+                className="block h-full w-full px-3 py-2.5 text-left hover:bg-slate-800 hover:text-slate-100"
                 title="クリックで昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('map')}
               >
                 Map {columnSort?.key === 'map' ? (columnSort.direction === 1 ? '↑' : '↓') : '↕'}
               </button>
             </th>
-            <th className="px-3 py-3 font-normal">概要</th>
-            <th className="px-3 py-3 font-normal">FiR</th>
+            <th className="px-3 py-2.5 font-normal">概要</th>
+            <th className="px-3 py-2.5 font-normal">FiR</th>
             <th
               className="p-0 text-right font-normal"
               aria-sort={
@@ -300,27 +296,29 @@ export default function TaskTable({
             >
               <button
                 type="button"
-                className="hover:text-sky-200"
+                className="block h-full w-full px-3 py-2.5 text-right hover:bg-slate-800 hover:text-slate-100"
                 title="クリックで昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('reputation')}
-                style={{ textAlign: 'right' }}
               >
                 信頼度{' '}
                 {columnSort?.key === 'reputation' ? (columnSort.direction === 1 ? '↑' : '↓') : '↕'}
               </button>
             </th>
-            <th className="px-3 py-3 text-right font-normal">Wiki・受注</th>
+            <th className="px-3 py-2.5 text-right font-normal">Wiki・受注</th>
           </tr>
         </thead>
         {sections.map((section) => (
           <Fragment key={section.id}>
             <tbody>
               {section.id !== 'available' && (
-                <tr className={section.id === 'complete' ? 'bg-emerald-950/40' : 'bg-red-950/30'}>
+                <tr
+                  className="ui-task-group"
+                  data-state={section.id === 'complete' ? 'complete' : 'locked'}
+                >
                   <td colSpan={7} className="p-0">
                     <button
                       type="button"
-                      className={`flex w-full items-center gap-2 px-4 py-3 text-left text-sm ${section.id === 'complete' ? 'text-emerald-200 hover:bg-emerald-950/40' : 'text-red-200 hover:bg-red-950/30'}`}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] hover:brightness-125"
                       aria-expanded={openGroups.includes(section.id)}
                       aria-controls={`group-${section.id}`}
                       onClick={() =>

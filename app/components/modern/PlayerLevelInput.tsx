@@ -19,7 +19,7 @@ export default function PlayerLevelInput() {
   const close = useCallback(() => setSaved(0), []);
   return (
     <>
-      <label className="flex items-center gap-2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-xs text-slate-300">
+      <label className="flex items-center gap-2 whitespace-nowrap px-1 py-1 text-xs text-slate-400">
         {profile.faction && (
           <ApiImage
             src={`${process.env.NODE_ENV === 'production' ? '/tarkov-helper' : ''}/images/factions/${profile.faction}.webp`}
@@ -30,7 +30,7 @@ export default function PlayerLevelInput() {
         <ApiImage
           src={playerLevelBadge(profile.level ?? 1, snapshot)}
           name={`レベル ${profile.level ?? 1} の階級`}
-          className="h-8 w-8 object-contain"
+          className="h-7 w-7 object-contain"
         />
         <span>PMCレベル</span>
         <input
@@ -40,7 +40,7 @@ export default function PlayerLevelInput() {
           step="1"
           value={editing ? draft : (profile.level ?? 1)}
           disabled={!ready || !!storageError}
-          className="w-16 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-center text-lg font-bold text-slate-100 disabled:opacity-40"
+          className="w-14 rounded border border-slate-700 bg-slate-800 px-1 py-1 text-center text-base font-semibold text-slate-100 disabled:opacity-40"
           onFocus={() => {
             setDraft(String(profile.level ?? 1));
             setEditing(true);

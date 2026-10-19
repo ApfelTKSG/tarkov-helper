@@ -14,7 +14,7 @@ import type { GameMode } from '@/src/domain/game';
 import { traderUnlocked, visibleTrader } from '@/src/domain/traders';
 import ApiImage from './ApiImage';
 
-const field = 'rounded border border-slate-600 bg-slate-900 px-2 py-1 text-white';
+const field = 'ui-control';
 const modeNames = { regular: '通常', pve: 'PvE', 'pvp-season': 'PvPシーズン' };
 export default function ProfileControls({
   hidePlayerLevel = false,
@@ -185,7 +185,7 @@ export default function ProfileControls({
         </p>
       ))}
       <details>
-        <summary className="cursor-pointer text-amber-300">設定</summary>
+        <summary className="cursor-pointer text-slate-300">トレーダー・データ管理</summary>
         <h3 className="mt-4 font-medium">トレーダーの信頼度・LL</h3>
         <p className="my-3 text-sm text-slate-300">
           実際のゲームの値を入力してください。LLを「自動」にすると、PMCレベルと信頼度から計算します。JaegerはIntroduction、RefはEasy

@@ -91,7 +91,7 @@ export default function TaskFirPopover({
         role="dialog"
         aria-label={`${task.name} FiRの確保数`}
         onToggle={(event) => setOpen(event.newState === 'open')}
-        className="fixed m-0 w-[min(360px,calc(100vw-16px))] overflow-y-auto overscroll-contain rounded-lg border border-slate-600 bg-slate-950 p-3 text-slate-100 shadow-2xl"
+        className="fixed m-0 w-[min(360px,calc(100vw-16px))] overflow-y-auto overscroll-contain rounded-md border border-slate-700 bg-slate-800 p-3 text-slate-100 shadow-xl"
         style={{ left: position.left, top: position.top, maxHeight: position.height }}
       >
         <div className="mb-3 flex items-start justify-between gap-2">
