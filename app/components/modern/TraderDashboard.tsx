@@ -36,8 +36,6 @@ export default function TraderDashboard({
 }) {
   const { profile, snapshot, availability, edit, ready, storageError } = useGame();
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('unfinished');
-  const [sort, setSort] = useState('unlock');
   const [focus, setFocus] = useState<string[] | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string; undoTask?: GameTask } | null>(
     null,
@@ -64,7 +62,6 @@ export default function TraderDashboard({
   const nextUnlock =
     milestones.find((milestone) => hasAvailable(milestone.taskIds)) ?? milestones[0];
   const focusIds = focus ?? (linkedTask ? [linkedTask.id] : null);
-  const effectiveStatus = !focus && linkedTask ? 'all' : status;
   const needle = query.normalize('NFKC').trim().toLocaleLowerCase();
   const visibleTasks = (
     focusIds
@@ -75,43 +72,25 @@ export default function TraderDashboard({
   )
     .filter(
       (task) =>
-        (matchesTask(task, query, snapshot) ||
-          (!!needle &&
-            snapshot.maps
-              .filter(visibleMap)
-              .some(
-                (map) =>
-                  `${map.name} ${map.englishName}`
-                    .normalize('NFKC')
-                    .toLocaleLowerCase()
-                    .includes(needle) &&
-                  (task.map === map.id ||
-                    task.objectives.some((objective) => objective.maps?.includes(map.id))),
-              ))) &&
-        (effectiveStatus === 'all' ||
-          (effectiveStatus === 'unfinished' &&
-            !['complete', 'failed'].includes(profile.tasks[task.id] ?? '')) ||
-          (effectiveStatus === 'available' && isActionable(task, profile, evaluate(task))) ||
-          (effectiveStatus === 'locked' &&
-            !['complete', 'failed'].includes(profile.tasks[task.id] ?? '') &&
-            !isActionable(task, profile, evaluate(task))) ||
-          (effectiveStatus === 'complete' && profile.tasks[task.id] === 'complete') ||
-          (effectiveStatus === 'favorites' &&
-            profile.tasks[task.id] !== 'complete' &&
-            profile.favorites.includes(task.id))),
+        matchesTask(task, query, snapshot) ||
+        (!!needle &&
+          snapshot.maps
+            .filter(visibleMap)
+            .some(
+              (map) =>
+                `${map.name} ${map.englishName}`
+                  .normalize('NFKC')
+                  .toLocaleLowerCase()
+                  .includes(needle) &&
+                (task.map === map.id ||
+                  task.objectives.some((objective) => objective.maps?.includes(map.id))),
+            )),
     )
     .sort((a, b) => {
       const order =
         Number(isActionable(b, profile, evaluate(b))) -
         Number(isActionable(a, profile, evaluate(a)));
       if (order) return order;
-      if (sort === 'reputation')
-        return (
-          standingReward(b, trader.id) - standingReward(a, trader.id) ||
-          a.name.localeCompare(b.name)
-        );
-      if (sort === 'level')
-        return (a.minPlayerLevel ?? 0) - (b.minPlayerLevel ?? 0) || a.name.localeCompare(b.name);
       const first = taskUnlockImpact(a.id, milestones),
         second = taskUnlockImpact(b.id, milestones);
       return (
@@ -124,7 +103,6 @@ export default function TraderDashboard({
   const showCandidates = (ids: string[]) => {
     onClearLinked();
     setFocus(ids);
-    setStatus('all');
     setQuery('');
   };
   const markComplete = (task: GameTask) => {
@@ -242,35 +220,6 @@ export default function TraderDashboard({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select
-          aria-label="タスクの状態"
-          className={control}
-          value={effectiveStatus}
-          onChange={(event) => {
-            if (linkedTask) {
-              setFocus(focusIds);
-              onClearLinked();
-            }
-            setStatus(event.target.value);
-          }}
-        >
-          <option value="unfinished">未完了</option>
-          <option value="available">今できる</option>
-          <option value="locked">解放待ち・要確認</option>
-          <option value="complete">完了</option>
-          <option value="favorites">お気に入り</option>
-          <option value="all">すべて</option>
-        </select>
-        <select
-          aria-label="タスクの並び順"
-          className={control}
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          <option value="unlock">解放に近い順</option>
-          <option value="reputation">信頼度順</option>
-          <option value="level">要求レベル順</option>
-        </select>
         <span className="text-xs text-slate-500">{visibleTasks.length}件</span>
         {focusIds && (
           <button

@@ -16,7 +16,6 @@ const control = 'rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 tex
 export default function MapTasks() {
   const { snapshot, profile, availability, edit } = useGame();
   const [map, setMap] = useState('');
-  const [status, setStatus] = useState('available');
   const [query, setQuery] = useState('');
   const [toast, setToast] = useState<{ id: number; message: string; undo?: GameTask } | null>(null);
   const serial = useRef(0);
@@ -43,14 +42,6 @@ export default function MapTasks() {
     .filter(
       (task) =>
         matchesTask(task, query, snapshot) &&
-        (status === 'all' ||
-          (status === 'available' && actionable(task)) ||
-          (status === 'unfinished' &&
-            !['complete', 'failed'].includes(profile.tasks[task.id] ?? '')) ||
-          (status === 'locked' &&
-            !['complete', 'failed'].includes(profile.tasks[task.id] ?? '') &&
-            !actionable(task)) ||
-          (status === 'complete' && profile.tasks[task.id] === 'complete')) &&
         (!map || (map === 'none' ? !idsFor(task).length : idsFor(task).includes(map))),
     )
     .sort(
@@ -103,18 +94,6 @@ export default function MapTasks() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select
-          aria-label="タスクの状態"
-          className={control}
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="available">今できる</option>
-          <option value="unfinished">未完了</option>
-          <option value="locked">解放待ち・要確認</option>
-          <option value="complete">完了</option>
-          <option value="all">すべて</option>
-        </select>
         <span className="text-xs text-slate-500">{tasks.length}件</span>
       </div>
       <TaskTable

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { GameTask } from '@/src/domain/game';
 import { useGame } from '@/app/context/GameContext';
 import { isActionable, standingReward } from '@/src/domain/trader-dashboard';
-import { taskFirEntries, taskSummary } from '@/src/domain/task-row';
+import { taskSummary } from '@/src/domain/task-row';
 import { taskMapIds } from '@/src/domain/maps';
 import { lockedGroups, taskLock, compareLockRank, compareTaskMaps } from '@/src/domain/task-groups';
 import { setTaskAvailability, type TaskAvailabilityChoice } from '@/src/domain/task-availability';
@@ -12,7 +12,7 @@ import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import { COLLECTOR_ID } from './CollectorBadge';
 import ApiImage from './ApiImage';
-import ItemCounter from './ItemCounter';
+import TaskFirPopover from './TaskFirPopover';
 const number = (value: number) => value.toLocaleString('ja-JP', { maximumFractionDigits: 3 });
 export default function TaskTable({
   tasks,
@@ -28,7 +28,6 @@ export default function TaskTable({
   showTrader?: boolean;
 }) {
   const { profile, snapshot, availability, edit, ready, storageError } = useGame();
-  const [expandedFir, setExpandedFir] = useState<string>();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [columnSort, setColumnSort] = useState<{
     key: 'map' | 'reputation';
@@ -60,7 +59,9 @@ export default function TaskTable({
     {
       id: 'available',
       label: '',
-      tasks: tasks.filter((task) => !locks.get(task.id)).sort(compareColumn),
+      tasks: tasks
+        .filter((task) => !locks.get(task.id) && profile.tasks[task.id] !== 'complete')
+        .sort(compareColumn),
     },
     ...lockedGroups.map(([id, label]) => ({
       id,
@@ -74,6 +75,11 @@ export default function TaskTable({
             a.name.localeCompare(b.name),
         ),
     })),
+    {
+      id: 'complete',
+      label: 'クリア済み',
+      tasks: tasks.filter((task) => profile.tasks[task.id] === 'complete').sort(compareColumn),
+    },
   ].filter((section) => section.tasks.length);
   const renderTask = (task: GameTask) => {
     const state = profile.tasks[task.id],
@@ -81,11 +87,6 @@ export default function TaskTable({
     const result = availability(task),
       actionable = isActionable(task, profile, result);
     const reward = standingReward(task, reputationTrader ?? task.trader);
-    const fir = taskFirEntries(task, profile.objectiveCounts);
-    const firValue = fir.reduce((sum, entry) => sum + entry.value, 0),
-      firMaximum = fir.reduce((sum, entry) => sum + (entry.maximum ?? 0), 0);
-    const unknownQuantity = fir.some((entry) => entry.maximum === undefined);
-    const previewItems = [...new Set(fir.flatMap((entry) => entry.items))];
     const summary = taskSummary(task);
     const manualConfirmation =
       result.conditions.some((condition) => condition.state === 'unknown') &&
@@ -185,36 +186,7 @@ export default function TaskTable({
             </p>
           </td>
           <td className="px-3 py-3">
-            {fir.length > 0 && (
-              <button
-                type="button"
-                aria-label={`${task.name} FiR確保数`}
-                aria-expanded={expandedFir === task.id}
-                aria-controls={`fir-${task.id}`}
-                className="flex max-w-full items-center gap-1.5 rounded hover:bg-slate-700/40"
-                onClick={() => setExpandedFir(expandedFir === task.id ? undefined : task.id)}
-              >
-                {previewItems.slice(0, 3).map((id) => (
-                  <ApiImage
-                    key={id}
-                    src={snapshot.items[id]?.iconLink}
-                    name={snapshot.items[id]?.name ?? id}
-                    className="h-6 w-6 rounded object-contain"
-                  />
-                ))}
-                <span
-                  className={`text-[11px] ${firValue === firMaximum && !unknownQuantity ? 'text-emerald-300' : 'text-slate-400'}`}
-                >
-                  FiR{' '}
-                  {complete
-                    ? '完了'
-                    : firMaximum === 0 && unknownQuantity
-                      ? '数量要確認'
-                      : `${firValue}/${firMaximum}${unknownQuantity ? '＋要確認' : ''}`}{' '}
-                  {previewItems.length > 3 ? '…' : ''} {expandedFir === task.id ? '▴' : '▾'}
-                </span>
-              </button>
-            )}
+            <TaskFirPopover task={task} onSaved={onSaved} />
           </td>
           <td
             className={`px-3 py-3 text-right text-xs tabular-nums ${reward > 0 ? 'text-emerald-300' : reward < 0 ? 'text-red-300' : 'text-slate-500'}`}
@@ -269,43 +241,6 @@ export default function TaskTable({
               )}
           </td>
         </tr>
-        {expandedFir === task.id && (
-          <tr id={`fir-${task.id}`}>
-            <td colSpan={7} className="border-t border-slate-800 bg-slate-950/50 px-5 py-4">
-              <div className="flex flex-wrap items-start gap-5">
-                {fir.map((entry) => (
-                  <div key={entry.id} className="max-w-sm">
-                    <p className="mb-2 text-xs text-slate-400">{entry.description}</p>
-                    {entry.maximum !== undefined && entry.items.length > 0 ? (
-                      <ItemCounter
-                        compact
-                        items={entry.items}
-                        label={`${task.name} ${entry.description}`}
-                        value={entry.value}
-                        maximum={entry.maximum}
-                        disabled={disabled || complete}
-                        onChange={(value) => {
-                          if (
-                            edit((p) => ({
-                              ...p,
-                              objectiveCounts: {
-                                ...p.objectiveCounts,
-                                [entry.key]: value,
-                              },
-                            }))
-                          )
-                            onSaved(`FiRを記録しました：${value}/${entry.maximum}`);
-                        }}
-                      />
-                    ) : (
-                      <p className="text-xs text-slate-500">数量・候補はWikiで確認</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </td>
-          </tr>
-        )}
       </Fragment>
     );
   };
@@ -333,7 +268,7 @@ export default function TaskTable({
             </th>
             <th className="px-3 py-3 font-normal">タスク</th>
             <th
-              className="px-3 py-3 font-normal"
+              className="p-0 font-normal"
               aria-sort={
                 columnSort?.key === 'map'
                   ? columnSort.direction === 1
@@ -344,7 +279,7 @@ export default function TaskTable({
             >
               <button
                 type="button"
-                className="hover:text-sky-200"
+                className="block h-full w-full px-3 py-3 text-left hover:bg-slate-700/40 hover:text-sky-200"
                 title="クリックで昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('map')}
               >
@@ -354,7 +289,7 @@ export default function TaskTable({
             <th className="px-3 py-3 font-normal">概要</th>
             <th className="px-3 py-3 font-normal">FiR</th>
             <th
-              className="px-3 py-3 text-right font-normal"
+              className="p-0 text-right font-normal"
               aria-sort={
                 columnSort?.key === 'reputation'
                   ? columnSort.direction === 1
@@ -368,6 +303,7 @@ export default function TaskTable({
                 className="hover:text-sky-200"
                 title="クリックで昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('reputation')}
+                style={{ textAlign: 'right' }}
               >
                 信頼度{' '}
                 {columnSort?.key === 'reputation' ? (columnSort.direction === 1 ? '↑' : '↓') : '↕'}
@@ -380,11 +316,11 @@ export default function TaskTable({
           <Fragment key={section.id}>
             <tbody>
               {section.id !== 'available' && (
-                <tr className="bg-red-950/30">
+                <tr className={section.id === 'complete' ? 'bg-emerald-950/40' : 'bg-red-950/30'}>
                   <td colSpan={7} className="p-0">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-red-200 hover:bg-red-950/30"
+                      className={`flex w-full items-center gap-2 px-4 py-3 text-left text-sm ${section.id === 'complete' ? 'text-emerald-200 hover:bg-emerald-950/40' : 'text-red-200 hover:bg-red-950/30'}`}
                       aria-expanded={openGroups.includes(section.id)}
                       aria-controls={`group-${section.id}`}
                       onClick={() =>
@@ -397,7 +333,7 @@ export default function TaskTable({
                     >
                       <span aria-hidden="true">{openGroups.includes(section.id) ? '▾' : '▸'}</span>
                       {section.label}
-                      <span className="text-xs text-red-300/70">{section.tasks.length}件</span>
+                      <span className="text-xs opacity-70">{section.tasks.length}件</span>
                     </button>
                   </td>
                 </tr>

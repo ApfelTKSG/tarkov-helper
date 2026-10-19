@@ -71,7 +71,7 @@ test('self wipe clears all current progress while preserving prestige, identity,
   ])
     assert.equal(reset[field], original[field]);
   db.profiles.regular = reset;
-  assert.equal(db.profiles.pve.level, undefined);
+  assert.equal(db.profiles.pve.level, 1);
   assert.equal(original.objectiveCounts.item, 8);
   const parsed = parseDatabase(JSON.stringify(db));
   assert.equal(parsed.profiles.regular.taskFilter, 'favorites');

@@ -21,6 +21,7 @@ import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import TraderDashboard from './TraderDashboard';
 import MapTasks from './MapTasks';
+import PlayerLevelInput from './PlayerLevelInput';
 
 export type WorkspaceSection =
   'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps';
@@ -110,12 +111,15 @@ export default function GameWorkspace({
           className={`${fixedTraderPage ? 'space-y-2 py-2' : 'space-y-3 py-3'} px-3 sm:px-5 ${fixedWorkspace ? '' : 'mx-auto max-w-7xl'}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link
-              href="/"
-              className={`${fixedTraderPage ? 'text-lg' : 'text-2xl'} font-bold tracking-wide`}
-            >
-              Tarkov Helper
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/"
+                className={`${fixedTraderPage ? 'text-lg' : 'text-2xl'} font-bold tracking-wide`}
+              >
+                Tarkov Helper
+              </Link>
+              <PlayerLevelInput key={profile.id} />
+            </div>
             <nav
               className={`flex flex-wrap gap-2 ${fixedTraderPage ? 'text-sm' : 'text-base md:text-lg'}`}
             >
@@ -148,11 +152,11 @@ export default function GameWorkspace({
             <details className="relative text-xs text-slate-400">
               <summary className="w-fit cursor-pointer">プロフィール・設定</summary>
               <div className="absolute inset-x-0 top-full z-40 mt-2 max-h-[60dvh] overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3 shadow-2xl">
-                <ProfileControls />
+                <ProfileControls hidePlayerLevel />
               </div>
             </details>
           ) : (
-            <ProfileControls />
+            <ProfileControls hidePlayerLevel />
           )}
           <nav
             aria-label="トレーダー"

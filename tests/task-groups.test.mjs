@@ -113,6 +113,7 @@ test('prerequisite ordering counts unique unfinished ancestors and tolerates cyc
 
 test('unknown gates and missing input do not masquerade as a known shortage', () => {
   const p = createProfile('regular', null);
+  delete p.level;
   const t = task('t', { minPlayerLevel: 10 });
   assert.equal(lock(t, p).group, 'unknown');
   p.level = 1;

@@ -251,6 +251,10 @@ export function normalizeMode(mode, feeds, seasonId = null) {
     questItems: translated.tasks.data.questItems ?? {},
     story: translated.tasks.data.story ?? {},
     prestige: translated.tasks.data.prestige ?? [],
+    playerLevels: (translated.items.data.playerLevels ?? []).map((entry) => ({
+      level: entry.level,
+      levelBadgeImageLink: entry.levelBadgeImageLink,
+    })),
     diagnostics,
   };
   return {
@@ -297,6 +301,7 @@ export function diffSnapshots(previous, next) {
       'seasonId',
       'story',
       'prestige',
+      'playerLevels',
       'progressionCounters',
       'progressionRuleRevision',
     ].some((field) => contentHash(previous[field] ?? null) !== contentHash(next[field] ?? null)),
