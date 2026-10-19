@@ -50,14 +50,6 @@ export default function WorkspaceHeader({
                   {link.label}
                 </Link>
               ))}
-              <button
-                type="button"
-                disabled
-                className={`${tabControl} cursor-not-allowed text-slate-500 opacity-50`}
-                title="今シーズンは利用できません"
-              >
-                ハイドアウト
-              </button>
               <Link
                 className={tabControl}
                 href="/raid"

@@ -46,6 +46,14 @@ export default function FirDashboard({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            disabled
+            className="ui-nav-link cursor-not-allowed opacity-50"
+            title="今シーズンはハイドアウトのFiR要求がないため利用できません"
+          >
+            ハイドアウト
+          </button>
         </nav>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-4">
