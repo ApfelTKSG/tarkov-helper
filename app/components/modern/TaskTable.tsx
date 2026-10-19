@@ -72,7 +72,6 @@ export default function TaskTable({
         .filter((task) => locks.get(task.id)?.group === id)
         .sort(
           (a, b) =>
-            compareColumn(a, b) ||
             compareLockRank(locks.get(a.id)!.rank, locks.get(b.id)!.rank) ||
             a.name.localeCompare(b.name),
         ),
@@ -80,7 +79,7 @@ export default function TaskTable({
     {
       id: 'complete',
       label: 'クリア済み',
-      tasks: tasks.filter((task) => profile.tasks[task.id] === 'complete').sort(compareColumn),
+      tasks: tasks.filter((task) => profile.tasks[task.id] === 'complete'),
     },
   ].filter((section) => section.tasks.length);
   const renderTask = (task: GameTask) => {
@@ -279,7 +278,7 @@ export default function TaskTable({
               <button
                 type="button"
                 className="block h-full w-full px-3 py-2.5 text-left hover:bg-slate-800 hover:text-slate-100"
-                title="クリックで昇順・降順・標準順に切り替え"
+                title="受注可能なタスクだけを昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('map')}
               >
                 Map {columnSort?.key === 'map' ? (columnSort.direction === 1 ? '↑' : '↓') : '↕'}
@@ -300,7 +299,7 @@ export default function TaskTable({
               <button
                 type="button"
                 className="block h-full w-full px-3 py-2.5 text-right hover:bg-slate-800 hover:text-slate-100"
-                title="クリックで昇順・降順・標準順に切り替え"
+                title="受注可能なタスクだけを昇順・降順・標準順に切り替え"
                 onClick={() => toggleSort('reputation')}
               >
                 信頼度{' '}
