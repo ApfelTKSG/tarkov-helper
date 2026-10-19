@@ -4,6 +4,7 @@ import type { Availability } from './progression';
 import { isActionable } from './trader-dashboard.ts';
 import { effectiveTraderProgress, traderUnlocked } from './traders.ts';
 import { taskMapIds } from './maps.ts';
+import { taskLoyaltyColumn } from './task-columns.ts';
 
 export const lockedGroups = [
   ['playerLevel', 'レベル不足'],
@@ -25,7 +26,9 @@ export function taskLock(
 ): { group: Group; rank: number[]; hint: string } | undefined {
   if (profile.tasks[task.id] === 'complete' || isActionable(task, profile, result))
     return undefined;
-  if (profile.tasks[task.id] === 'failed') return { group: 'failed', rank: [], hint: '失敗' };
+  // Keep each LL together before comparing shortages; unclassified tasks come last.
+  const tier = taskLoyaltyColumn(task, snapshot.tasks) || Infinity;
+  if (profile.tasks[task.id] === 'failed') return { group: 'failed', rank: [tier], hint: '失敗' };
   const categories = new Set<Group>();
   let playerLevel = 0,
     countGap = 0,
@@ -109,8 +112,9 @@ export function taskLock(
       : ([...categories][0] ?? 'unknown');
   return {
     group,
-    rank:
-      group === 'playerLevel'
+    rank: [
+      tier,
+      ...(group === 'playerLevel'
         ? [playerLevel]
         : group === 'count'
           ? [countGap]
@@ -125,7 +129,8 @@ export function taskLock(
                   countGap,
                   prerequisiteCount,
                   loyaltyGap,
-                ],
+                ]),
+    ],
     hint: [...hints, ...(unknown ? ['要確認の条件あり'] : [])].join(' · '),
   };
 }

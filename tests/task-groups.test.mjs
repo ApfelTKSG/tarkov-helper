@@ -94,6 +94,69 @@ test('verified counters sort by remaining tasks and honor strict greater-than th
   assert.equal(lock(four, p).group, 'count');
 });
 
+test('count groups keep LL cohorts together before sorting by remaining count', () => {
+  const p = createProfile('regular', null);
+  p.progressionRuleRevision = 'r';
+  p.progressionCounters = {
+    counter: {
+      revision: 'r',
+      verification: 'verified',
+      coverage: 'complete',
+      taskIds: ['a', 'b', 'c', 'd', 'e'],
+      proof: [],
+    },
+  };
+  const gate = (id, level, remaining) =>
+    task(id, {
+      supplementLoyaltyLevel: level,
+      otherRequirements: [
+        {
+          id: 'gate',
+          type: 'globalVariable',
+          variableId: 'counter',
+          value: remaining,
+          compareMethod: '>=',
+        },
+      ],
+    });
+  const tasks = [
+    gate('ll2-near', 2, 1),
+    gate('ll1-far', 1, 4),
+    gate('unknown', undefined, 1),
+    gate('ll1-near', 1, 2),
+  ];
+  const sorted = [...tasks].sort((a, b) =>
+    compareLockRank(lock(a, p, tasks).rank, lock(b, p, tasks).rank),
+  );
+  assert.deepEqual(
+    sorted.map((t) => t.id),
+    ['ll1-near', 'll1-far', 'll2-near', 'unknown'],
+  );
+  assert.ok(tasks.every((t) => lock(t, p, tasks).group === 'count'));
+});
+
+test('level groups sort by LL first and use inherited LL for a task line', () => {
+  const p = createProfile('regular', null);
+  const tasks = [
+    task('ll2-level5', { supplementLoyaltyLevel: 2, minPlayerLevel: 5 }),
+    task('ll1-level20', { supplementLoyaltyLevel: 1, minPlayerLevel: 20 }),
+    task('ll1-level10', { supplementLoyaltyLevel: 1, minPlayerLevel: 10 }),
+    task('inherited', {
+      minPlayerLevel: 5,
+      taskRequirements: [{ task: 'll2-level5', status: ['complete'] }],
+    }),
+  ];
+  p.tasks['ll2-level5'] = 'complete';
+  const sorted = tasks
+    .filter((t) => lock(t, p, tasks))
+    .sort((a, b) => compareLockRank(lock(a, p, tasks).rank, lock(b, p, tasks).rank));
+  assert.deepEqual(
+    sorted.map((t) => t.id),
+    ['ll1-level10', 'll1-level20', 'inherited'],
+  );
+  assert.ok(sorted.every((t) => lock(t, p, tasks).group === 'playerLevel'));
+});
+
 test('prerequisite ordering counts unique unfinished ancestors and tolerates cycles', () => {
   const p = createProfile('regular', null);
   const needs = (id) => [{ task: id, status: ['complete'] }];
