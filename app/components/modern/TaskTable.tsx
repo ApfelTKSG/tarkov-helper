@@ -6,7 +6,13 @@ import { useGame } from '@/app/context/GameContext';
 import { isActionable, standingReward } from '@/src/domain/trader-dashboard';
 import { taskSummary } from '@/src/domain/task-row';
 import { taskMapIds } from '@/src/domain/maps';
-import { lockedGroups, taskLock, compareLockRank, compareTaskMaps } from '@/src/domain/task-groups';
+import {
+  lockedGroups,
+  taskLock,
+  taskConditionLock,
+  compareLockRank,
+  compareTaskMaps,
+} from '@/src/domain/task-groups';
 import { setTaskAvailability, type TaskAvailabilityChoice } from '@/src/domain/task-availability';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { taskVariantLabel } from '@/src/domain/task-variant';
@@ -90,8 +96,7 @@ export default function TaskTable({
     const reward = standingReward(task, reputationTrader ?? task.trader);
     const summary = taskSummary(task);
     const manualConfirmation =
-      result.conditions.some((condition) => condition.state === 'unknown') &&
-      !result.conditions.some((condition) => condition.state === 'unmet');
+      taskConditionLock(task, profile, result, snapshot)?.group === 'unknown';
     const variant = taskVariantLabel(task, snapshot.tasks);
     const mapNames = taskMapIds(task)
       .map((id) => snapshot.maps.find((map) => map.id === id)?.name ?? id)

@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { taskLock, compareLockRank, compareTaskMaps } from '../src/domain/task-groups.ts';
+import {
+  taskLock,
+  taskConditionLock,
+  compareLockRank,
+  compareTaskMaps,
+} from '../src/domain/task-groups.ts';
 import { evaluateAvailability } from '../src/domain/progression.ts';
 import { createProfile } from '../src/domain/profiles.ts';
 
@@ -198,4 +203,21 @@ test('map sorting uses visible map names and puts unspecified maps last ascendin
   assert.ok(compareTaskMaps(customs, woods, s) < 0);
   assert.ok(compareTaskMaps(woods, hidden, s) < 0);
   assert.equal(compareTaskMaps(hidden, task('none'), s), 0);
+});
+
+test('unknown-condition display stays consistent after manual acceptance, including unsupported unmet gates', () => {
+  const p = createProfile('regular', null);
+  const t = task('opaque');
+  const s = snapshot([t]);
+  const result = { state: 'blocked', conditions: [{ kind: 'unhandledGate', state: 'unmet' }] };
+  assert.equal(taskLock(t, p, result, s).group, 'unknown');
+  assert.equal(taskConditionLock(t, p, result, s).group, 'unknown');
+  p.tasks.t = 'active';
+  p.taskAvailabilityOverrides = { t: 'available' };
+  const accepted = { ...result, state: 'eligible' };
+  assert.equal(taskLock(t, p, accepted, s), undefined);
+  assert.equal(taskConditionLock(t, p, accepted, s).group, 'unknown');
+  assert.equal(taskConditionLock(t, p, { state: 'eligible', conditions: [] }, s), undefined);
+  const known = { ...t, minPlayerLevel: 10 };
+  assert.equal(taskConditionLock(known, p, evaluateAvailability(known, p), s).group, 'playerLevel');
 });

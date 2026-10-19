@@ -16,6 +16,7 @@ export const lockedGroups = [
   ['failed', '失敗'],
 ] as const;
 type Group = (typeof lockedGroups)[number][0];
+type TaskLock = { group: Group; rank: number[]; hint: string };
 
 /** Unknown gates stay explicit; they are never inferred to be a known shortage. */
 export function taskLock(
@@ -23,12 +24,32 @@ export function taskLock(
   profile: Profile,
   result: Availability,
   snapshot: GameSnapshot,
-): { group: Group; rank: number[]; hint: string } | undefined {
+): TaskLock | undefined {
   if (profile.tasks[task.id] === 'complete' || isActionable(task, profile, result))
+    return undefined;
+  if (profile.tasks[task.id] === 'failed')
+    return {
+      group: 'failed',
+      rank: [taskLoyaltyColumn(task, snapshot.tasks) || Infinity],
+      hint: '失敗',
+    };
+  return taskConditionLock(task, profile, result, snapshot);
+}
+
+/** Classify the conditions independently of recorded acceptance and manual overrides. */
+export function taskConditionLock(
+  task: GameTask,
+  profile: Profile,
+  result: Availability,
+  snapshot: GameSnapshot,
+): TaskLock | undefined {
+  if (
+    result.conditions.every((condition) => condition.state === 'met') &&
+    traderUnlocked(task.trader, profile)
+  )
     return undefined;
   // Keep each LL together before comparing shortages; unclassified tasks come last.
   const tier = taskLoyaltyColumn(task, snapshot.tasks) || Infinity;
-  if (profile.tasks[task.id] === 'failed') return { group: 'failed', rank: [tier], hint: '失敗' };
   const categories = new Set<Group>();
   let playerLevel = 0,
     countGap = 0,
