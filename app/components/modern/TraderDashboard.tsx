@@ -112,7 +112,10 @@ export default function TraderDashboard({
     });
   const showCandidates = (key: string, ids: string[], label: string) => {
     onClearLinked();
-    setHighlight((current) => (current?.key === key ? null : { key, taskIds: ids, label }));
+    const taskIds = available.filter((task) => ids.includes(task.id)).map((task) => task.id);
+    setHighlight((current) =>
+      current?.key === key || !taskIds.length ? null : { key, taskIds, label },
+    );
   };
   const markComplete = (task: GameTask) => {
     const wasComplete = profile.tasks[task.id] === 'complete';
@@ -195,16 +198,16 @@ export default function TraderDashboard({
                 type="button"
                 className="ui-link text-xs hover:underline"
                 aria-pressed={highlight?.key === 'reputation'}
-                title="信頼度報酬の多いタスクで必要件数を見積もっています。押すと候補を10秒間強調します。"
+                title={`押すと今できる候補を10秒間強調します。その中からどの${goal.minimumTasks}件を選んでも不足分の信頼度を稼げます。PMCレベルなどは別条件です。`}
                 onClick={() =>
                   showCandidates(
                     'reputation',
-                    goal.plan.map((task) => task.id),
-                    `LL${goal.target!.level}への信頼度を稼ぐ候補`,
+                    goal.choices.map((task) => task.id),
+                    `強調した候補${goal.choices.length}件から${goal.minimumTasks}件で必要な信頼度を確保`,
                   )
                 }
               >
-                信頼度を稼ぐ候補 {goal.minimumTasks}件
+                信頼度を稼ぐ候補から {goal.minimumTasks}件
               </button>
             )}
           </div>
@@ -212,7 +215,8 @@ export default function TraderDashboard({
         {nextUnlock && (
           <button
             type="button"
-            className="border-l border-slate-700 pl-6 text-left hover:opacity-80"
+            className="border-l border-slate-700 pl-6 text-left hover:opacity-80 disabled:opacity-50"
+            disabled={!hasAvailable(nextUnlock.taskIds)}
             aria-pressed={highlight?.key === nextUnlock.key}
             title={`${nextUnlock.targets.map(({ task }) => task.name).join(' / ')} の完了数条件。押すとカウント対象の未完了タスクを10秒間強調します。他の解放条件が残る場合があります。`}
             onClick={() =>

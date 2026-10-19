@@ -60,13 +60,30 @@ export function loyaltyGoal(
     plan.push(task);
     sum = rounded(sum + standingReward(task, trader.id));
   }
+  // Offer choice without promising that an arbitrary N tasks will earn enough.
+  // Extend the reward-sorted pool only while even its lowest N rewards cover the gap.
+  const minimumTasks =
+    reputationGap !== undefined && sum >= reputationGap ? plan.length : undefined;
+  const choices = minimumTasks ? [...plan] : [];
+  if (minimumTasks) {
+    for (let index = minimumTasks; index < candidates.length; index++) {
+      const leastReward = rounded(
+        candidates
+          .slice(index - minimumTasks + 1, index + 1)
+          .reduce((total, task) => total + standingReward(task, trader.id), 0),
+      );
+      if (leastReward < reputationGap!) break;
+      choices.push(candidates[index]);
+    }
+  }
   return {
     current,
     target,
     reputationGap,
     playerLevelGap,
     plan,
-    minimumTasks: reputationGap !== undefined && sum >= reputationGap ? plan.length : undefined,
+    choices,
+    minimumTasks,
     availableReputation: rounded(
       candidates.reduce((total, task) => total + standingReward(task, trader.id), 0),
     ),

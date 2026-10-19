@@ -115,6 +115,48 @@ test('LL estimate does not count already failed tasks or claim new LL from reput
   assert.equal(loyaltyGoal(trader, p, []).target, undefined);
 });
 
+test('reputation choices include interchangeable rewards so the user can choose any required number', () => {
+  const p = profile();
+  p.traders.trader.reputation = 0;
+  const tasks = ['a', 'b', 'c', 'd'].map((id) => task(id, 0.25));
+  const result = loyaltyGoal(trader, p, [...tasks, task('small', 0.1)]);
+  assert.equal(result.minimumTasks, 3);
+  assert.equal(result.plan.length, 3);
+  assert.deepEqual(
+    result.choices.map((t) => t.id),
+    ['a', 'b', 'c', 'd'],
+  );
+  p.tasks.a = 'complete';
+  assert.deepEqual(
+    loyaltyGoal(trader, p, tasks).choices.map((t) => t.id),
+    ['b', 'c', 'd'],
+  );
+});
+
+test('mixed reward choices never suggest arbitrary N tasks when the weakest N would fall short', () => {
+  const p = profile();
+  p.traders.trader.reputation = 0;
+  const result = loyaltyGoal(trader, p, [
+    task('a', 0.3),
+    task('b', 0.25),
+    task('c', 0.25),
+    task('d', 0.2),
+    task('e', 0.19),
+  ]);
+  assert.equal(result.minimumTasks, 3);
+  assert.deepEqual(
+    result.choices.map((t) => t.id),
+    ['a', 'b', 'c', 'd'],
+  );
+  const needsLargest = loyaltyGoal(trader, p, [task('a', 0.5), task('b', 0.2), task('c', 0.2)]);
+  assert.equal(needsLargest.minimumTasks, 2);
+  assert.deepEqual(
+    needsLargest.choices.map((t) => t.id),
+    ['a', 'b'],
+  );
+  assert.deepEqual(loyaltyGoal(trader, p, [task('small', 0.1)]).choices, []);
+});
+
 test('shared count gates group targets, keep other gates, and ignore unresolved or non-monotonic counts', () => {
   const p = profile();
   p.tasks.a = 'complete';
