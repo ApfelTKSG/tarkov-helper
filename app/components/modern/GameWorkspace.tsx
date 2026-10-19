@@ -1,27 +1,25 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
-import { traderNameToSlug } from '@/app/lib/traderSlug';
 import type { GameTask } from '@/src/domain/game';
 import { interactingTaskIds, matchesTask } from '@/src/domain/task-view';
-import ProfileControls from './ProfileControls';
 import { matchesPrestige, newBeginningStage, prestigeCoverage } from '@/src/domain/prestige';
 import TaskDialog from './TaskDialog';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { canToggleTaskCompletion } from '@/src/domain/task-presentation';
 import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
-import RaidView from './RaidView';
-import ItemOverview from './ItemOverview';
-import ApiImage from './ApiImage';
-import { visibleTrader } from '@/src/domain/traders';
+import FirDashboard from './FirDashboard';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
+import TraderDashboard from './TraderDashboard';
+import MapTasks from './MapTasks';
+import ProfileControls from './ProfileControls';
 
-export type WorkspaceSection = 'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid';
-const control = 'rounded border border-slate-600 bg-slate-800 px-3 py-2';
+import WorkspaceHeader, { type WorkspaceSection } from './WorkspaceHeader';
+export type { WorkspaceSection } from './WorkspaceHeader';
+const control = 'ui-control';
 export default function GameWorkspace({
   trader,
   section = 'tasks',
@@ -55,8 +53,8 @@ export default function GameWorkspace({
     };
   }, [snapshot]);
   const title =
-    section === 'raid'
-      ? 'レイド準備'
+    section === 'settings'
+      ? '設定'
       : section.startsWith('hideout')
         ? 'ハイドアウト'
         : section === 'collector'
@@ -74,8 +72,7 @@ export default function GameWorkspace({
           newBeginningStage(task) === undefined) &&
         (!trader || task.trader === traderDefinition?.id) &&
         (!interactingIds || interactingIds.has(task.id)) &&
-        (section !== 'collector' || task.englishName === 'Collector') &&
-        (section !== 'items' ||
+        (!(section === 'items' || section === 'collector') ||
           task.objectives.some((o) => o.type === 'giveItem' && o.foundInRaid)),
     ) ?? [];
   const tasks = scoped.filter(
@@ -93,104 +90,45 @@ export default function GameWorkspace({
   const currentSelected = selected
     ? snapshot?.tasks.find((task) => task.id === selected.id)
     : undefined;
-  const graphView = section === 'tasks' && view === 'graph';
-  const tabControl = 'rounded border border-slate-600 bg-slate-800 px-4 py-2.5 font-medium';
+  const traderDashboard = section === 'tasks' && !!traderDefinition;
+  const graphView = section === 'tasks' && !trader && view === 'graph';
+  const inventoryPage = section === 'items' || section === 'collector';
+  const tablePage = (section === 'tasks' && !!trader) || section === 'maps' || inventoryPage;
+  const fixedWorkspace = graphView || tablePage;
   return (
     <div
-      className={`min-h-dvh bg-slate-900 text-slate-100 ${graphView ? 'flex h-dvh flex-col' : ''}`}
+      className={`workspace bg-slate-900 text-slate-100 ${fixedWorkspace ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-dvh'}`}
     >
-      <header className="shrink-0 border-b border-slate-700 bg-slate-950">
-        <div className={`space-y-3 px-3 py-3 sm:px-5 ${graphView ? '' : 'mx-auto max-w-7xl'}`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-2xl font-bold tracking-wide">
-              Tarkov Helper
-            </Link>
-            <nav className="flex flex-wrap gap-2 text-base md:text-lg">
-              <Link className={tabControl} href="/">
-                タスク
-              </Link>
-              <Link className={tabControl} href="/fir">
-                FiR
-              </Link>
-              <Link className={tabControl} href="/fir/collector">
-                Collector
-              </Link>
-              <button
-                type="button"
-                disabled
-                className={`${tabControl} cursor-not-allowed text-slate-500 opacity-50`}
-                title="今シーズンは利用できません"
-              >
-                ハイドアウト
-              </button>
-              <Link className={tabControl} href="/raid">
-                レイド準備
-              </Link>
-            </nav>
-          </div>
-          <ProfileControls />
-          <nav aria-label="トレーダー" className="flex flex-wrap gap-2 text-base md:text-lg">
-            <Link
-              href="/"
-              aria-label="全トレーダー"
-              aria-current={!trader && section === 'tasks' ? 'page' : undefined}
-              className={`flex w-20 flex-col items-center justify-center gap-1 rounded border-2 p-1 text-center text-xs ${!trader && section === 'tasks' ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
-            >
-              <span
-                className="flex h-14 w-14 items-center justify-center text-3xl"
-                aria-hidden="true"
-              >
-                ▦
-              </span>
-              <span className="whitespace-nowrap text-[11px] leading-4">全トレーダー</span>
-            </Link>
-            {snapshot?.traders
-              .filter(
-                (t) => visibleTrader(t) && snapshot.tasks.some((task) => task.trader === t.id),
-              )
-              .map((t) => (
-                <Link
-                  key={t.id}
-                  href={`/traders/${traderNameToSlug(t.englishName)}`}
-                  aria-label={t.name}
-                  aria-current={trader === t.englishName ? 'page' : undefined}
-                  className={`flex w-20 flex-col items-center gap-1 rounded border-2 p-1 text-center text-xs ${trader === t.englishName ? 'border-amber-400 bg-amber-400/10' : 'border-slate-700 bg-slate-800 hover:border-sky-400'}`}
-                >
-                  <ApiImage
-                    src={t.imageLink}
-                    name={t.name}
-                    className="h-14 w-14 rounded object-cover"
-                  />
-                  <span className="max-w-full truncate text-[11px] leading-4" title={t.name}>
-                    {t.name}
-                  </span>
-                </Link>
-              ))}
-          </nav>
-        </div>
-      </header>
+      <WorkspaceHeader trader={trader} section={section} />
       <main
         className={
-          graphView
-            ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
-            : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
+          tablePage
+            ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 py-3 sm:px-5'
+            : graphView
+              ? 'flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-5 [&>*]:shrink-0'
+              : 'mx-auto max-w-7xl space-y-5 px-4 py-6'
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {snapshot && !section.startsWith('hideout') && section !== 'raid' && (
-            <p className="text-sm text-slate-300">
-              完了 {completed} / {scoped.length} · 受注中{' '}
-              {
-                scoped.filter(
-                  (t) =>
-                    !['complete', 'failed'].includes(profile.tasks[t.id] ?? 'unstarted') &&
-                    (profile.tasks[t.id] === 'active' || availability(t).state === 'eligible'),
-                ).length
-              }
-            </p>
-          )}
-        </div>
+        {!tablePage && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">{title}</h1>
+            {snapshot &&
+              !traderDashboard &&
+              !section.startsWith('hideout') &&
+              section !== 'settings' && (
+                <p className="text-sm text-slate-300">
+                  完了 {completed} / {scoped.length} · 受注中{' '}
+                  {
+                    scoped.filter(
+                      (t) =>
+                        !['complete', 'failed'].includes(profile.tasks[t.id] ?? 'unstarted') &&
+                        (profile.tasks[t.id] === 'active' || availability(t).state === 'eligible'),
+                    ).length
+                  }
+                </p>
+              )}
+          </div>
+        )}
         {error && (
           <div role="alert" className="rounded border border-red-800 bg-red-950 p-4">
             {error} {snapshot && '最後に読み込めたデータを表示しています。'}
@@ -201,13 +139,31 @@ export default function GameWorkspace({
         )}
         {(!ready || loading) && !error && <p role="status">ゲームデータと進捗を読み込み中…</p>}
         {snapshot &&
-          (section.startsWith('hideout') ? (
+          (section === 'settings' ? (
+            <ProfileControls hidePlayerLevel expanded />
+          ) : section.startsWith('hideout') ? (
             <HideoutView firOnly={section === 'hideout-fir'} />
-          ) : section === 'raid' ? (
-            <RaidView />
+          ) : section === 'maps' ? (
+            <MapTasks key={profile.id} />
+          ) : inventoryPage ? (
+            <FirDashboard
+              key={`${profile.id}:${section}:${trader ?? ''}`}
+              tasks={scoped}
+              initialScope={section === 'collector' ? 'collector' : 'all'}
+            />
+          ) : traderDashboard ? (
+            <>
+              <TraderDashboard
+                key={`${profile.id}:${traderDefinition.id}`}
+                trader={traderDefinition}
+                tasks={scoped}
+                linkedTask={currentSelected}
+                onClearLinked={() => setSelected(null)}
+              />
+            </>
           ) : (
             <>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <input
                   aria-label="タスク・アイテム検索"
                   className={`${control} min-w-52 flex-1`}
@@ -239,12 +195,8 @@ export default function GameWorkspace({
                     {view === 'graph' ? '一覧に切り替え' : 'グラフに切り替え'}
                   </button>
                 )}
+                <span className="text-xs text-slate-400">{tasks.length}件</span>
               </div>
-              <p className="text-sm text-slate-400">
-                {crossTraderGraph && '他トレーダーと前提・後続でつながるラインのみ表示。'}
-                表示 {tasks.length}
-                件。条件予測とゲーム内で記録した状態は別に保持します。同名タスクもIDごとに表示します。
-              </p>
               {profile.prestige === undefined ? (
                 <p className="text-sm text-amber-300">
                   現在のプレステージを入力すると、その段階のNew
@@ -258,34 +210,30 @@ export default function GameWorkspace({
                   </p>
                 )
               )}
-              {(section === 'items' || section === 'collector') && <ItemOverview tasks={tasks} />}
-              {view === 'graph' && section === 'tasks' && !!tasks.length && (
+              {crossTraderGraph && !!tasks.length && (
                 <>
                   <TaskGraph
                     tasks={tasks}
-                    layout={crossTraderGraph ? 'depth' : 'split'}
+                    layout="depth"
                     revealMatches={!!query.trim()}
                     selectedId={currentSelected?.id}
                     onSelect={setSelected}
                   />
-                  <p className="text-sm text-sky-200">
-                    クリックで完了・取り消し（半透明は操作不可） ·
-                    Shift＋クリック（または右クリック）で詳細 ·
-                    {crossTraderGraph
-                      ? '左から前提の深さ順'
-                      : '左：タスクライン（深さ順） · 右：単独タスク（LL別）'}
+                  <p className="text-xs text-slate-400">
+                    クリック：完了・取り消し　／　Shift＋クリック・右クリック：詳細
                   </p>
                   <details className="text-sm text-slate-400">
                     <summary className="cursor-pointer">表示の説明</summary>
+                    <p className="mt-2">
+                      他トレーダーと前提・後続でつながるラインを表示します。半透明のタスクはクリックで完了できません。条件予測とゲーム内の記録は別に保持し、同名タスクもIDで区別します。
+                    </p>
                     <p className="mt-2">
                       灰色半透明：受けられない · 黄色縁半透明：条件未確認 · 灰色：受注中 ·
                       緑色：完了 ·
                       赤色：失敗。受注条件を満たしたタスクは受注中として表示します。★と金色の枠はお気に入りです。
                     </p>
                     <p className="mt-2">
-                      {crossTraderGraph
-                        ? '前提なしが深さ1、前提の最大深さ＋1が次の列です。複数トレーダーの前提も含めて計算し、同じ深さのタスクを縦に並べます。検索・絞り込みでも元の深さを保持します。統合グラフではフォルダにまとめず個別ノードを表示し、右下にLLを残します。'
-                        : '同じトレーダー内で前提・後続がつながるタスクは、左側に深さ順で個別表示します。つながりのないタスクは右側のLL列へ置きます。ラインはフォルダにまとめず、LLは各ノード右下に表示します。深さ・ラインへの分類は検索前の全タスクから判定します。左上は必要レベル、右上は報酬、左下は前提の充足数です。ドラッグで移動、ホイールで拡大縮小できます。'}
+                      前提なしが深さ1、前提の最大深さ＋1が次の列です。複数トレーダーの前提も含めて計算し、同じ深さのタスクを縦に並べます。検索・絞り込みでも元の深さを保持します。右下はLL、左上は必要レベル、右上は報酬です。
                     </p>
                   </details>
                 </>

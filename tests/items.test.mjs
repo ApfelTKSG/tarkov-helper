@@ -31,6 +31,26 @@ test('single-item image toggles can be undone and alternative candidates share o
   assert.equal(setFirGroupCount(done, demand, 0).objectiveCounts['a:alternative'], 0);
   assert.deepEqual(p.objectiveCounts, {});
 });
+
+test('combined task and Collector demand keeps allocations independent when switching scopes', () => {
+  const p = createDatabase().profiles.regular;
+  const taskDemand = { taskId: 'task', taskName: 'Task', objectiveId: 'one', count: 2 };
+  const collectorDemand = {
+    taskId: '5c51aac186f77432ea65c552',
+    taskName: 'Collector',
+    objectiveId: 'two',
+    count: 1,
+  };
+  const combined = setFirGroupCount(p, [taskDemand, collectorDemand], 3);
+  assert.equal(combined.objectiveCounts['task:one'], 2);
+  assert.equal(combined.objectiveCounts[`${collectorDemand.taskId}:two`], 1);
+  const collectorUndo = setFirGroupCount(combined, [collectorDemand], 0);
+  assert.equal(collectorUndo.objectiveCounts['task:one'], 2);
+  assert.equal(collectorUndo.objectiveCounts[`${collectorDemand.taskId}:two`], 0);
+  const taskUndo = setFirGroupCount(collectorUndo, [taskDemand], 1);
+  assert.equal(taskUndo.objectiveCounts['task:one'], 1);
+  assert.equal(taskUndo.objectiveCounts[`${collectorDemand.taskId}:two`], 0);
+});
 import { createDatabase } from '../src/domain/profiles.ts';
 
 test('remaining items aggregate repeated IDs while alternatives are one shared demand', () => {

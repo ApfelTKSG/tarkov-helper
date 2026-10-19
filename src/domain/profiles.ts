@@ -63,6 +63,7 @@ export function createProfile(mode: GameMode, seasonId: string | null): Profile 
     name: mode === 'regular' ? '通常' : mode === 'pve' ? 'PvE' : `シーズン ${seasonId ?? '不明'}`,
     mode,
     seasonId,
+    level: 1,
     tasks: {},
     traders: {},
     objectiveCounts: {},

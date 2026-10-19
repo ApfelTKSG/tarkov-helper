@@ -65,6 +65,7 @@ export interface StationLevel {
   skillRequirements: { id: string; skill: string; level: number }[];
 }
 export interface GameSnapshot {
+  playerLevels?: { level: number; levelBadgeImageLink?: string }[];
   progressionRuleRevision?: string;
   progressionCounters?: Record<string, import('./progression').ProgressionCounter>;
   schemaVersion: number;

@@ -1,8 +1,19 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --ui-canvas: #151718;
+  --ui-surface: #1c1f20;
+  --ui-raised: #25292b;
+  --ui-line: #343a3c;
+  --ui-text: #eef0ed;
+  --ui-muted: #a6aeac;
+  --ui-accent: #ccba8d;
+  --ui-locked: #241c1c;
+  --ui-unknown: #292619;
+  --ui-complete: #19251e;
+  --background: var(--ui-canvas);
+  --foreground: var(--ui-text);
 }
 
 @theme inline {
@@ -12,15 +23,124 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN',
+    Meiryo, sans-serif;
+}
+
+/* Legacy screens inherit the same neutral surfaces while they are migrated. */
+.workspace {
+  --color-slate-950: #111314;
+  --color-slate-900: var(--ui-canvas);
+  --color-slate-800: var(--ui-surface);
+  --color-slate-700: var(--ui-line);
+  --color-slate-600: #525b5e;
+  --color-slate-500: #929c9a;
+  --color-slate-400: var(--ui-muted);
+  --color-slate-300: #c1c7c4;
+  --color-slate-200: #d8ddda;
+  --color-slate-100: var(--ui-text);
+}
+
+@layer components {
+  .ui-item-count {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .ui-item-count::-webkit-inner-spin-button,
+  .ui-item-count::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .ui-control {
+    min-height: 34px;
+    border: 1px solid var(--ui-line);
+    border-radius: 4px;
+    background: var(--ui-surface);
+    padding: 6px 10px;
+    color: var(--ui-text);
+    font-size: 14px;
+  }
+  .ui-control:disabled {
+    opacity: 0.4;
+  }
+  .workspace :is(button, a, input, select, summary):focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 3px;
+  }
+  .ui-nav-link {
+    display: block;
+    border-bottom: 2px solid transparent;
+    padding: 8px 10px;
+    color: var(--ui-muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .ui-nav-link:hover {
+    color: var(--ui-text);
+  }
+  .ui-nav-link[aria-current='page'] {
+    border-bottom-color: var(--ui-accent);
+    color: var(--ui-text);
+  }
+  .ui-trader-link {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px;
+    opacity: 0.7;
+  }
+  .ui-trader-link:hover {
+    background: var(--ui-raised);
+    opacity: 1;
+  }
+  .ui-trader-link[aria-current='page'] {
+    border-color: var(--ui-accent);
+    background: var(--ui-raised);
+    opacity: 1;
+  }
+  .ui-link {
+    color: var(--ui-muted);
+  }
+  .ui-link:hover {
+    color: var(--ui-accent);
+  }
+  .ui-task-row {
+    height: 64px;
+  }
+  .ui-task-row:hover {
+    background: var(--ui-surface);
+  }
+  .ui-task-row[data-state='locked'] {
+    background: var(--ui-locked);
+  }
+  .ui-task-row[data-state='complete'] {
+    background: var(--ui-complete);
+  }
+  .ui-task-group {
+    border-top: 1px solid var(--ui-line);
+    background: var(--ui-locked);
+    color: #d1b2ad;
+  }
+  .ui-task-group[data-state='complete'] {
+    background: var(--ui-complete);
+    color: #9dc1a7;
+  }
+  .ui-task-row[data-state='unknown'],
+  .ui-task-group[data-state='unknown'] {
+    background: var(--ui-unknown);
+  }
+  .ui-task-group[data-state='unknown'] {
+    color: #dfcb83;
+  }
+  .ui-task-row[data-highlighted='true'] {
+    background-image: linear-gradient(#ccba8d20, #ccba8d20);
+    box-shadow: inset 3px 0 var(--ui-accent);
+  }
 }
