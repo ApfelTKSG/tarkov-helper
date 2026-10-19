@@ -7,12 +7,12 @@ import { taskMapIds } from './maps.ts';
 import { taskLoyaltyColumn } from './task-columns.ts';
 
 export const lockedGroups = [
+  ['unknown', '条件不明'],
   ['playerLevel', 'レベル不足'],
   ['count', '前提タスク数不足'],
   ['task', '前提タスク未クリア'],
   ['level', 'LL不足'],
   ['multiple', '複数条件不足'],
-  ['unknown', '要確認'],
   ['failed', '失敗'],
 ] as const;
 type Group = (typeof lockedGroups)[number][0];

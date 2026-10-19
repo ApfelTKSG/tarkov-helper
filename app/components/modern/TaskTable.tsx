@@ -30,7 +30,7 @@ export default function TaskTable({
   highlightedTaskIds?: string[];
 }) {
   const { profile, snapshot, availability, edit, ready, storageError } = useGame();
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const [openGroups, setOpenGroups] = useState<string[]>(['unknown']);
   const [columnSort, setColumnSort] = useState<{
     key: 'map' | 'reputation';
     direction: 1 | -1;
@@ -106,7 +106,15 @@ export default function TaskTable({
         <tr
           id={`task-${task.id}`}
           aria-label={`${task.name} 進捗`}
-          data-state={complete ? 'complete' : !actionable ? 'locked' : 'available'}
+          data-state={
+            complete
+              ? 'complete'
+              : lock?.group === 'unknown'
+                ? 'unknown'
+                : !actionable
+                  ? 'locked'
+                  : 'available'
+          }
           data-highlighted={!complete && highlightedTaskIds.includes(task.id) ? 'true' : undefined}
           className={`ui-task-row align-middle ${task.id === COLLECTOR_ID ? 'ring-1 ring-inset ring-amber-400/40' : ''}`}
         >
@@ -315,7 +323,13 @@ export default function TaskTable({
               {section.id !== 'available' && (
                 <tr
                   className="ui-task-group"
-                  data-state={section.id === 'complete' ? 'complete' : 'locked'}
+                  data-state={
+                    section.id === 'complete'
+                      ? 'complete'
+                      : section.id === 'unknown'
+                        ? 'unknown'
+                        : 'locked'
+                  }
                   data-highlighted={
                     section.tasks.some((task) => highlightedTaskIds.includes(task.id))
                       ? 'true'
