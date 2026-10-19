@@ -261,7 +261,7 @@ export default function TraderDashboard({
             絞り込み解除 ×
           </button>
         )}
-        <span role="status" className="text-xs text-slate-300">
+        <span role="status" className="sr-only">
           {highlight && `${highlight.label} · 10秒間強調`}
         </span>
         {highlight && (
