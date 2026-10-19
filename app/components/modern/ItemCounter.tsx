@@ -36,7 +36,7 @@ export default function ItemCounter({
     <div
       className={
         (compact && items.length === 1) || condensedChoices
-          ? `grid ${condensedChoices ? 'grid-cols-[112px_minmax(0,1fr)]' : 'grid-cols-[64px_minmax(0,1fr)]'} items-center gap-x-3 gap-y-1`
+          ? 'grid grid-cols-[112px_minmax(0,1fr)] items-center gap-x-3 gap-y-1'
           : 'space-y-2'
       }
     >
@@ -83,7 +83,7 @@ export default function ItemCounter({
                 aria-pressed={complete}
                 aria-label={`${label} ${name} ${maximum === 1 ? '確保・取り消し' : '1個追加'}`}
                 title={`${name} · ${maximum === 1 ? 'クリックで確保・取り消し' : 'クリックで1個追加'}`}
-                className={`rounded border-2 bg-slate-950/40 p-1 disabled:opacity-50 ${complete ? 'border-emerald-400 ring-2 ring-emerald-500/40' : 'border-slate-600 hover:border-sky-400'}`}
+                className={`rounded border bg-slate-950/40 p-1 disabled:opacity-50 ${compact && items.length === 1 ? 'flex h-14 w-full items-center justify-center' : ''} ${complete ? 'border-emerald-400' : 'border-slate-600 hover:border-slate-400'}`}
                 onClick={() =>
                   onChange(maximum === 1 && complete ? 0 : Math.min(maximum, value + 1))
                 }
@@ -108,11 +108,11 @@ export default function ItemCounter({
         </button>
       )}
       <div
-        className={`flex items-center gap-2 text-sm ${(compact && items.length === 1) || condensedChoices ? 'col-start-2 row-start-2' : ''}`}
+        className={`flex items-center gap-1 text-sm tabular-nums ${(compact && items.length === 1) || condensedChoices ? 'col-start-2 row-start-2' : ''}`}
       >
         <button
           type="button"
-          className="rounded border border-slate-600 px-3 py-1 disabled:opacity-40"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-slate-600 hover:border-slate-400 disabled:opacity-40"
           aria-label={`${label} 1個減らす`}
           disabled={disabled || value === 0}
           onClick={() => onChange(Math.max(0, value - 1))}
@@ -121,8 +121,9 @@ export default function ItemCounter({
         </button>
         <input
           aria-label={`${label} 確保数`}
-          className={`${compact ? 'w-14' : 'w-20'} rounded border border-slate-600 bg-slate-900 px-2 py-1`}
+          className={`ui-item-count ${compact ? 'w-12' : 'w-20'} h-7 shrink-0 rounded border border-slate-600 bg-slate-900 px-1 text-center`}
           type="number"
+          inputMode="numeric"
           min="0"
           max={maximum}
           step="1"
@@ -133,7 +134,18 @@ export default function ItemCounter({
             if (Number.isInteger(next) && next >= 0 && next <= maximum) onChange(next);
           }}
         />
-        <span className={complete ? 'text-emerald-300' : 'text-slate-300'}>
+        <button
+          type="button"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-slate-600 hover:border-slate-400 disabled:opacity-40"
+          aria-label={`${label} 1個追加`}
+          disabled={disabled || value >= maximum}
+          onClick={() => onChange(Math.min(maximum, value + 1))}
+        >
+          +
+        </button>
+        <span
+          className={`ml-1 whitespace-nowrap ${complete ? 'text-emerald-300' : 'text-slate-300'}`}
+        >
           / {maximum}
           {complete ? ' ✓' : ''}
         </span>

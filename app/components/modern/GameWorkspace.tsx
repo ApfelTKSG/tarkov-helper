@@ -10,7 +10,6 @@ import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { canToggleTaskCompletion } from '@/src/domain/task-presentation';
 import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
-import RaidView from './RaidView';
 import FirDashboard from './FirDashboard';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
@@ -56,15 +55,13 @@ export default function GameWorkspace({
   const title =
     section === 'settings'
       ? '設定'
-      : section === 'raid'
-        ? 'レイド準備'
-        : section.startsWith('hideout')
-          ? 'ハイドアウト'
-          : section === 'collector'
-            ? 'Collectorのアイテム'
-            : section === 'items'
-              ? 'FiRアイテム管理'
-              : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
+      : section.startsWith('hideout')
+        ? 'ハイドアウト'
+        : section === 'collector'
+          ? 'Collectorのアイテム'
+          : section === 'items'
+            ? 'FiRアイテム管理'
+            : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
   const traderDefinition = snapshot?.traders.find((t) => t.englishName === trader);
   const scoped =
     snapshot?.tasks.filter(
@@ -118,7 +115,6 @@ export default function GameWorkspace({
             {snapshot &&
               !traderDashboard &&
               !section.startsWith('hideout') &&
-              section !== 'raid' &&
               section !== 'settings' && (
                 <p className="text-sm text-slate-300">
                   完了 {completed} / {scoped.length} · 受注中{' '}
@@ -147,8 +143,6 @@ export default function GameWorkspace({
             <ProfileControls hidePlayerLevel expanded />
           ) : section.startsWith('hideout') ? (
             <HideoutView firOnly={section === 'hideout-fir'} />
-          ) : section === 'raid' ? (
-            <RaidView />
           ) : section === 'maps' ? (
             <MapTasks key={profile.id} />
           ) : inventoryPage ? (

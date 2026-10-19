@@ -6,7 +6,7 @@ import PlayerLevelInput from './PlayerLevelInput';
 import TraderNavigation from './TraderNavigation';
 
 export type WorkspaceSection =
-  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps' | 'settings';
+  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'maps' | 'settings';
 const tabControl = 'ui-nav-link';
 const links = [
   { section: 'tasks', href: '/', label: 'タスク' },
@@ -50,13 +50,6 @@ export default function WorkspaceHeader({
                   {link.label}
                 </Link>
               ))}
-              <Link
-                className={tabControl}
-                href="/raid"
-                aria-current={section === 'raid' ? 'page' : undefined}
-              >
-                レイド準備
-              </Link>
             </nav>
             <Link
               href="/settings"

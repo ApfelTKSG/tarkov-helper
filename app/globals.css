@@ -46,6 +46,15 @@ body {
 }
 
 @layer components {
+  .ui-item-count {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .ui-item-count::-webkit-inner-spin-button,
+  .ui-item-count::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   .ui-control {
     min-height: 34px;
     border: 1px solid var(--ui-line);
