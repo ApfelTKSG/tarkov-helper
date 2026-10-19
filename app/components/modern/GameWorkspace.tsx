@@ -11,7 +11,7 @@ import { canToggleTaskCompletion } from '@/src/domain/task-presentation';
 import TaskGraph from './TaskGraph';
 import HideoutView from './HideoutView';
 import RaidView from './RaidView';
-import ItemOverview from './ItemOverview';
+import FirDashboard from './FirDashboard';
 import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import TraderDashboard from './TraderDashboard';
@@ -72,8 +72,7 @@ export default function GameWorkspace({
           newBeginningStage(task) === undefined) &&
         (!trader || task.trader === traderDefinition?.id) &&
         (!interactingIds || interactingIds.has(task.id)) &&
-        (section !== 'collector' || task.englishName === 'Collector') &&
-        (section !== 'items' ||
+        (!(section === 'items' || section === 'collector') ||
           task.objectives.some((o) => o.type === 'giveItem' && o.foundInRaid)),
     ) ?? [];
   const tasks = scoped.filter(
@@ -93,7 +92,8 @@ export default function GameWorkspace({
     : undefined;
   const traderDashboard = section === 'tasks' && !!traderDefinition;
   const graphView = section === 'tasks' && !trader && view === 'graph';
-  const tablePage = (section === 'tasks' && !!trader) || section === 'maps';
+  const inventoryPage = section === 'items' || section === 'collector';
+  const tablePage = (section === 'tasks' && !!trader) || section === 'maps' || inventoryPage;
   const fixedWorkspace = graphView || tablePage;
   return (
     <div
@@ -145,6 +145,12 @@ export default function GameWorkspace({
             <RaidView />
           ) : section === 'maps' ? (
             <MapTasks key={profile.id} />
+          ) : inventoryPage ? (
+            <FirDashboard
+              key={`${profile.id}:${section}:${trader ?? ''}`}
+              tasks={scoped}
+              initialScope={section === 'collector' ? 'collector' : 'all'}
+            />
           ) : traderDashboard ? (
             <>
               <TraderDashboard
@@ -204,7 +210,6 @@ export default function GameWorkspace({
                   </p>
                 )
               )}
-              {(section === 'items' || section === 'collector') && <ItemOverview tasks={tasks} />}
               {crossTraderGraph && !!tasks.length && (
                 <>
                   <TaskGraph

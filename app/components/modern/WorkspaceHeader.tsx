@@ -13,7 +13,6 @@ const links = [
   { section: 'tasks', href: '/', label: 'タスク' },
   { section: 'maps', href: '/maps', label: 'マップ別' },
   { section: 'items', href: '/fir', label: 'FiR' },
-  { section: 'collector', href: '/fir/collector', label: 'Collector' },
 ] as const;
 
 /** Every workspace page shares this header; page layout never selects a different version. */
@@ -42,7 +41,12 @@ export default function WorkspaceHeader({
                   key={link.section}
                   href={link.href}
                   className={tabControl}
-                  aria-current={section === link.section ? 'page' : undefined}
+                  aria-current={
+                    section === link.section ||
+                    (link.section === 'items' && section === 'collector')
+                      ? 'page'
+                      : undefined
+                  }
                 >
                   {link.label}
                 </Link>
