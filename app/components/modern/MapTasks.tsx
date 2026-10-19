@@ -11,6 +11,7 @@ import { matchesTask } from '@/src/domain/task-view';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import TaskTable from './TaskTable';
 import Toast from './Toast';
+import RaidPackingList from './RaidPackingList';
 
 const control = 'ui-control';
 export default function MapTasks() {
@@ -86,6 +87,7 @@ export default function MapTasks() {
           ),
         )}
       </nav>
+      <RaidPackingList tasks={scoped.filter(actionable)} map={map} />
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         <input
           aria-label="タスク・アイテム検索"

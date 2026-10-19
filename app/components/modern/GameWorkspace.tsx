@@ -16,6 +16,7 @@ import CollectorBadge, { COLLECTOR_ID } from './CollectorBadge';
 import { taskVariantLabel } from '@/src/domain/task-variant';
 import TraderDashboard from './TraderDashboard';
 import MapTasks from './MapTasks';
+import ProfileControls from './ProfileControls';
 
 import WorkspaceHeader, { type WorkspaceSection } from './WorkspaceHeader';
 export type { WorkspaceSection } from './WorkspaceHeader';
@@ -53,15 +54,17 @@ export default function GameWorkspace({
     };
   }, [snapshot]);
   const title =
-    section === 'raid'
-      ? 'レイド準備'
-      : section.startsWith('hideout')
-        ? 'ハイドアウト'
-        : section === 'collector'
-          ? 'Collectorのアイテム'
-          : section === 'items'
-            ? 'FiRアイテム管理'
-            : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
+    section === 'settings'
+      ? '設定'
+      : section === 'raid'
+        ? 'レイド準備'
+        : section.startsWith('hideout')
+          ? 'ハイドアウト'
+          : section === 'collector'
+            ? 'Collectorのアイテム'
+            : section === 'items'
+              ? 'FiRアイテム管理'
+              : (trader ?? (crossTraderGraph ? 'トレーダー間のタスクライン' : 'タスク一覧'));
   const traderDefinition = snapshot?.traders.find((t) => t.englishName === trader);
   const scoped =
     snapshot?.tasks.filter(
@@ -115,7 +118,8 @@ export default function GameWorkspace({
             {snapshot &&
               !traderDashboard &&
               !section.startsWith('hideout') &&
-              section !== 'raid' && (
+              section !== 'raid' &&
+              section !== 'settings' && (
                 <p className="text-sm text-slate-300">
                   完了 {completed} / {scoped.length} · 受注中{' '}
                   {
@@ -139,7 +143,9 @@ export default function GameWorkspace({
         )}
         {(!ready || loading) && !error && <p role="status">ゲームデータと進捗を読み込み中…</p>}
         {snapshot &&
-          (section.startsWith('hideout') ? (
+          (section === 'settings' ? (
+            <ProfileControls hidePlayerLevel expanded />
+          ) : section.startsWith('hideout') ? (
             <HideoutView firOnly={section === 'hideout-fir'} />
           ) : section === 'raid' ? (
             <RaidView />

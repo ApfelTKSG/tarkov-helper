@@ -22,21 +22,6 @@ export default function RaidView() {
       )
       .map((objective) => ({ task, objective })),
   );
-  const keyIds = new Set(
-    objectives.flatMap(({ task, objective }) => [
-      ...(objective.requiredKeys ?? []).flat(),
-      ...(task.neededKeys ?? [])
-        .filter((keys) => !map || keys.map === map)
-        .flatMap((keys) => keys.keys),
-    ]),
-  );
-  const markers = new Map<string, number>();
-  for (const { task, objective } of objectives)
-    if (objective.markerItem)
-      markers.set(
-        objective.markerItem,
-        (markers.get(objective.markerItem) ?? 0) + objectiveRemaining(task, objective.id, profile),
-      );
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold">レイド準備</h2>
@@ -55,25 +40,7 @@ export default function RaidView() {
           ))}
         </select>
       </label>
-      <p className="text-sm text-slate-300">
-        受注中のタスクから未達の必須目標を表示します。代替キーは候補として表示し、同じキーは1行にまとめます。
-      </p>
-      <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
-        <h3 className="font-semibold">持ち物候補</h3>
-        <ul className="mt-2 text-sm">
-          {[...keyIds].map((id) => (
-            <li key={id}>キー候補: {snapshot.items[id]?.name ?? id}（再利用・重複を集約）</li>
-          ))}
-          {[...markers].map(([id, count]) => (
-            <li key={id}>
-              消耗品: {snapshot.items[id]?.name ?? id} × {count}
-            </li>
-          ))}
-        </ul>
-        {!keyIds.size && !markers.size && (
-          <p className="text-slate-400">収録されたキー・マーカー指定はありません。</p>
-        )}
-      </div>
+      <p className="text-sm text-slate-300">受注中のタスクから未達の必須目標を表示します。</p>
       {objectives.map(({ task, objective }) => (
         <article
           key={`${task.id}:${objective.id}`}

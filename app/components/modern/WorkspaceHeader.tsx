@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import { useGame } from '@/app/context/GameContext';
 import PlayerLevelInput from './PlayerLevelInput';
-import ProfileControls from './ProfileControls';
 import TraderNavigation from './TraderNavigation';
 
 export type WorkspaceSection =
-  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps';
+  'tasks' | 'items' | 'collector' | 'hideout' | 'hideout-fir' | 'raid' | 'maps' | 'settings';
 const tabControl = 'ui-nav-link';
 const links = [
   { section: 'tasks', href: '/', label: 'タスク' },
@@ -67,12 +66,13 @@ export default function WorkspaceHeader({
                 レイド準備
               </Link>
             </nav>
-            <details className="text-xs text-slate-400">
-              <summary className="ui-nav-link cursor-pointer list-none">設定</summary>
-              <div className="absolute inset-x-3 top-full z-40 mt-2 max-h-[60dvh] overflow-y-auto rounded-md border border-slate-700 bg-slate-800 p-3 shadow-2xl">
-                <ProfileControls hidePlayerLevel />
-              </div>
-            </details>
+            <Link
+              href="/settings"
+              className={tabControl}
+              aria-current={section === 'settings' ? 'page' : undefined}
+            >
+              設定
+            </Link>
           </div>
         </div>
         <TraderNavigation trader={trader} allSelected={!trader && section === 'tasks'} />
