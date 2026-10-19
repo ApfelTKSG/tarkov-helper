@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { taskMapIds } from '../src/domain/maps.ts';
+import { taskMapIds, visibleMap } from '../src/domain/maps.ts';
 import { createProfile } from '../src/domain/profiles.ts';
 
-test('map planning combines task and required objective maps and deduplicates variants', () => {
+test('map planning combines task and required objective maps and removes excluded maps', () => {
   const task = {
     id: 't',
     map: 'woods',
@@ -14,6 +14,21 @@ test('map planning combines task and required objective maps and deduplicates va
     ],
   };
   assert.deepEqual(taskMapIds(task), ['customs', '55f2d3fd4bdc2d5f408b4567', 'woods']);
+});
+
+test('excluded maps are neither selectable nor converted into regular maps', () => {
+  const ids = [
+    '59fc81d786f774390775787e',
+    '65b8d6f5cdde2479cb2a3125',
+    '65cc8f81a9aac3e77d0cfd3e',
+    '68236e8153654e8c1200798a',
+    '6a294a5b5eb5f9a1700417b7',
+  ];
+  for (const id of ids) {
+    assert.equal(visibleMap({ id }), false);
+    assert.deepEqual(taskMapIds({ id: 't', map: id, objectives: [{ id: 'o', maps: [id] }] }), []);
+  }
+  assert.equal(visibleMap({ id: '55f2d3fd4bdc2d5f408b4567' }), true);
 });
 
 test('raid planning removes completed objectives and uses task map for unspecified objectives', () => {

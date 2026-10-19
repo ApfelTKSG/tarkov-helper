@@ -12,6 +12,7 @@ import {
   unlockMilestones,
 } from '@/src/domain/trader-dashboard';
 import { matchesTask } from '@/src/domain/task-view';
+import { visibleMap } from '@/src/domain/maps';
 import { toggleTaskCompletion } from '@/src/domain/task-reputation';
 import { traderNameToSlug } from '@/app/lib/traderSlug';
 import { matchesPrestige } from '@/src/domain/prestige';
@@ -76,15 +77,17 @@ export default function TraderDashboard({
       (task) =>
         (matchesTask(task, query, snapshot) ||
           (!!needle &&
-            snapshot.maps.some(
-              (map) =>
-                `${map.name} ${map.englishName}`
-                  .normalize('NFKC')
-                  .toLocaleLowerCase()
-                  .includes(needle) &&
-                (task.map === map.id ||
-                  task.objectives.some((objective) => objective.maps?.includes(map.id))),
-            ))) &&
+            snapshot.maps
+              .filter(visibleMap)
+              .some(
+                (map) =>
+                  `${map.name} ${map.englishName}`
+                    .normalize('NFKC')
+                    .toLocaleLowerCase()
+                    .includes(needle) &&
+                  (task.map === map.id ||
+                    task.objectives.some((objective) => objective.maps?.includes(map.id))),
+              ))) &&
         (effectiveStatus === 'all' ||
           (effectiveStatus === 'unfinished' &&
             !['complete', 'failed'].includes(profile.tasks[task.id] ?? '')) ||
@@ -287,7 +290,6 @@ export default function TraderDashboard({
         reputationTrader={trader.id}
         onComplete={markComplete}
         onSaved={notify}
-        onFocusTasks={showCandidates}
       />
       {toast && (
         <Toast

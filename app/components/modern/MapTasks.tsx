@@ -18,7 +18,6 @@ export default function MapTasks() {
   const [map, setMap] = useState('');
   const [status, setStatus] = useState('available');
   const [query, setQuery] = useState('');
-  const [focus, setFocus] = useState<string[] | null>(null);
   const [toast, setToast] = useState<{ id: number; message: string; undo?: GameTask } | null>(null);
   const serial = useRef(0);
   const closeToast = useCallback(() => setToast(null), []);
@@ -43,7 +42,6 @@ export default function MapTasks() {
   const tasks = scoped
     .filter(
       (task) =>
-        (!focus || focus.includes(task.id)) &&
         matchesTask(task, query, snapshot) &&
         (status === 'all' ||
           (status === 'available' && actionable(task)) ||
@@ -76,7 +74,6 @@ export default function MapTasks() {
               aria-pressed={map === choice.id}
               onClick={() => {
                 setMap(choice.id);
-                setFocus(null);
               }}
               className={`${control} shrink-0 ${map === choice.id ? 'border-sky-400 text-sky-200' : 'text-slate-400'}`}
             >
@@ -119,22 +116,11 @@ export default function MapTasks() {
           <option value="all">すべて</option>
         </select>
         <span className="text-xs text-slate-500">{tasks.length}件</span>
-        {focus && (
-          <button type="button" className="text-xs text-sky-300" onClick={() => setFocus(null)}>
-            絞り込み解除 ×
-          </button>
-        )}
       </div>
       <TaskTable
         tasks={tasks}
         showTrader
         onSaved={notify}
-        onFocusTasks={(ids) => {
-          setFocus(ids);
-          setStatus('all');
-          setMap('');
-          setQuery('');
-        }}
         onComplete={(task) => {
           const complete = profile.tasks[task.id] === 'complete';
           if (edit((p) => toggleTaskCompletion(p, task)))
