@@ -127,8 +127,13 @@ export default function ItemOverview({
             >
               <ItemCounter
                 compact
+                choicesPopover
                 items={entry.items}
-                label={entry.title}
+                label={
+                  entry.items.length > 1
+                    ? `${entry.demands[0].taskName} ${entry.demands[0].objectiveId}`
+                    : entry.title
+                }
                 value={entry.value}
                 maximum={entry.maximum}
                 disabled={!ready || !!storageError}

@@ -176,7 +176,28 @@ export default function TraderDashboard({
           />
         </label>
         {goal.target && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <button
+            type="button"
+            className="flex min-h-16 flex-wrap items-center gap-x-4 gap-y-1 border-l border-slate-700 px-6 py-2 text-left text-sm hover:bg-slate-800/60 disabled:opacity-50"
+            disabled={!goal.minimumTasks}
+            aria-pressed={highlight?.key === 'reputation'}
+            title={
+              goal.minimumTasks
+                ? `押すと今できる候補を10秒間強調します。その中から${goal.minimumTasks}件で不足分の信頼度を稼げます。PMCレベルなどは別条件です。`
+                : goal.reputationGap === undefined
+                  ? '現在の信頼度を入力すると候補を表示します。'
+                  : goal.reputationGap === 0
+                    ? '必要な信頼度は達成済みです。'
+                    : '今できるタスクだけでは不足分の信頼度を満たせません。'
+            }
+            onClick={() =>
+              showCandidates(
+                'reputation',
+                goal.choices.map((task) => task.id),
+                `強調した候補${goal.choices.length}件から${goal.minimumTasks}件で必要な信頼度を確保`,
+              )
+            }
+          >
             <span className="text-slate-300">
               LL {goal.target.level}まで{' '}
               <strong className="font-medium text-slate-100">
@@ -194,28 +215,16 @@ export default function TraderDashboard({
               <span className="text-amber-200">PMCレベル未入力</span>
             )}
             {goal.minimumTasks !== undefined && goal.minimumTasks > 0 && (
-              <button
-                type="button"
-                className="ui-link text-xs hover:underline"
-                aria-pressed={highlight?.key === 'reputation'}
-                title={`押すと今できる候補を10秒間強調します。その中からどの${goal.minimumTasks}件を選んでも不足分の信頼度を稼げます。PMCレベルなどは別条件です。`}
-                onClick={() =>
-                  showCandidates(
-                    'reputation',
-                    goal.choices.map((task) => task.id),
-                    `強調した候補${goal.choices.length}件から${goal.minimumTasks}件で必要な信頼度を確保`,
-                  )
-                }
-              >
+              <span className="text-xs text-slate-400">
                 信頼度を稼ぐ候補から {goal.minimumTasks}件
-              </button>
+              </span>
             )}
-          </div>
+          </button>
         )}
         {nextUnlock && (
           <button
             type="button"
-            className="border-l border-slate-700 pl-6 text-left hover:opacity-80 disabled:opacity-50"
+            className="min-h-16 border-l border-slate-700 px-6 py-2 text-left hover:bg-slate-800/60 disabled:opacity-50"
             disabled={!hasAvailable(nextUnlock.taskIds)}
             aria-pressed={highlight?.key === nextUnlock.key}
             title={`${nextUnlock.targets.map(({ task }) => task.name).join(' / ')} の完了数条件。押すとカウント対象の未完了タスクを10秒間強調します。他の解放条件が残る場合があります。`}
